@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { getDayAndMonth, generateWeeklySummary, generateFinalSummary, getDailyPrompt, analyzeJournalEntry } from './services/geminiService';
-import { JournalEntry, UserProfile, EntryAnalysis } from './types';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
-import { requestNotificationPermission, scheduleDailyReminder } from './utils/notifications';
+import { safeRequestNotificationPermission, scheduleDailyReminder } from './utils/notifications';
 import CelebrationScreen from './components/CelebrationScreen';
 import JournalView from './components/JournalView';
 import { detectCrisis, CrisisSeverity } from './utils/crisisDetector';
 import CrisisModal from './components/CrisisModal';
+import WelcomeScreen from './components/WelcomeScreen';
+import LoadingSpinner from './components/LoadingSpinner';
+import PinLockScreen from './components/PinLockScreen';
+import SettingsModal from './components/SettingsModal';
 
-type AppState = 'onboarding' | 'scripting' | 'journal';
+
+type AppState = 'welcome' | 'onboarding' | 'scripting' | 'journal';
 
 const App: React.FC = () => {
-   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [appState, setAppState] = useState<AppState>('onboarding');
+  const [appState, setAppState] = useState<AppState>('welcome');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [settings, setSettings] = useState<Settings>({ theme: 'system' });
+  const [isLocked, setIsLocked] = useState(true);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isJourneyOver, setIsJourneyOver] = useState(false);
   const [finalSummaryText, setFinalSummaryText] = useState('');
   const [dailyPrompt, setDailyPrompt] = useState<{ text: string, isMilestone: boolean } | null>(null);
@@ -27,6 +35,77 @@ const App: React.FC = () => {
   useEffect(() => {
     scheduleDailyReminder();
   }, []);
+
+  // Load from local storage on mount
+  useEffect(() => {
+    try {
+        const savedSettings = localStorage.getItem('settings');
+        const parsedSettings = savedSettings ? JSON.parse(savedSettings) : { theme: 'system' };
+        setSettings(parsedSettings);
+
+        if (parsedSettings.pin) {
+            setIsLocked(true);
+        } else {
+            setIsLocked(false);
+        }
+
+        const savedProfile = localStorage.getItem('userProfile');
+        if (savedProfile) {
+            const profile: UserProfile = JSON.parse(savedProfile);
+            setUserProfile(profile);
+
+            const savedEntries = localStorage.getItem('journalEntries');
+            if (savedEntries) {
+                setJournalEntries(JSON.parse(savedEntries));
+            }
+
+            if (!profile.idealSelfManifesto) {
+                setAppState('scripting');
+            } else {
+                setAppState('journal');
+            }
+        }
+    } catch (e) {
+        console.error("Error loading from localStorage", e);
+        localStorage.clear(); // Clear corrupted data
+        setIsLocked(false); // Ensure app is not locked if storage is corrupt
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  // Save/apply settings on change
+  useEffect(() => {
+    localStorage.setItem('settings', JSON.stringify(settings));
+
+    // Apply theme
+    document.documentElement.classList.remove('dark', 'light');
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (settings.theme === 'light') {
+       // No class needed for light
+    } else { // System
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+    }
+  }, [settings]);
+
+  // Save user profile to local storage on change
+  useEffect(() => {
+    if (userProfile) {
+        localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    }
+  }, [userProfile]);
+
+  // Save journal entries to local storage on change
+  useEffect(() => {
+    // Avoid saving the empty initial array before we've loaded from storage
+    if (!isLoading) {
+        localStorage.setItem('journalEntries', JSON.stringify(journalEntries));
+    }
+  }, [journalEntries, isLoading]);
+
 
   const handleSaveEntry = async (text: string) => {
     if (isLoading || !text.trim() || !userProfile || !dailyPrompt) return;
@@ -51,6 +130,36 @@ const App: React.FC = () => {
     const updatedEntries = [...journalEntries, newEntry];
     setJournalEntries(updatedEntries);
 
+    // --- Streak Logic ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let newStreak = userProfile.streak || 0;
+    let lastEntryDate = userProfile.lastEntryDate ? new Date(userProfile.lastEntryDate) : null;
+    if(lastEntryDate) {
+      lastEntryDate.setHours(0, 0, 0, 0);
+    }
+
+    if (lastEntryDate) {
+      const diffTime = today.getTime() - lastEntryDate.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) { // Consecutive day
+        newStreak++;
+      } else if (diffDays > 1) { // Streak broken
+        newStreak = 1;
+      }
+      // if diffDays is 0, same day, streak doesn't change
+    } else { // First entry ever
+      newStreak = 1;
+    }
+
+    setUserProfile(prev => ({
+      ...prev!,
+      streak: newStreak,
+      lastEntryDate: today.toISOString()
+    }));
+    // --- End of Streak Logic ---
 
     if (severity >= 2) {
       setCrisisSeverity(severity);
@@ -85,6 +194,58 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleUpdateEntry = async (entryId: string, newText: string) => {
+    if (isLoading || !newText.trim()) return;
+
+    setIsLoading(true);
+
+    const severity = detectCrisis(newText);
+    if (severity >= 2) {
+      setCrisisSeverity(severity);
+      // Save the user's updated text but remove analysis.
+      setJournalEntries(prev => prev.map(entry =>
+        entry.id === entryId ? { ...entry, rawText: newText, analysis: undefined } : entry
+      ));
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Re-analyze the updated text
+      const newAnalysis = await analyzeJournalEntry(newText);
+      
+      // Update the specific entry in the state
+      setJournalEntries(prev => prev.map(entry =>
+        entry.id === entryId
+          ? { ...entry, rawText: newText, analysis: newAnalysis, date: new Date().toISOString() } // also update date to show it was edited now
+          : entry
+      ));
+    } catch (error) {
+      console.error("Error re-analyzing entry:", error);
+      // Update with an error message in the analysis
+      setJournalEntries(prev => prev.map(entry =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              rawText: newText,
+              analysis: {
+                summary: "Could not re-analyze this entry. Your edits are saved.",
+                insights: [],
+                tags: ["Error"],
+                microAction: "Take a deep breath."
+              }
+            }
+          : entry
+      ));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteEntry = (entryId: string) => {
+    setJournalEntries(prev => prev.filter(entry => entry.id !== entryId));
   };
 
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number) => {
@@ -185,7 +346,7 @@ const handleFinalSummary = async () => {
     }
   }, [appState, userProfile]);
 
-  const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'week_count' | 'lastMilestoneDayCompleted' | 'journeyCompleted'> & { week_count: number, lastMilestoneDayCompleted: number, journeyCompleted: boolean }) => {
+  const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto'>) => {
     setUserProfile(profile);
     setAppState('scripting');
   }
@@ -194,7 +355,7 @@ const handleFinalSummary = async () => {
     if (userProfile) {
         setUserProfile(prev => ({...prev!, idealSelfManifesto: manifesto}));
         setAppState('journal');
-        const permissionGranted = await requestNotificationPermission();
+        const permissionGranted = await safeRequestNotificationPermission();
         if (permissionGranted) {
           scheduleDailyReminder();
         }
@@ -202,6 +363,8 @@ const handleFinalSummary = async () => {
   }
 
   const restartJourney = () => {
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('journalEntries');
     window.location.reload();
   };
 
@@ -219,6 +382,18 @@ const handleFinalSummary = async () => {
   };
 
   const renderContent = () => {
+    if (isLoading && !userProfile) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <LoadingSpinner />
+            </div>
+        );
+    }
+    
+    if (isLocked) {
+        return <PinLockScreen correctPin={settings.pin!} onUnlock={() => setIsLocked(false)} />;
+    }
+
     if (isJourneyOver && finalSummaryText) {
       return (
         <CelebrationScreen
@@ -230,6 +405,8 @@ const handleFinalSummary = async () => {
     }
 
     switch (appState) {
+      case 'welcome':
+        return <WelcomeScreen onStart={() => setAppState('onboarding')} />;
       case 'onboarding':
         return <Onboarding onComplete={handleOnboardingComplete} />;
       case 'scripting':
@@ -242,14 +419,16 @@ const handleFinalSummary = async () => {
         const todaysEntry = journalEntries.find(entry => entry.day === day && !entry.prompt.includes("Reflection on Week"));
 
         return (
-          <div className="flex flex-col min-h-screen text-[#344e41] font-sans">
-            <Header />
+          <div className="flex flex-col min-h-screen text-[#344e41] dark:text-gray-200 font-sans">
+            <Header streak={userProfile?.streak} onOpenSettings={() => setIsSettingsModalOpen(true)} />
             <JournalView 
               dailyPrompt={dailyPrompt?.text}
               todaysEntry={todaysEntry}
               allEntries={journalEntries}
               isLoading={isLoading}
               onSave={handleSaveEntry}
+              onUpdate={handleUpdateEntry}
+              onDelete={handleDeleteEntry}
             />
           </div>
         );
@@ -265,6 +444,13 @@ const handleFinalSummary = async () => {
         <CrisisModal 
           severity={crisisSeverity} 
           onClose={() => setCrisisSeverity(0)} 
+        />
+      )}
+      {isSettingsModalOpen && (
+        <SettingsModal 
+          settings={settings}
+          onClose={() => setIsSettingsModalOpen(false)}
+          onSave={setSettings}
         />
       )}
       {renderContent()}
