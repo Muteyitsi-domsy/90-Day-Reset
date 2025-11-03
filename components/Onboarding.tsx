@@ -63,6 +63,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       week_count: 1,
       lastMilestoneDayCompleted: 0,
       journeyCompleted: false,
+      streak: 0,
+      lastEntryDate: '',
     };
     onComplete(profile);
   };
@@ -73,17 +75,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const renderForm = () => (
     <div className="animate-fade-in space-y-8 flex flex-col flex-grow">
       <div className="flex-grow">
-        <label className="block text-xl font-light text-[#344e41] mb-6 text-center">{currentQuestion.label}</label>
+        <label className="block text-xl font-light text-[#344e41] dark:text-gray-200 mb-6 text-center">{currentQuestion.label}</label>
         {currentQuestion.type === 'textarea' && (
-          <textarea name={currentQuestion.id} value={answers[currentQuestion.id as keyof OnboardingAnswers] as string} onChange={handleInputChange} rows={currentQuestion.rows} required className="w-full bg-white/50 border border-white rounded-lg p-4 text-[#344e41] focus:outline-none focus:ring-2 focus:ring-[#a3b18a] transition text-lg" />
+          <textarea name={currentQuestion.id} value={answers[currentQuestion.id as keyof OnboardingAnswers] as string} onChange={handleInputChange} rows={currentQuestion.rows} required className="w-full bg-white/50 dark:bg-gray-700/50 border border-white dark:border-gray-600 rounded-lg p-4 text-[#344e41] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#a3b18a] dark:focus:ring-emerald-400 transition text-lg" />
         )}
         {currentQuestion.type === 'text' && (
-           <input type="text" name={currentQuestion.id} value={answers[currentQuestion.id as keyof OnboardingAnswers] as string} onChange={handleInputChange} required className="w-full bg-white/50 border border-white rounded-lg p-4 text-[#344e41] focus:outline-none focus:ring-2 focus:ring-[#a3b18a] transition text-lg text-center" />
+           <input type="text" name={currentQuestion.id} value={answers[currentQuestion.id as keyof OnboardingAnswers] as string} onChange={handleInputChange} required className="w-full bg-white/50 dark:bg-gray-700/50 border border-white dark:border-gray-600 rounded-lg p-4 text-[#344e41] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#a3b18a] dark:focus:ring-emerald-400 transition text-lg text-center" />
         )}
         {currentQuestion.type === 'range' && (
           <div className="flex items-center gap-4 pt-4">
-              <input type="range" name="readinessScale" min="1" max="10" value={answers.readinessScale} onChange={handleRangeChange} className="w-full accent-[#a3b18a]" />
-              <span className="font-semibold text-[#588157] w-6 text-center text-xl">{answers.readinessScale}</span>
+              <input type="range" name="readinessScale" min="1" max="10" value={answers.readinessScale} onChange={handleRangeChange} className="w-full accent-[#a3b18a] dark:accent-emerald-400" />
+              <span className="font-semibold text-[#588157] dark:text-emerald-400 w-6 text-center text-xl">{answers.readinessScale}</span>
           </div>
         )}
       </div>
@@ -99,7 +101,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </button>
         )}
         {step > 0 && (
-          <button onClick={prevStep} className="w-full py-2 rounded-lg text-[#3a5a40] font-medium hover:bg-black/5 transition-colors duration-300">
+          <button onClick={prevStep} className="w-full py-2 rounded-lg text-[#3a5a40] dark:text-emerald-300 font-medium hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-300">
             Back
           </button>
         )}
@@ -109,8 +111,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   
   const renderInterstitial = () => (
     <div className="text-center space-y-8 animate-fade-in">
-        <h3 className="text-xl font-light text-[#3a5a40]">Thank you for sharing.</h3>
-        <p className="text-lg font-light leading-relaxed text-[#344e41]">
+        <h3 className="text-xl font-light text-[#3a5a40] dark:text-emerald-300">Thank you for sharing.</h3>
+        <p className="text-lg font-light leading-relaxed text-[#344e41] dark:text-gray-200">
            I am preparing your personalized starting point...
         </p>
         <div className="flex justify-center pt-4">
@@ -121,10 +123,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const renderAnalysis = () => (
     <div className="text-center space-y-6 animate-fade-in">
-        <h3 className="text-xl font-light text-[#3a5a40]">Your journey begins from the</h3>
-        <p className="text-4xl font-medium text-[#588157] capitalize tracking-wide">{analysisResult?.phase} Phase</p>
-        <p className="text-lg font-light leading-relaxed text-[#344e41] whitespace-pre-wrap">{analysisResult?.summary}</p>
-        <p className="text-lg italic text-[#3a5a40]">"{analysisResult?.encouragement}"</p>
+        <h3 className="text-xl font-light text-[#3a5a40] dark:text-emerald-300">Your journey begins from the</h3>
+        <p className="text-4xl font-medium text-[#588157] dark:text-emerald-400 capitalize tracking-wide">{analysisResult?.phase} Phase</p>
+        <p className="text-lg font-light leading-relaxed text-[#344e41] dark:text-gray-200 whitespace-pre-wrap">{analysisResult?.summary}</p>
+        <p className="text-lg italic text-[#3a5a40] dark:text-emerald-300">"{analysisResult?.encouragement}"</p>
         <button onClick={handleComplete} className="w-full py-3 rounded-lg bg-[#588157] text-white font-medium text-lg hover:bg-[#3a5a40] transition-colors duration-300 mt-8">
             Begin Your Reset 🌿
         </button>
@@ -139,14 +141,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">
-      <div className="w-full max-w-lg bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-white flex flex-col" style={{minHeight: '75vh'}}>
+      <div className="w-full max-w-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-white dark:border-gray-700 flex flex-col" style={{minHeight: '75vh'}}>
         <div className="mb-8">
-            <h2 className="text-2xl font-light text-[#3a5a40] mb-2 text-center">
+            <h2 className="text-2xl font-light text-[#3a5a40] dark:text-emerald-300 mb-2 text-center">
             {analysisResult ? "Your Starting Point" : isAnalyzing ? "A Moment of Reflection" : "Welcome 🌿"}
             </h2>
             {!isAnalyzing && !analysisResult && (
-                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-4">
-                    <div className="bg-[#a3b18a] h-1.5 rounded-full" style={{ width: `${((step + 1) / questions.length) * 100}%`, transition: 'width 0.3s' }}></div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-4">
+                    <div className="bg-[#a3b18a] dark:bg-emerald-400 h-1.5 rounded-full" style={{ width: `${((step + 1) / questions.length) * 100}%`, transition: 'width 0.3s' }}></div>
                 </div>
             )}
         </div>

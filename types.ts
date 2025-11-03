@@ -7,6 +7,13 @@ export interface UserProfile {
   week_count: number;
   lastMilestoneDayCompleted: number;
   journeyCompleted?: boolean;
+  streak: number;
+  lastEntryDate: string;
+}
+
+export interface Settings {
+  theme: 'light' | 'dark' | 'system';
+  pin?: string;
 }
 
 export interface OnboardingAnalysis {

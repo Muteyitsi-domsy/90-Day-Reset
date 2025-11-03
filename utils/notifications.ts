@@ -22,6 +22,28 @@ const messages = [
   }
 ];
 
+export function isMessagingSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "Notification" in window &&
+    "PushManager" in window
+  );
+}
+
+/**
+ * Safely requests permission from the user to show notifications,
+ * after checking if the browser supports them.
+ * @returns {Promise<boolean>} A promise that resolves to true if permission is granted, false otherwise.
+ */
+export const safeRequestNotificationPermission = async (): Promise<boolean> => {
+  if (!isMessagingSupported()) {
+    console.info("Notifications not supported in this browser.");
+    return false;
+  }
+  return requestNotificationPermission();
+};
+
 /**
  * Requests permission from the user to show notifications.
  * @returns {Promise<boolean>} A promise that resolves to true if permission is granted, false otherwise.

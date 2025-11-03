@@ -1,15 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, Stage, OnboardingAnalysis, JournalEntry, EntryAnalysis } from "../types";
 
-// ✅ Environment setup for Vite
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-if (!apiKey) {
-  console.error("VITE_GEMINI_API_KEY is not set. Please ensure it is configured in your .env.local file.");
+// IMPORTANT: This check is for robust error handling in a real-world scenario.
+// The execution environment for this code will have `process.env.API_KEY` pre-configured.
+if (!process.env.API_KEY) {
+  // In a real app, you might show an error message to the user.
+  // For this exercise, we'll throw an error to make the issue clear.
+  console.error("API_KEY is not set. Please ensure the API_KEY environment variable is configured.");
 }
 
-const ai = new GoogleGenAI({ apiKey });
-
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 export interface OnboardingAnswers {
   previousWork: string;
