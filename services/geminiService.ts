@@ -1,15 +1,34 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, Stage, OnboardingAnalysis, JournalEntry, EntryAnalysis } from "../types";
+// ✅ Environment setup for Vite
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
-// IMPORTANT: This check is for robust error handling in a real-world scenario.
-// The execution environment for this code will have `process.env.API_KEY` pre-configured.
-if (!process.env.API_KEY) {
-  // In a real app, you might show an error message to the user.
-  // For this exercise, we'll throw an error to make the issue clear.
-  console.error("API_KEY is not set. Please ensure the API_KEY environment variable is configured.");
+if (!GEMINI_KEY) {
+  console.warn("VITE_GEMINI_API_KEY is not set — Gemini features will run in preview mode.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+/**
+ * Create a safe Gemini client instance.
+ * Returns a stub client when key missing (prevents crash in preview builds).
+ */
+function createGeminiClient() {
+  if (!GEMINI_KEY) {
+    // Return a harmless stub that mimics basic methods
+    return {
+      async generateContent(prompt: string) {
+        console.log("Preview mode — AI call skipped:", prompt);
+        return { response: { text: () => "Preview mode: AI unavailable." } };
+      },
+    } as unknown as GoogleGenAI;
+  }
+
+  // When key exists, create the real client
+  return new GoogleGenAI({ apiKey: GEMINI_KEY });
+}
+
+// Export the initialized Gemini client
+export const ai = createGeminiClient();
+
 
 export interface OnboardingAnswers {
   previousWork: string;
