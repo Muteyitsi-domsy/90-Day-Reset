@@ -1,44 +1,192 @@
 import React, { useState, useMemo } from 'react';
-import { JournalEntry } from '../types';
+import { JournalEntry, EveningCheckin, Settings } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EntryAnalysisView from './EntryAnalysisView';
 import FloatingButton from './FloatingButton';
 import JournalInputModal from './JournalInputModal';
+import EveningCheckinModal from './EveningCheckinModal';
 
 interface JournalViewProps {
+  currentDay: number;
   dailyPrompt: string | null | undefined;
   todaysEntry: JournalEntry | undefined;
   allEntries: JournalEntry[];
   isLoading: boolean;
-  onSave: (text: string) => void;
+  onSaveDaily: (text: string) => void;
+  onSaveHunch: (text: string) => void;
+  onUpdate: (entryId: string, text: string, reanalyze: boolean) => void;
+  onDelete: (entryId: string) => void;
+  onSaveEveningCheckin: (entryId: string, checkinData: EveningCheckin) => void;
+  settings: Settings;
 }
 
-const EntryCard: React.FC<{ entry: JournalEntry; isToday?: boolean }> = ({ entry, isToday = false }) => (
-  <div className={`bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-white transition-shadow hover:shadow-md animate-fade-in ${isToday ? 'shadow-lg' : 'shadow-sm'}`}>
-    <div className="flex justify-between items-center mb-3">
-        <p className="font-semibold text-sm text-[#3a5a40]">{entry.prompt}</p>
-        <span className="text-xs text-gray-500 font-light">{isToday ? "Today" : new Date(entry.date).toLocaleDateString()}</span>
-    </div>
-    <p className="font-light text-gray-700 leading-relaxed whitespace-pre-wrap">
-        {entry.rawText}
-    </p>
-    {entry.analysis ? <EntryAnalysisView analysis={entry.analysis} /> : (isToday && <div className="mt-4"><LoadingSpinner/></div>)}
-  </div>
+const EditIcon: React.FC<{ className: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+    </svg>
 );
 
-const JournalView: React.FC<JournalViewProps> = ({ dailyPrompt, todaysEntry, allEntries, isLoading, onSave }) => {
-  const [isWritingModalOpen, setIsWritingModalOpen] = useState(false);
+const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
+);
+
+const CheckinDetailsView: React.FC<{ checkin: EveningCheckin }> = ({ checkin }) => (
+    <div className="mt-6 border-t border-[#dad7cd]/50 dark:border-gray-700/50 pt-6 space-y-4 animate-fade-in">
+        <h3 className="font-medium text-lg text-[#588157] dark:text-emerald-400">Evening Check-in ✅</h3>
+        <div>
+            <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-1">Did you complete your micro-action?</h4>
+            <p className="font-light text-gray-600 dark:text-gray-400 capitalize">{checkin.completedMicroAction}</p>
+        </div>
+        <div>
+            <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-1">Alignment Reflection</h4>
+            <p className="font-light text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{checkin.alignmentReflection}</p>
+        </div>
+        <div>
+            <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-1">What could you do differently?</h4>
+            <p className="font-light text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{checkin.improvementReflection}</p>
+        </div>
+    </div>
+);
+
+
+const EntryCard: React.FC<{ 
+    entry: JournalEntry; 
+    isToday?: boolean; 
+    isMostRecentDaily?: boolean; 
+    onEdit?: (entry: JournalEntry) => void;
+    onDelete?: (entry: JournalEntry) => void;
+    isDeleting?: boolean;
+    onStartCheckin?: () => void;
+}> = ({ entry, isToday = false, isMostRecentDaily = false, onEdit, onDelete, isDeleting = false, onStartCheckin }) => {
+    const isHunch = entry.type === 'hunch';
+    const isSummary = entry.type === 'weekly_summary';
+
+    const cardBaseClasses = "rounded-2xl p-6 border transition-all duration-500";
+    const cardColorClasses = isHunch
+        ? 'bg-indigo-50/70 dark:bg-indigo-900/40 backdrop-blur-sm border-indigo-200 dark:border-indigo-800'
+        : 'bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-white dark:border-gray-700';
+    const cardShadowClasses = isToday ? 'shadow-lg' : 'shadow-sm';
+    const animationClasses = isDeleting ? 'animate-fade-out-shrink' : 'animate-fade-in';
+    
+    const promptColorClasses = isHunch
+        ? 'text-indigo-700 dark:text-indigo-300'
+        : 'text-[#3a5a40] dark:text-emerald-300';
+
+    return (
+        <div className={`${cardBaseClasses} ${cardColorClasses} ${cardShadowClasses} ${animationClasses}`}>
+            <div className="flex justify-between items-center mb-3">
+                <p className={`font-semibold text-sm ${promptColorClasses}`}>{entry.prompt}</p>
+                <div className="flex items-center space-x-3">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-light">{isToday ? "Today" : new Date(entry.date).toLocaleDateString()}</span>
+                {!isSummary && onEdit && (isMostRecentDaily || isHunch) && (
+                    <button onClick={() => onEdit(entry)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors" aria-label="Edit entry">
+                        <EditIcon className="w-4 h-4" />
+                    </button>
+                )}
+                {!isSummary && onDelete && (
+                    <button onClick={() => onDelete(entry)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors" aria-label="Delete entry">
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
+                )}
+                </div>
+            </div>
+            <p className="font-light text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {entry.rawText}
+            </p>
+            {entry.analysis ? <EntryAnalysisView analysis={entry.analysis} /> : (isToday && entry.type === 'daily' && <div className="mt-4"><LoadingSpinner/></div>)}
+            
+            {isToday && entry.analysis && !entry.eveningCheckin && onStartCheckin && (
+                <div className="mt-6 pt-6 border-t border-[#dad7cd]/50 dark:border-gray-700/50">
+                    <h3 className="text-lg font-light text-center text-[#3a5a40] dark:text-emerald-300 mb-3">Ready to reflect on your day?</h3>
+                    <button
+                        onClick={onStartCheckin}
+                        className="w-full py-3 rounded-lg bg-[#3a5a40] text-white font-medium hover:bg-[#588157] transition-colors duration-300"
+                    >
+                        🌙 Start Evening Check-in
+                    </button>
+                    <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">Return this evening to reflect, or continue your journey tomorrow.</p>
+                </div>
+            )}
+
+            {entry.eveningCheckin && <CheckinDetailsView checkin={entry.eveningCheckin} />}
+        </div>
+    );
+};
+
+const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, todaysEntry, allEntries, isLoading, onSaveDaily, onSaveHunch, onUpdate, onDelete, onSaveEveningCheckin, settings }) => {
+  const [isDailyModalOpen, setIsDailyModalOpen] = useState(false);
+  const [isHunchModalOpen, setIsHunchModalOpen] = useState(false);
+  const [entryToEdit, setEntryToEdit] = useState<JournalEntry | null>(null);
+  const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
+  const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
 
   const sortedEntries = useMemo(() => {
     return allEntries.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [allEntries]);
+  
+  const mostRecentDailyEntry = useMemo(() => {
+    return sortedEntries.find(e => e.type === 'daily');
+  }, [sortedEntries]);
 
   const hasWrittenToday = !!todaysEntry;
 
-  const handleSave = (text: string) => {
-    onSave(text);
-    setIsWritingModalOpen(false);
+  const handleEditClick = (entry: JournalEntry) => {
+    setEntryToEdit(entry);
+    if (entry.type === 'hunch') {
+        setIsHunchModalOpen(true);
+    } else {
+        setIsDailyModalOpen(true);
+    }
+  };
+
+  const handleDeleteClick = (entry: JournalEntry) => {
+    if (window.confirm("Are you sure you want to delete this entry? This action cannot be undone.")) {
+        setDeletingEntryId(entry.id);
+        setTimeout(() => {
+            onDelete(entry.id);
+            setDeletingEntryId(null);
+        }, 500);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsDailyModalOpen(false);
+    setIsHunchModalOpen(false);
+    setEntryToEdit(null);
+  };
+
+  const handleSaveFromDailyModal = (text: string, reanalyze: boolean) => {
+    if (entryToEdit) {
+      onUpdate(entryToEdit.id, text, reanalyze);
+    } else {
+      onSaveDaily(text);
+    }
+    handleCloseModal();
   }
+
+  const handleSaveFromHunchModal = (text: string, reanalyze: boolean) => {
+    if (entryToEdit) {
+        onUpdate(entryToEdit.id, text, reanalyze);
+    } else {
+        onSaveHunch(text);
+    }
+    handleCloseModal();
+  }
+
+  const handleStartCheckin = () => {
+    if (todaysEntry) {
+        setIsCheckinModalOpen(true);
+    }
+  };
+
+  const handleSaveCheckin = (data: EveningCheckin) => {
+    if (todaysEntry) {
+        onSaveEveningCheckin(todaysEntry.id, data);
+    }
+    setIsCheckinModalOpen(false);
+  };
   
   if (isLoading && allEntries.length === 0) {
     return (
@@ -50,32 +198,84 @@ const JournalView: React.FC<JournalViewProps> = ({ dailyPrompt, todaysEntry, all
 
   return (
     <>
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24">
-        <div className="max-w-3xl mx-auto w-full space-y-6">
-          {sortedEntries.map(entry => (
-            <EntryCard key={entry.id} entry={entry} isToday={entry.id === todaysEntry?.id}/>
-          ))}
-           {sortedEntries.length === 0 && !hasWrittenToday && (
-              <div className="text-center py-20">
-                  <h2 className="text-xl font-light text-gray-500">Your journal is a quiet space.</h2>
-                  <p className="text-gray-400 mt-2">Tap the pen to begin today's reflection.</p>
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-40">
+        <div className="max-w-3xl mx-auto w-full">
+            <div className="mb-8 animate-fade-in">
+              <div className="flex justify-between items-center mb-1 text-sm font-light text-[#3a5a40] dark:text-emerald-300">
+                <span>Progress</span>
+                <span>Day {currentDay} of 90</span>
               </div>
-           )}
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                <div
+                  className="bg-[#588157] dark:bg-emerald-400 h-1.5 rounded-full"
+                  style={{ width: `${Math.min(100, (currentDay / 90) * 100)}%`, transition: 'width 0.5s ease-out' }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+                {sortedEntries.map(entry => {
+                    const isMostRecentDaily = mostRecentDailyEntry ? entry.id === mostRecentDailyEntry.id : false;
+                    const isToday = entry.id === todaysEntry?.id;
+
+                    return (
+                    <EntryCard 
+                        key={entry.id} 
+                        entry={entry} 
+                        isToday={isToday}
+                        isMostRecentDaily={isMostRecentDaily}
+                        onEdit={handleEditClick}
+                        onDelete={handleDeleteClick}
+                        isDeleting={entry.id === deletingEntryId}
+                        onStartCheckin={isToday ? handleStartCheckin : undefined}
+                    />
+                    )
+                })}
+                {sortedEntries.length === 0 && !hasWrittenToday && (
+                    <div className="text-center py-20">
+                        <h2 className="text-xl font-light text-gray-500 dark:text-gray-400">Your journal is a quiet space.</h2>
+                        <p className="text-gray-400 dark:text-gray-500 mt-2">Tap the pen to begin today's reflection.</p>
+                    </div>
+                )}
+            </div>
         </div>
       </main>
 
+      <FloatingButton icon="moon" onClick={() => setIsHunchModalOpen(true)} positionClasses="bottom-24 right-6" />
       {!hasWrittenToday && dailyPrompt && (
-        <FloatingButton onClick={() => setIsWritingModalOpen(true)} />
+        <FloatingButton icon="pen" onClick={() => setIsDailyModalOpen(true)} positionClasses="bottom-6 right-6" />
       )}
       
-      {isWritingModalOpen && (
+      {isDailyModalOpen && (
         <JournalInputModal 
-          prompt={dailyPrompt}
-          onSave={handleSave}
-          onClose={() => setIsWritingModalOpen(false)}
+          prompt={entryToEdit ? entryToEdit.prompt : dailyPrompt}
+          initialText={entryToEdit?.rawText}
+          onSave={handleSaveFromDailyModal}
+          onClose={handleCloseModal}
           isSaving={isLoading}
+          settings={settings}
+          entryType="daily"
+          isEditMode={!!entryToEdit}
         />
       )}
+      {isHunchModalOpen && (
+         <JournalInputModal 
+          prompt={entryToEdit ? entryToEdit.prompt : "Record a Dream, Hunch, or Insight ✨"}
+          initialText={entryToEdit?.rawText}
+          onSave={handleSaveFromHunchModal}
+          onClose={handleCloseModal}
+          isSaving={false} // Saving hunches is local and fast
+          settings={settings}
+          entryType="hunch"
+          isEditMode={!!entryToEdit}
+        />
+      )}
+      {isCheckinModalOpen && todaysEntry && (
+        <EveningCheckinModal
+            onSave={handleSaveCheckin}
+            onClose={() => setIsCheckinModalOpen(false)}
+        />
+       )}
       <style>{`
         @keyframes fade-in {
             from { opacity: 0; transform: translateY(10px); }
@@ -83,6 +283,31 @@ const JournalView: React.FC<JournalViewProps> = ({ dailyPrompt, todaysEntry, all
         }
         .animate-fade-in {
             animation: fade-in 0.5s ease-out;
+        }
+
+        @keyframes fade-out-shrink {
+            from {
+                opacity: 1;
+                transform: scale(1);
+                max-height: 1000px;
+                margin-bottom: 1.5rem;
+                padding-top: 1.5rem;
+                padding-bottom: 1.5rem;
+                border-width: 1px;
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+                max-height: 0;
+                margin-bottom: 0;
+                padding-top: 0;
+                padding-bottom: 0;
+                border-width: 0;
+            }
+        }
+        .animate-fade-out-shrink {
+            animation: fade-out-shrink 0.5s ease-out forwards;
+            overflow: hidden;
         }
       `}</style>
     </>

@@ -1,22 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { getDayAndMonth, generateWeeklySummary, generateFinalSummary, getDailyPrompt, analyzeJournalEntry } from './services/geminiService';
-import { JournalEntry, UserProfile, EntryAnalysis } from './types';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, InsightFrequency } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
-import { requestNotificationPermission, scheduleDailyReminder } from './utils/notifications';
+import { safeRequestNotificationPermission, scheduleDailyReminder, scheduleEveningReminder } from './utils/notifications';
 import CelebrationScreen from './components/CelebrationScreen';
 import JournalView from './components/JournalView';
 import { detectCrisis, CrisisSeverity } from './utils/crisisDetector';
 import CrisisModal from './components/CrisisModal';
+import WelcomeScreen from './components/WelcomeScreen';
+import LoadingSpinner from './components/LoadingSpinner';
+import PinLockScreen from './components/PinLockScreen';
+import SettingsModal from './components/SettingsModal';
+import ReturnUserWelcomeScreen from './components/ReturnUserWelcomeScreen';
+import OnboardingCompletion from './components/OnboardingCompletion';
+import PausedScreen from './components/PausedScreen';
 
-type AppState = 'onboarding' | 'scripting' | 'journal';
+
+type AppState = 'welcome' | 'returning_welcome' | 'onboarding' | 'scripting' | 'onboarding_completion' | 'journal';
 
 const App: React.FC = () => {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [appState, setAppState] = useState<AppState>('onboarding');
+  const [appState, setAppState] = useState<AppState>('welcome');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [settings, setSettings] = useState<Settings>({ theme: 'system', insightFrequency: 'daily', includeHunchesInFinalSummary: false });
+  const [isLocked, setIsLocked] = useState(true);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isJourneyOver, setIsJourneyOver] = useState(false);
   const [finalSummaryText, setFinalSummaryText] = useState('');
   const [dailyPrompt, setDailyPrompt] = useState<{ text: string, isMilestone: boolean } | null>(null);
@@ -27,6 +38,90 @@ const App: React.FC = () => {
   useEffect(() => {
     scheduleDailyReminder();
   }, []);
+
+  // Load from local storage on mount
+  useEffect(() => {
+    try {
+        const savedSettings = localStorage.getItem('settings');
+        const defaultSettings = { theme: 'system', insightFrequency: 'daily', includeHunchesInFinalSummary: false };
+        const parsedSettings = savedSettings ? { ...defaultSettings, ...JSON.parse(savedSettings) } : defaultSettings;
+        setSettings(parsedSettings);
+
+        if (parsedSettings.pin) {
+            setIsLocked(true);
+        } else {
+            setIsLocked(false);
+        }
+
+        const savedProfile = localStorage.getItem('userProfile');
+        if (savedProfile) {
+            const profile: UserProfile = JSON.parse(savedProfile);
+            setUserProfile(profile);
+
+            const savedEntries = localStorage.getItem('journalEntries');
+            if (savedEntries) {
+                const rawEntries: any[] = JSON.parse(savedEntries);
+                // Migration: Add `type` to entries that don't have it for backwards compatibility
+                const typedEntries = rawEntries.map(e => ({
+                    ...e,
+                    type: e.type || (e.prompt.includes("Reflection on Week") ? 'weekly_summary' : 'daily')
+                }));
+                setJournalEntries(typedEntries);
+            }
+            
+            if (!profile.idealSelfManifesto) {
+                setAppState('scripting');
+            } else {
+                 // Check if onboarding was completed but settings were not
+                const settingsExist = savedSettings ? JSON.parse(savedSettings).insightFrequency : false;
+                if (!settingsExist) {
+                    setAppState('onboarding_completion');
+                } else {
+                    setAppState('returning_welcome');
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Error loading from localStorage", e);
+        localStorage.clear(); // Clear corrupted data
+        setIsLocked(false); // Ensure app is not locked if storage is corrupt
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  // Save/apply settings on change
+  useEffect(() => {
+    localStorage.setItem('settings', JSON.stringify(settings));
+
+    // Apply theme
+    document.documentElement.classList.remove('dark', 'light');
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (settings.theme === 'light') {
+       // No class needed for light
+    } else { // System
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+    }
+  }, [settings]);
+
+  // Save user profile to local storage on change
+  useEffect(() => {
+    if (userProfile) {
+        localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    }
+  }, [userProfile]);
+
+  // Save journal entries to local storage on change
+  useEffect(() => {
+    // Avoid saving the empty initial array before we've loaded from storage
+    if (!isLoading) {
+        localStorage.setItem('journalEntries', JSON.stringify(journalEntries));
+    }
+  }, [journalEntries, isLoading]);
+
 
   const handleSaveEntry = async (text: string) => {
     if (isLoading || !text.trim() || !userProfile || !dailyPrompt) return;
@@ -45,12 +140,43 @@ const App: React.FC = () => {
       week: currentWeek,
       prompt: dailyPrompt.text,
       rawText: text,
+      type: 'daily',
     };
 
     // Save the raw entry immediately, regardless of crisis level
     const updatedEntries = [...journalEntries, newEntry];
     setJournalEntries(updatedEntries);
 
+    // --- Streak Logic ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let newStreak = userProfile.streak || 0;
+    let lastEntryDate = userProfile.lastEntryDate ? new Date(userProfile.lastEntryDate) : null;
+    if(lastEntryDate) {
+      lastEntryDate.setHours(0, 0, 0, 0);
+    }
+
+    if (lastEntryDate) {
+      const diffTime = today.getTime() - lastEntryDate.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) { // Consecutive day
+        newStreak++;
+      } else if (diffDays > 1) { // Streak broken
+        newStreak = 1;
+      }
+      // if diffDays is 0, same day, streak doesn't change
+    } else { // First entry ever
+      newStreak = 1;
+    }
+
+    setUserProfile(prev => ({
+      ...prev!,
+      streak: newStreak,
+      lastEntryDate: today.toISOString()
+    }));
+    // --- End of Streak Logic ---
 
     if (severity >= 2) {
       setCrisisSeverity(severity);
@@ -58,56 +184,166 @@ const App: React.FC = () => {
       return; // Stop here, do not call AI analysis
     }
     
-    // Proceed with AI analysis only if crisis level is low
-    try {
-      const analysis: EntryAnalysis = await analyzeJournalEntry(text);
-      const completeEntry: JournalEntry = { ...newEntry, analysis };
-      
-      setJournalEntries(prev => prev.map(entry => entry.id === completeEntry.id ? completeEntry : entry));
+    // Proceed with AI analysis only if crisis level is low and settings allow
+    if (settings.insightFrequency === 'daily') {
+        try {
+          const analysis: EntryAnalysis = await analyzeJournalEntry(text);
+          const completeEntry: JournalEntry = { ...newEntry, analysis };
+          
+          setJournalEntries(prev => prev.map(entry => entry.id === completeEntry.id ? completeEntry : entry));
+          scheduleEveningReminder();
 
-      if (dailyPrompt.isMilestone) {
+          if (dailyPrompt.isMilestone) {
+              const milestoneDay = day - 1;
+              setUserProfile(prev => ({ ...prev!, lastMilestoneDayCompleted: milestoneDay }));
+          }
+
+        } catch (error) {
+          console.error("Error analyzing entry:", error);
+          const entryWithError: JournalEntry = {
+              ...newEntry,
+              analysis: {
+                  summary: "Could not analyze this entry. Your thoughts are saved, and you can reflect on them yourself.",
+                  insights: [],
+                  tags: ["Error"],
+                  microAction: "Take a deep breath. Technology has its moments."
+              }
+          }
+          setJournalEntries(prev => prev.map(entry => entry.id === entryWithError.id ? entryWithError : entry));
+        } finally {
+          setIsLoading(false);
+        }
+    } else {
+        // If not daily insights, just finalize the save.
+        scheduleEveningReminder();
+        if (dailyPrompt.isMilestone) {
           const milestoneDay = day - 1;
           setUserProfile(prev => ({ ...prev!, lastMilestoneDayCompleted: milestoneDay }));
-      }
+        }
+        setIsLoading(false);
+    }
+  };
 
+  const handleSaveHunch = (text: string) => {
+    if (!text.trim() || !userProfile) return;
+
+    const { day } = getDayAndMonth(userProfile.startDate);
+    const currentWeek = Math.floor((day - 1) / 7) + 1;
+
+    const newHunch: JournalEntry = {
+        id: new Date().toISOString(),
+        date: new Date().toISOString(),
+        day: day,
+        week: currentWeek,
+        type: 'hunch',
+        prompt: 'Intuitive Insight',
+        rawText: text,
+    };
+
+    setJournalEntries(prev => [...prev, newHunch]);
+  };
+
+  const handleUpdateEntry = async (entryId: string, newText: string, reanalyze: boolean) => {
+    if (isLoading || !newText.trim()) return;
+    
+    const entryToUpdate = journalEntries.find(e => e.id === entryId);
+    if (!entryToUpdate) return;
+    
+    // Ensure we only re-analyze daily entries.
+    const shouldReanalyze = reanalyze && entryToUpdate.type === 'daily';
+
+    setIsLoading(true);
+
+    if (!shouldReanalyze) {
+        setJournalEntries(prev => prev.map(entry =>
+            entry.id === entryId 
+            ? { ...entry, rawText: newText, date: new Date().toISOString() } 
+            : entry
+        ));
+        setIsLoading(false);
+        return;
+    }
+
+    // --- Start of re-analysis logic ---
+    const severity = detectCrisis(newText);
+    if (severity >= 2) {
+      setCrisisSeverity(severity);
+      // Save the user's updated text but remove analysis.
+      setJournalEntries(prev => prev.map(entry =>
+        entry.id === entryId ? { ...entry, rawText: newText, analysis: undefined } : entry
+      ));
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const newAnalysis = await analyzeJournalEntry(newText);
+      setJournalEntries(prev => prev.map(entry =>
+        entry.id === entryId
+          ? { ...entry, rawText: newText, analysis: newAnalysis, date: new Date().toISOString() }
+          : entry
+      ));
     } catch (error) {
-      console.error("Error analyzing entry:", error);
-      const entryWithError: JournalEntry = {
-          ...newEntry,
-          analysis: {
-              summary: "Could not analyze this entry. Your thoughts are saved, and you can reflect on them yourself.",
-              insights: [],
-              tags: ["Error"],
-              microAction: "Take a deep breath. Technology has its moments."
-          }
-      }
-      setJournalEntries(prev => prev.map(entry => entry.id === entryWithError.id ? entryWithError : entry));
+      console.error("Error re-analyzing entry:", error);
+      setJournalEntries(prev => prev.map(entry =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              rawText: newText,
+              analysis: {
+                summary: "Could not re-analyze this entry. Your edits are saved.",
+                insights: [],
+                tags: ["Error"],
+                microAction: "Take a deep breath."
+              }
+            }
+          : entry
+      ));
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleDeleteEntry = (entryId: string) => {
+    setJournalEntries(prev => prev.filter(entry => entry.id !== entryId));
+  };
+
+  const handleSaveEveningCheckin = (entryId: string, checkinData: EveningCheckin) => {
+    setJournalEntries(prev =>
+      prev.map(entry =>
+        entry.id === entryId
+          ? { ...entry, eveningCheckin: checkinData }
+          : entry
+      )
+    );
+  };
+
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number) => {
     if (!userProfile || !userProfile.idealSelfManifesto) return;
+
+    if (settings.insightFrequency === 'none') {
+        setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        return; // Skip summary generation if insights are off
+    }
 
     setIsLoading(true);
     
     const summaryEntryId = new Date().toISOString();
     const { day } = getDayAndMonth(userProfile.startDate);
 
-    // Add a placeholder entry for the summary
     const summaryPlaceholder: JournalEntry = {
         id: summaryEntryId,
         date: new Date().toISOString(),
         day: day,
         week: weekToSummarize,
+        type: 'weekly_summary',
         prompt: `🌿 A Reflection on Week ${weekToSummarize}`,
         rawText: '...',
     }
     setJournalEntries(prev => [...prev, summaryPlaceholder]);
 
     try {
-        const weekHistory = journalEntries.filter(entry => entry.week === weekToSummarize && !entry.prompt.includes("Reflection on Week"));
+        const weekHistory = journalEntries.filter(entry => entry.week === weekToSummarize && entry.type === 'daily');
         const summaryText = await generateWeeklySummary(weekHistory, userProfile.idealSelfManifesto);
         
         setJournalEntries(prev => prev.map(entry => 
@@ -132,7 +368,12 @@ const handleFinalSummary = async () => {
     setIsLoading(true);
     
     try {
-        const summaryText = await generateFinalSummary(userProfile, journalEntries);
+        const dailyHistory = journalEntries.filter(e => e.type === 'daily');
+        const hunchHistory = settings.includeHunchesInFinalSummary
+            ? journalEntries.filter(e => e.type === 'hunch')
+            : [];
+
+        const summaryText = await generateFinalSummary(userProfile, dailyHistory, hunchHistory);
         setFinalSummaryText(summaryText);
         setUserProfile(prev => ({ ...prev!, journeyCompleted: true }));
         setIsJourneyOver(true);
@@ -171,7 +412,7 @@ const handleFinalSummary = async () => {
                 }
             }
             
-            const todayEntry = journalEntries.find(entry => entry.day === day);
+            const todayEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
             if (!todayEntry) {
                  const { prompt, isMilestone } = await getDailyPrompt(userProfile);
                  setDailyPrompt({ text: prompt, isMilestone });
@@ -180,12 +421,12 @@ const handleFinalSummary = async () => {
         }
     };
 
-    if (appState === 'journal' && userProfile) {
+    if (appState === 'journal' && userProfile && !userProfile.isPaused) {
         setupJournal();
     }
   }, [appState, userProfile]);
 
-  const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'week_count' | 'lastMilestoneDayCompleted' | 'journeyCompleted'> & { week_count: number, lastMilestoneDayCompleted: number, journeyCompleted: boolean }) => {
+  const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto'>) => {
     setUserProfile(profile);
     setAppState('scripting');
   }
@@ -193,15 +434,22 @@ const handleFinalSummary = async () => {
   const handleScriptingComplete = async (manifesto: string) => {
     if (userProfile) {
         setUserProfile(prev => ({...prev!, idealSelfManifesto: manifesto}));
-        setAppState('journal');
-        const permissionGranted = await requestNotificationPermission();
-        if (permissionGranted) {
-          scheduleDailyReminder();
-        }
+        setAppState('onboarding_completion');
     }
   }
 
+  const handleOnboardingCompletion = async (insightFrequency: InsightFrequency) => {
+    setSettings(prev => ({ ...prev, insightFrequency }));
+    setAppState('journal');
+    const permissionGranted = await safeRequestNotificationPermission();
+    if (permissionGranted) {
+        scheduleDailyReminder();
+    }
+  };
+
   const restartJourney = () => {
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('journalEntries');
     window.location.reload();
   };
 
@@ -218,7 +466,56 @@ const handleFinalSummary = async () => {
     URL.revokeObjectURL(link.href);
   };
 
+  const handlePauseJourney = () => {
+    if (userProfile && window.confirm("Pause your journey? Your progress and streak will be saved. You can resume anytime.")) {
+      setUserProfile(prev => ({
+        ...prev!,
+        isPaused: true,
+        pausedDate: new Date().toISOString(),
+      }));
+    }
+  };
+
+  const handleResumeJourney = () => {
+    if (userProfile && userProfile.isPaused && userProfile.pausedDate) {
+      const pausedAt = new Date(userProfile.pausedDate);
+      const resumedAt = new Date();
+      const pausedDuration = resumedAt.getTime() - pausedAt.getTime();
+
+      const oldStartDate = new Date(userProfile.startDate);
+      const newStartDate = new Date(oldStartDate.getTime() + pausedDuration);
+
+      const oldLastEntryDate = userProfile.lastEntryDate ? new Date(userProfile.lastEntryDate) : null;
+      let newLastEntryDateISO = userProfile.lastEntryDate;
+
+      if(oldLastEntryDate) {
+          const updatedLastEntry = new Date(oldLastEntryDate.getTime() + pausedDuration);
+          newLastEntryDateISO = updatedLastEntry.toISOString();
+      }
+
+      setUserProfile(prev => ({
+        ...prev!,
+        isPaused: false,
+        pausedDate: undefined,
+        startDate: newStartDate.toISOString(),
+        lastEntryDate: newLastEntryDateISO,
+      }));
+    }
+  };
+
   const renderContent = () => {
+    if (isLoading && appState !== 'journal') {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <LoadingSpinner />
+            </div>
+        );
+    }
+    
+    if (isLocked && settings.pin) {
+        return <PinLockScreen correctPin={settings.pin!} onUnlock={() => setIsLocked(false)} />;
+    }
+
     if (isJourneyOver && finalSummaryText) {
       return (
         <CelebrationScreen
@@ -230,6 +527,10 @@ const handleFinalSummary = async () => {
     }
 
     switch (appState) {
+      case 'welcome':
+        return <WelcomeScreen onStart={() => setAppState('onboarding')} />;
+      case 'returning_welcome':
+        return <ReturnUserWelcomeScreen onContinue={() => setAppState('journal')} />;
       case 'onboarding':
         return <Onboarding onComplete={handleOnboardingComplete} />;
       case 'scripting':
@@ -237,19 +538,36 @@ const handleFinalSummary = async () => {
             return <IdealSelfScripting userProfile={userProfile} onComplete={handleScriptingComplete} />;
         }
         return null;
+      case 'onboarding_completion':
+        return <OnboardingCompletion onComplete={handleOnboardingCompletion} />;
       case 'journal': {
         const { day } = userProfile ? getDayAndMonth(userProfile.startDate) : { day: 1 };
-        const todaysEntry = journalEntries.find(entry => entry.day === day && !entry.prompt.includes("Reflection on Week"));
+        const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
+        
+        if (userProfile?.isPaused) {
+            return (
+                <div className="flex flex-col min-h-screen text-[#344e41] dark:text-gray-200 font-sans">
+                    <Header streak={userProfile?.streak} onOpenSettings={() => setIsSettingsModalOpen(true)} />
+                    <PausedScreen onResume={handleResumeJourney} />
+                </div>
+            );
+        }
 
         return (
-          <div className="flex flex-col min-h-screen text-[#344e41] font-sans">
-            <Header />
+          <div className="flex flex-col min-h-screen text-[#344e41] dark:text-gray-200 font-sans">
+            <Header streak={userProfile?.streak} onOpenSettings={() => setIsSettingsModalOpen(true)} />
             <JournalView 
+              currentDay={day}
               dailyPrompt={dailyPrompt?.text}
               todaysEntry={todaysEntry}
               allEntries={journalEntries}
               isLoading={isLoading}
-              onSave={handleSaveEntry}
+              onSaveDaily={handleSaveEntry}
+              onSaveHunch={handleSaveHunch}
+              onUpdate={handleUpdateEntry}
+              onDelete={handleDeleteEntry}
+              onSaveEveningCheckin={handleSaveEveningCheckin}
+              settings={settings}
             />
           </div>
         );
@@ -265,6 +583,16 @@ const handleFinalSummary = async () => {
         <CrisisModal 
           severity={crisisSeverity} 
           onClose={() => setCrisisSeverity(0)} 
+        />
+      )}
+      {isSettingsModalOpen && (
+        <SettingsModal 
+          settings={settings}
+          userProfile={userProfile}
+          onClose={() => setIsSettingsModalOpen(false)}
+          onSave={setSettings}
+          onPauseJourney={handlePauseJourney}
+          onResumeJourney={handleResumeJourney}
         />
       )}
       {renderContent()}
