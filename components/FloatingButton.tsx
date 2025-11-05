@@ -2,6 +2,8 @@ import React from 'react';
 
 interface FloatingButtonProps {
     onClick: () => void;
+    icon: 'pen' | 'moon';
+    positionClasses: string;
 }
 
 const PenIcon: React.FC<{className: string}> = ({className}) => (
@@ -10,15 +12,24 @@ const PenIcon: React.FC<{className: string}> = ({className}) => (
     </svg>
 );
 
+const MoonIcon: React.FC<{className: string}> = ({className}) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+);
 
-const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick }) => {
+const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick, icon, positionClasses }) => {
+    const isPen = icon === 'pen';
+    const bgColor = isPen ? 'bg-[#588157] hover:bg-[#3a5a40]' : 'bg-indigo-500 hover:bg-indigo-600';
+    const ringColor = isPen ? 'focus:ring-[#588157]' : 'focus:ring-indigo-500';
+
     return (
         <button
             onClick={onClick}
-            className="fixed bottom-6 right-6 bg-[#588157] text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center hover:bg-[#3a5a40] transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#588157]"
-            aria-label="Today's Reflection"
+            className={`fixed ${positionClasses} ${bgColor} text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 ${ringColor}`}
+            aria-label={isPen ? "Today's Reflection" : "Record an Insight"}
         >
-            <PenIcon className="w-8 h-8"/>
+            {isPen ? <PenIcon className="w-8 h-8"/> : <MoonIcon className="w-8 h-8"/>}
         </button>
     );
 };

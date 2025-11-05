@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { Settings } from '../types';
 
 interface JournalInputModalProps {
     prompt: string | null | undefined;
-    onSave: (text: string) => void;
+    onSave: (text: string, reanalyze: boolean) => void;
     onClose: () => void;
     isSaving: boolean;
     initialText?: string;
+    settings: Settings;
+    entryType: 'daily' | 'hunch';
+    isEditMode: boolean;
 }
 
 const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -14,15 +18,84 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
-const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, onClose, isSaving, initialText }) => {
+const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, onClose, isSaving, initialText, settings, entryType, isEditMode }) => {
     const [text, setText] = useState(initialText || '');
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSave = (reanalyze: boolean) => {
         if (text.trim()) {
-            onSave(text);
+            onSave(text, reanalyze);
         }
     };
+
+    const renderButtons = () => {
+        const isDisabled = isSaving || !text.trim() || !prompt;
+        const isHunch = entryType === 'hunch';
+
+        // --- EDIT MODE ---
+        if (isEditMode) {
+            const canReanalyze = !isHunch && settings.insightFrequency === 'daily';
+            if (canReanalyze) {
+                return (
+                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                        <button
+                            type="button"
+                            onClick={() => handleSave(false)}
+                            disabled={isDisabled}
+                            className="w-full py-3 rounded-lg border border-[#588157] text-[#588157] dark:border-emerald-400 dark:text-emerald-400 font-medium text-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSaving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleSave(true)}
+                            disabled={isDisabled}
+                            className="w-full py-3 rounded-lg bg-[#588157] text-white font-medium text-lg hover:bg-[#3a5a40] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                            {isSaving ? 'Saving...' : 'Save & Re-analyze'}
+                        </button>
+                    </div>
+                );
+            }
+            // Edit mode but cannot re-analyze (it's a hunch or insights are off)
+            return (
+                 <button
+                    type="button"
+                    onClick={() => handleSave(false)}
+                    disabled={isDisabled}
+                    className="w-full mt-4 py-3 rounded-lg bg-[#588157] text-white font-medium text-lg hover:bg-[#3a5a40] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+            );
+        }
+
+        // --- NEW ENTRY MODE ---
+        if (isHunch) {
+            return (
+                <button
+                    type="button"
+                    onClick={() => handleSave(false)}
+                    disabled={isDisabled}
+                    className="w-full mt-4 py-3 rounded-lg bg-indigo-500 text-white font-medium text-lg hover:bg-indigo-600 transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                    Save Insight
+                </button>
+            );
+        }
+
+        // New daily entry
+        return (
+            <button
+                type="button"
+                onClick={() => handleSave(true)}
+                disabled={isDisabled}
+                className="w-full mt-4 py-3 rounded-lg bg-[#588157] text-white font-medium text-lg hover:bg-[#3a5a40] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+                {isSaving ? 'Reflecting...' : 'Save & Reflect'}
+            </button>
+        );
+    };
+
 
     return (
         <div className="fixed inset-0 bg-gradient-to-br from-[#fdfbf7] to-[#f4f1ea] dark:from-gray-900 dark:to-gray-800 z-40 animate-fade-in-fast" role="dialog" aria-modal="true">
@@ -35,7 +108,7 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
             </button>
             <div className="flex flex-col h-full p-4 md:p-8">
                 <main className="flex-1 overflow-y-auto flex items-center justify-center">
-                    <form onSubmit={handleSubmit} className="max-w-3xl w-full h-full flex flex-col pt-12">
+                    <div className="max-w-3xl w-full h-full flex flex-col pt-12">
                         <h2 className="text-xl md:text-2xl font-light text-[#3a5a40] dark:text-emerald-300 mb-6 text-center whitespace-pre-wrap">{prompt || 'Loading...'}</h2>
                         <textarea
                             value={text}
@@ -45,14 +118,8 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
                             disabled={isSaving || !prompt}
                             autoFocus
                         />
-                        <button
-                            type="submit"
-                            disabled={isSaving || !text.trim() || !prompt}
-                            className="w-full mt-4 py-3 rounded-lg bg-[#588157] text-white font-medium text-lg hover:bg-[#3a5a40] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                            {isSaving ? 'Reflecting...' : (initialText ? 'Update & Reflect' : 'Save & Reflect')}
-                        </button>
-                    </form>
+                        {renderButtons()}
+                    </div>
                 </main>
             </div>
             <style>{`

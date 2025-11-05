@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Settings } from '../types';
+import { Settings, InsightFrequency, UserProfile } from '../types';
 
 interface SettingsModalProps {
     settings: Settings;
+    userProfile: UserProfile | null;
     onClose: () => void;
     onSave: (newSettings: Settings) => void;
+    onPauseJourney: () => void;
+    onResumeJourney: () => void;
 }
 
 const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -13,12 +16,16 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onClose, onSave }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, onClose, onSave, onPauseJourney, onResumeJourney }) => {
     const [pinInput, setPinInput] = useState('');
     const [pinError, setPinError] = useState('');
 
     const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
         onSave({ ...settings, theme });
+    };
+
+    const handleInsightChange = (frequency: InsightFrequency) => {
+        onSave({ ...settings, insightFrequency: frequency });
     };
 
     const handlePinSave = () => {
@@ -38,6 +45,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onClose, onSave
         setPinError('');
     };
 
+    const handlePause = () => {
+        onPauseJourney();
+        onClose();
+    };
+
+    const handleResume = () => {
+        onResumeJourney();
+        onClose();
+    };
+
     const getThemeButtonClass = (theme: 'light' | 'dark' | 'system') => {
         const base = "px-4 py-2 rounded-lg transition-colors text-sm font-medium";
         if (settings.theme === theme) {
@@ -46,9 +63,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onClose, onSave
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
     };
 
+    const getInsightButtonClass = (frequency: InsightFrequency) => {
+        const base = "px-4 py-2 rounded-lg transition-colors text-sm font-medium";
+        if (settings.insightFrequency === frequency) {
+            return `${base} bg-[#588157] text-white`;
+        }
+        return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
+    };
+
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in-fast" aria-modal="true" role="dialog">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg max-w-md w-full p-6 relative">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg max-w-md w-full p-6 relative overflow-y-auto max-h-[90vh]">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
@@ -68,6 +93,58 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onClose, onSave
                            <button onClick={() => handleThemeChange('system')} className={getThemeButtonClass('system')}>System</button>
                         </div>
                     </div>
+
+                    {/* Insight Frequency Settings */}
+                    <div>
+                        <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Insight Frequency</h3>
+                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Choose how often you receive AI-powered reflections.</p>
+                        <div className="flex justify-center space-x-2 p-1 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
+                           <button onClick={() => handleInsightChange('daily')} className={getInsightButtonClass('daily')}>Daily</button>
+                           <button onClick={() => handleInsightChange('weekly')} className={getInsightButtonClass('weekly')}>Weekly</button>
+                           <button onClick={() => handleInsightChange('none')} className={getInsightButtonClass('none')}>None</button>
+                        </div>
+                    </div>
+                    
+                    {/* Journey Status */}
+                    {userProfile && !userProfile.journeyCompleted && (
+                        <div>
+                             <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Journey Status</h3>
+                            {userProfile.isPaused ? (
+                                <>
+                                    <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-3">Your journey is currently paused. Resume when you're ready.</p>
+                                    <button onClick={handleResume} className="w-full py-2 rounded-lg bg-[#588157] text-white font-medium hover:bg-[#3a5a40] transition-colors">
+                                        Resume Journey
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-3">Need a break? Pause your journey to save your progress and streak.</p>
+                                    <button onClick={handlePause} className="w-full py-2 rounded-lg border border-amber-500 text-amber-600 dark:border-amber-400 dark:text-amber-400 font-medium hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors">
+                                        Pause Journey
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Final Summary Settings */}
+                    <div>
+                        <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Final Summary</h3>
+                        <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-900/50 p-3 rounded-lg">
+                            <label htmlFor="includeHunches" className="text-sm text-gray-800 dark:text-gray-200 cursor-pointer flex-1 pr-2">
+                                Include Intuitive Insights
+                                <p className="text-xs text-gray-600 dark:text-gray-400 font-light">Allow AI to analyze dreams & hunches.</p>
+                            </label>
+                            <input
+                                type="checkbox"
+                                id="includeHunches"
+                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                checked={settings.includeHunchesInFinalSummary}
+                                onChange={e => onSave({ ...settings, includeHunchesInFinalSummary: e.target.checked })}
+                            />
+                        </div>
+                    </div>
+
 
                     {/* Security Settings */}
                     <div>

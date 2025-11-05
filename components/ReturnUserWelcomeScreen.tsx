@@ -1,20 +1,17 @@
 import React from 'react';
 
-interface WelcomeScreenProps {
-  onStart: () => void;
-  copy?: {
-    title?: string;
-    subtitle?: string;
-    cta?: string;
-  };
+interface ReturnUserWelcomeScreenProps {
+  onContinue: () => void;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, copy }) => {
-  const {
-    title = 'Welcome 🌿',
-    subtitle = 'Are you ready to show up for your future self? Begin a gentle 90-day reset of habits, identity and daily rituals. One small step today.',
-    cta = 'Yes, I’m ready',
-  } = copy || {};
+const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
+  onContinue,
+}) => {
+  const titles = ["You showed up! ☀️", "Nice to see you today! ✨"];
+  const [title] = React.useState(titles[Math.floor(Math.random() * titles.length)]);
+  
+  const subtitle = "It is so amazing that you are showing up for yourself. Your future self is so proud that you are here today. Let's continue the journey.";
+  const cta = "Begin Today's Reflection";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fdfbf7] to-[#f4f1ea] dark:from-gray-900 dark:to-gray-800 p-6 font-sans">
@@ -26,7 +23,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, copy }) => {
 
         <div className="flex justify-center">
           <button
-            onClick={onStart}
+            onClick={onContinue}
             className="bg-[#588157] text-white px-8 py-3 rounded-lg text-lg font-medium shadow hover:bg-[#3a5a40] transition-colors duration-300 transform hover:scale-105"
           >
             {cta}
@@ -50,4 +47,4 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, copy }) => {
   );
 };
 
-export default WelcomeScreen;
+export default ReturnUserWelcomeScreen;

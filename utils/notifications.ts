@@ -2,6 +2,7 @@
 
 const REMINDER_TIME_HOUR = 9; // 9 AM
 const NOTIFICATION_SCHEDULED_KEY = 'dailyNotificationScheduledTime';
+const EVENING_REMINDER_KEY = 'eveningNotificationScheduledTime';
 
 const messages = [
   {
@@ -111,4 +112,38 @@ export const scheduleDailyReminder = () => {
 
   // Store the time of the scheduled notification to prevent rescheduling on subsequent app loads.
   localStorage.setItem(NOTIFICATION_SCHEDULED_KEY, nextReminder.getTime().toString());
+};
+
+/**
+ * Schedules a one-off evening reminder 8 hours after a journal entry is saved.
+ */
+export const scheduleEveningReminder = () => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      return;
+    }
+
+    const lastScheduledTime = localStorage.getItem(EVENING_REMINDER_KEY);
+    const now = new Date().getTime();
+
+    // If there's a future evening notification already scheduled for today, don't schedule another.
+    if (lastScheduledTime && parseInt(lastScheduledTime, 10) > now) {
+      return;
+    }
+
+    const EIGHT_HOURS_IN_MS = 8 * 60 * 60 * 1000;
+    const reminderTime = new Date(now + EIGHT_HOURS_IN_MS);
+
+    setTimeout(() => {
+      try {
+        new Notification("Evening Check-in 🌙", {
+          body: "How did your day align with your journey? Take a moment to reflect.",
+          icon: '/favicon.ico'
+        });
+      } catch (error) {
+          console.error("Error displaying evening notification:", error);
+      }
+      localStorage.removeItem(EVENING_REMINDER_KEY);
+    }, EIGHT_HOURS_IN_MS);
+
+    localStorage.setItem(EVENING_REMINDER_KEY, reminderTime.getTime().toString());
 };

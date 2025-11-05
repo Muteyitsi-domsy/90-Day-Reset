@@ -1,33 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, Stage, OnboardingAnalysis, JournalEntry, EntryAnalysis } from "../types";
-// ✅ Environment setup for Vite
+
+// ✅ Environment setup for Vite (browser-safe)
+import { GoogleGenAI } from "@google/genai";
+
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
 if (!GEMINI_KEY) {
   console.warn("VITE_GEMINI_API_KEY is not set — Gemini features will run in preview mode.");
 }
 
-/**
- * Create a safe Gemini client instance.
- * Returns a stub client when key missing (prevents crash in preview builds).
- */
-function createGeminiClient() {
-  if (!GEMINI_KEY) {
-    // Return a harmless stub that mimics basic methods
-    return {
-      async generateContent(prompt: string) {
-        console.log("Preview mode — AI call skipped:", prompt);
-        return { response: { text: () => "Preview mode: AI unavailable." } };
-      },
-    } as unknown as GoogleGenAI;
-  }
-
-  // When key exists, create the real client
-  return new GoogleGenAI({ apiKey: GEMINI_KEY });
-}
-
-// Export the initialized Gemini client
-export const ai = createGeminiClient();
+// Initialize Gemini AI client only if a key is available
+export const ai = GEMINI_KEY
+  ? new GoogleGenAI({ apiKey: GEMINI_KEY })
+  : null;
 
 
 export interface OnboardingAnswers {
@@ -269,18 +255,30 @@ export async function generateWeeklySummary(journalEntries: JournalEntry[], idea
 }
 
 
-export async function generateFinalSummary(profile: UserProfile, journalHistory: JournalEntry[]): Promise<string> {
+export async function generateFinalSummary(profile: UserProfile, journalHistory: JournalEntry[], hunchHistory: JournalEntry[]): Promise<string> {
     const historyText = journalHistory.map(entry => `Day ${entry.day}: ${entry.rawText}`).join('\n\n');
+
+    let hunchTextSection = '';
+    if (hunchHistory && hunchHistory.length > 0) {
+        const hunchEntriesText = hunchHistory.map(h => `Recorded on Day ${h.day}: ${h.rawText}`).join('\n\n');
+        hunchTextSection = `
+You also have access to the user's private "Intuitive Insights"—a collection of dreams and hunches they recorded. Use these to add color and depth to the summary.
+"""
+${hunchEntriesText}
+"""
+`;
+    }
 
     const prompt = `
         You are a reflective narrator concluding the user's 90-Day Identity Reset journey.
         The user started in the "${profile.stage}" phase.
         Their Ideal Self Manifesto is: "${profile.idealSelfManifesto}"
 
-        You have access to all of their journal entries from the past 90 days:
+        You have access to all of their daily journal entries from the past 90 days:
         """
         ${historyText}
         """
+        ${hunchTextSection}
 
         Your task is to use this complete history to write a personalized closing summary.
         The response MUST be under 300 words, poetic yet grounded, and follow this exact structure:
@@ -289,7 +287,7 @@ export async function generateFinalSummary(profile: UserProfile, journalHistory:
 
         **Paragraph 1:** A warm congratulations, acknowledging their commitment and the courage it takes to show up for oneself consistently.
 
-        **Paragraph 2:** A summary of the key themes of growth you detected in their reflections. Mention specific mindset shifts, new habits, or changes in self-perception that are evident from their entries.
+        **Paragraph 2:** A summary of the key themes of growth you detected in their reflections. Mention specific mindset shifts, new habits, or changes in self-perception that are evident from their entries. ${hunchHistory.length > 0 ? "If you see connections, briefly weave in themes from their intuitive insights, noting how their inner knowing might have guided their conscious journey." : ""}
 
         **Paragraph 3:** A reflection on their specific transformation arc, based on their starting phase:
         - If their stage was "healing": Highlight their journey of emotional release, self-compassion, and self-forgiveness.
