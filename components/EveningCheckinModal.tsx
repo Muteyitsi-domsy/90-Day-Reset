@@ -32,7 +32,7 @@ const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClo
     const getRadioClass = (value: string) => {
         const base = "flex-1 text-center px-4 py-3 rounded-lg transition-colors text-md font-medium cursor-pointer";
         if (completedMicroAction === value) {
-            return `${base} bg-[#588157] text-white`;
+            return `${base} bg-[var(--accent-primary)] text-white`;
         }
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
     };
@@ -47,11 +47,11 @@ const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClo
                 >
                     <CloseIcon className="w-6 h-6" />
                 </button>
-                <h2 className="text-2xl font-light text-center text-[#3a5a40] dark:text-emerald-300 mb-6">Evening Check-in 🌙</h2>
+                <h2 className="text-2xl font-light text-center text-[var(--text-secondary)] mb-6">Evening Check-in 🌙</h2>
                 
                 <div className="space-y-6 overflow-y-auto pr-2">
                     <div>
-                        <label className="block text-lg font-light text-[#344e41] dark:text-gray-200 mb-3">Did you complete your micro-action today?</label>
+                        <label className="block text-lg font-light text-[var(--text-primary)] mb-3">Did you complete your micro-action today?</label>
                         <div className="flex justify-center space-x-2 p-1 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
                             <label className={getRadioClass('yes')}>
                                 <input type="radio" name="microAction" value="yes" checked={completedMicroAction === 'yes'} onChange={() => setCompletedMicroAction('yes')} className="sr-only" />
@@ -68,23 +68,23 @@ const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClo
                         </div>
                     </div>
                     <div>
-                        <label className="block text-lg font-light text-[#344e41] dark:text-gray-200 mb-3">Were your actions today aligned with your Ideal Self?</label>
+                        <label className="block text-lg font-light text-[var(--text-primary)] mb-3">Were your actions today aligned with your Ideal Self?</label>
                         <textarea
                             value={alignmentReflection}
                             onChange={(e) => setAlignmentReflection(e.target.value)}
                             placeholder="Reflect on moments of alignment or misalignment..."
                             rows={4}
-                            className="w-full bg-white/60 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-[#344e41] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#a3b18a] dark:focus:ring-emerald-400 transition-all resize-none font-light"
+                            className="w-full bg-[var(--input-bg)] border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition-all resize-none font-light"
                         />
                     </div>
                      <div>
-                        <label className="block text-lg font-light text-[#344e41] dark:text-gray-200 mb-3">What's one thing you hope to do better tomorrow?</label>
+                        <label className="block text-lg font-light text-[var(--text-primary)] mb-3">What's one thing you hope to do better tomorrow?</label>
                         <textarea
                             value={improvementReflection}
                             onChange={(e) => setImprovementReflection(e.target.value)}
                             placeholder="A small adjustment for a better tomorrow..."
                             rows={3}
-                             className="w-full bg-white/60 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-[#344e41] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#a3b18a] dark:focus:ring-emerald-400 transition-all resize-none font-light"
+                             className="w-full bg-[var(--input-bg)] border border-gray-300 dark:border-gray-600 rounded-xl p-3 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition-all resize-none font-light"
                         />
                     </div>
                 </div>
@@ -92,7 +92,7 @@ const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClo
                 <button
                     onClick={handleSave}
                     disabled={isSaveDisabled}
-                    className="w-full mt-6 py-3 rounded-lg bg-[#588157] text-white font-medium text-lg hover:bg-[#3a5a40] transition-colors duration-300 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    className="w-full mt-6 py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
                     Save Check-in
                 </button>

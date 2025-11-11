@@ -1,10 +1,13 @@
-export type Stage = 'healing' | 'reconstruction' | 'expansion';
+
+export type Arc = 'healing' | 'unstuck' | 'healed';
 
 export type InsightFrequency = 'daily' | 'weekly' | 'none';
 
 export interface UserProfile {
-  stage: Stage;
+  name: string;
+  arc: Arc;
   startDate: string;
+  intentions?: string;
   idealSelfManifesto?: string;
   week_count: number;
   lastMilestoneDayCompleted: number;
@@ -16,14 +19,15 @@ export interface UserProfile {
 }
 
 export interface Settings {
-  theme: 'light' | 'dark' | 'system';
+  theme: 'default' | 'ocean' | 'sunset' | 'forest';
+  themeMode: 'light' | 'dark' | 'system';
   pin?: string;
   insightFrequency: InsightFrequency;
   includeHunchesInFinalSummary: boolean;
 }
 
 export interface OnboardingAnalysis {
-    phase: Stage;
+    phase: Arc; // Changed from Stage to Arc
     summary: string;
     encouragement: string;
 }
@@ -41,14 +45,33 @@ export interface EveningCheckin {
   improvementReflection: string;
 }
 
+export interface WeeklySummaryData {
+    weekNumber: number;
+    dateRange: string;
+    stage: string;
+    themes: string[];
+    challenges: string[];
+    growth: { observation: string; evidence: string }[];
+    metrics: {
+        entries: number;
+        streak: number;
+        completionRate: string;
+    };
+    notableExcerpts: string[];
+    actionPlan: string[];
+    encouragement: string;
+    crisisDetected?: boolean;
+}
+
 export interface JournalEntry {
   id: string;
   date: string;
   day: number;
   week: number;
-  type: 'daily' | 'weekly_summary' | 'hunch';
+  type: 'daily' | 'weekly_summary' | 'hunch' | 'weekly_summary_report';
   prompt: string;
-  rawText: string;
+  rawText: string; // For daily/hunch/legacy summary: the text. For weekly_summary_report: a JSON string of WeeklySummaryData.
   analysis?: EntryAnalysis;
   eveningCheckin?: EveningCheckin;
+  summaryData?: WeeklySummaryData;
 }

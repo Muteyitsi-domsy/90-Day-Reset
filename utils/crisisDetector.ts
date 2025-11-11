@@ -1,3 +1,4 @@
+
 // utils/crisisDetector.ts
 
 export type CrisisSeverity = 0 | 1 | 2 | 3;
@@ -16,6 +17,7 @@ const HIGH_WORDS = [
   "i'm going to die",
   "end my life",
   "suicide",
+  "suicidal",
   "i will end it",
   "i don't want to live",
   "i can't go on",
@@ -25,9 +27,11 @@ const HIGH_WORDS = [
 const MODERATE_WORDS = [
   "hurt myself",
   "self-harm",
+  "harm myself",
   "cutting",
   "cut myself",
   "overdose",
+  "abuse",
   "i might hurt myself",
   "i wish i wasn't here",
   "wish i would disappear",

@@ -20,8 +20,8 @@ const MoonIcon: React.FC<{className: string}> = ({className}) => (
 
 const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick, icon, positionClasses }) => {
     const isPen = icon === 'pen';
-    const bgColor = isPen ? 'bg-[#588157] hover:bg-[#3a5a40]' : 'bg-indigo-500 hover:bg-indigo-600';
-    const ringColor = isPen ? 'focus:ring-[#588157]' : 'focus:ring-indigo-500';
+    const bgColor = isPen ? 'bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)]' : 'bg-indigo-500 hover:bg-indigo-600';
+    const ringColor = isPen ? 'focus:ring-[var(--ring-color)]' : 'focus:ring-indigo-500';
 
     return (
         <button
