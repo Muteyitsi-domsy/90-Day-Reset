@@ -14,18 +14,18 @@ const CogIcon: React.FC<{ className: string }> = ({ className }) => (
 
 const Header: React.FC<HeaderProps> = ({ streak, onOpenSettings }) => {
   return (
-    <header className="w-full flex items-center justify-between p-4 bg-[#fdfbf7]/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
+    <header className="w-full flex items-center justify-between p-4 bg-[var(--bg-from)]/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
       <div className="w-12">
-        <button onClick={onOpenSettings} className="text-gray-500 hover:text-[#3a5a40] dark:text-gray-400 dark:hover:text-emerald-300 transition-colors" aria-label="Open settings">
+        <button onClick={onOpenSettings} className="text-gray-500 hover:text-[var(--text-secondary)] dark:text-gray-400 dark:hover:text-[var(--accent-secondary)] transition-colors" aria-label="Open settings">
           <CogIcon className="w-6 h-6" />
         </button>
       </div>
-      <h1 className="text-xl font-light text-[#3a5a40] dark:text-emerald-300 text-center">
+      <h1 className="text-xl font-light text-[var(--text-secondary)] text-center">
         90-Day Identity Reset
       </h1>
       <div className="w-12 text-right">
         {streak && streak > 0 ? (
-          <div className="flex items-center justify-end text-lg text-[#588157] dark:text-emerald-400" title={`${streak}-day streak`}>
+          <div className="flex items-center justify-end text-lg text-[var(--accent-primary)] dark:text-[var(--accent-secondary)]" title={`${streak}-day streak`}>
             <span className="font-semibold">{streak}</span>
             <span role="img" aria-label="streak flame">🔥</span>
           </div>

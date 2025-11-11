@@ -20,7 +20,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
     const [pinInput, setPinInput] = useState('');
     const [pinError, setPinError] = useState('');
 
-    const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
+    const handleThemeModeChange = (themeMode: 'light' | 'dark' | 'system') => {
+        onSave({ ...settings, themeMode });
+    };
+
+    const handleThemeChange = (theme: 'default' | 'ocean' | 'sunset' | 'forest') => {
         onSave({ ...settings, theme });
     };
 
@@ -54,11 +58,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
         onResumeJourney();
         onClose();
     };
+    
+    const themeOptions: { id: Settings['theme']; label: string }[] = [
+        { id: 'default', label: 'Default' },
+        { id: 'ocean', label: 'Ocean' },
+        { id: 'sunset', label: 'Sunset' },
+        { id: 'forest', label: 'Forest' },
+    ];
 
-    const getThemeButtonClass = (theme: 'light' | 'dark' | 'system') => {
+    const getThemeModeButtonClass = (themeMode: 'light' | 'dark' | 'system') => {
         const base = "px-4 py-2 rounded-lg transition-colors text-sm font-medium";
-        if (settings.theme === theme) {
-            return `${base} bg-[#588157] text-white`;
+        if (settings.themeMode === themeMode) {
+            return `${base} bg-[var(--accent-primary)] text-white`;
         }
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
     };
@@ -66,7 +77,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
     const getInsightButtonClass = (frequency: InsightFrequency) => {
         const base = "px-4 py-2 rounded-lg transition-colors text-sm font-medium";
         if (settings.insightFrequency === frequency) {
-            return `${base} bg-[#588157] text-white`;
+            return `${base} bg-[var(--accent-primary)] text-white`;
         }
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
     };
@@ -81,16 +92,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
                 >
                     <CloseIcon className="w-6 h-6" />
                 </button>
-                <h2 className="text-2xl font-light text-[#3a5a40] dark:text-emerald-300 mb-6 text-center">Settings</h2>
+                <h2 className="text-2xl font-light text-[var(--text-secondary)] mb-6 text-center">Settings</h2>
 
                 <div className="space-y-6">
-                    {/* Appearance Settings */}
+                    {/* Theme Mode Settings */}
                     <div>
-                        <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Appearance</h3>
+                        <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Theme Mode</h3>
                         <div className="flex justify-center space-x-2 p-1 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
-                           <button onClick={() => handleThemeChange('light')} className={getThemeButtonClass('light')}>Light</button>
-                           <button onClick={() => handleThemeChange('dark')} className={getThemeButtonClass('dark')}>Dark</button>
-                           <button onClick={() => handleThemeChange('system')} className={getThemeButtonClass('system')}>System</button>
+                           <button onClick={() => handleThemeModeChange('light')} className={getThemeModeButtonClass('light')}>Light</button>
+                           <button onClick={() => handleThemeModeChange('dark')} className={getThemeModeButtonClass('dark')}>Dark</button>
+                           <button onClick={() => handleThemeModeChange('system')} className={getThemeModeButtonClass('system')}>System</button>
+                        </div>
+                    </div>
+
+                    {/* Theme Color Settings */}
+                    <div>
+                        <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Theme</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                           {themeOptions.map(({id, label}) => (
+                               <button 
+                                key={id} 
+                                onClick={() => handleThemeChange(id)} 
+                                className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium border-2 ${settings.theme === id ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'}`}
+                                >
+                                    {label}
+                                </button>
+                           ))}
                         </div>
                     </div>
 
@@ -112,7 +139,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
                             {userProfile.isPaused ? (
                                 <>
                                     <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-3">Your journey is currently paused. Resume when you're ready.</p>
-                                    <button onClick={handleResume} className="w-full py-2 rounded-lg bg-[#588157] text-white font-medium hover:bg-[#3a5a40] transition-colors">
+                                    <button onClick={handleResume} className="w-full py-2 rounded-lg bg-[var(--accent-primary)] text-white font-medium hover:bg-[var(--accent-primary-hover)] transition-colors">
                                         Resume Journey
                                     </button>
                                 </>
@@ -161,11 +188,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
                                     }}
                                     placeholder={settings.pin ? 'Enter new PIN' : 'Enter 4 letters'}
                                     maxLength={4}
-                                    className="flex-grow w-full bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-[#344e41] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#a3b18a] dark:focus:ring-emerald-400 transition"
+                                    className="flex-grow w-full bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
                                 />
                                 <button
                                     onClick={handlePinSave}
-                                    className="px-4 py-2 rounded-lg bg-[#588157] text-white font-medium text-sm hover:bg-[#3a5a40] transition-colors"
+                                    className="px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-sm hover:bg-[var(--accent-primary-hover)] transition-colors"
                                 >
                                     Save
                                 </button>

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { JournalEntry, EveningCheckin, Settings } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -5,6 +6,7 @@ import EntryAnalysisView from './EntryAnalysisView';
 import FloatingButton from './FloatingButton';
 import JournalInputModal from './JournalInputModal';
 import EveningCheckinModal from './EveningCheckinModal';
+import WeeklySummary from './WeeklySummary';
 
 interface JournalViewProps {
   currentDay: number;
@@ -33,8 +35,8 @@ const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
 );
 
 const CheckinDetailsView: React.FC<{ checkin: EveningCheckin }> = ({ checkin }) => (
-    <div className="mt-6 border-t border-[#dad7cd]/50 dark:border-gray-700/50 pt-6 space-y-4 animate-fade-in">
-        <h3 className="font-medium text-lg text-[#588157] dark:text-emerald-400">Evening Check-in ✅</h3>
+    <div className="mt-6 border-t border-gray-300/50 dark:border-gray-700/50 pt-6 space-y-4 animate-fade-in">
+        <h3 className="font-medium text-lg text-[var(--accent-primary)] dark:text-[var(--accent-secondary)]">Evening Check-in ✅</h3>
         <div>
             <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-1">Did you complete your micro-action?</h4>
             <p className="font-light text-gray-600 dark:text-gray-400 capitalize">{checkin.completedMicroAction}</p>
@@ -60,19 +62,24 @@ const EntryCard: React.FC<{
     isDeleting?: boolean;
     onStartCheckin?: () => void;
 }> = ({ entry, isToday = false, isMostRecentDaily = false, onEdit, onDelete, isDeleting = false, onStartCheckin }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
     const isHunch = entry.type === 'hunch';
     const isSummary = entry.type === 'weekly_summary';
 
     const cardBaseClasses = "rounded-2xl p-6 border transition-all duration-500";
     const cardColorClasses = isHunch
         ? 'bg-indigo-50/70 dark:bg-indigo-900/40 backdrop-blur-sm border-indigo-200 dark:border-indigo-800'
-        : 'bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-white dark:border-gray-700';
+        : 'bg-[var(--card-bg)] backdrop-blur-sm border-[var(--card-border)]';
     const cardShadowClasses = isToday ? 'shadow-lg' : 'shadow-sm';
     const animationClasses = isDeleting ? 'animate-fade-out-shrink' : 'animate-fade-in';
     
     const promptColorClasses = isHunch
         ? 'text-indigo-700 dark:text-indigo-300'
-        : 'text-[#3a5a40] dark:text-emerald-300';
+        : 'text-[var(--text-secondary)]';
+
+    const TRUNCATE_LENGTH = 350;
+    const isTruncated = entry.rawText.length > TRUNCATE_LENGTH;
+    const displayText = isExpanded ? entry.rawText : `${entry.rawText.slice(0, TRUNCATE_LENGTH)}${isTruncated ? '...' : ''}`;
 
     return (
         <div className={`${cardBaseClasses} ${cardColorClasses} ${cardShadowClasses} ${animationClasses}`}>
@@ -92,17 +99,25 @@ const EntryCard: React.FC<{
                 )}
                 </div>
             </div>
-            <p className="font-light text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {entry.rawText}
+            <p className="font-light text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
+                {displayText}
             </p>
+            {isTruncated && (
+                <button 
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="text-sm font-semibold text-[var(--accent-primary)] dark:text-[var(--accent-secondary)] mt-2 hover:underline"
+                >
+                    {isExpanded ? 'Show Less' : 'Read More'}
+                </button>
+            )}
             {entry.analysis ? <EntryAnalysisView analysis={entry.analysis} /> : (isToday && entry.type === 'daily' && <div className="mt-4"><LoadingSpinner/></div>)}
             
             {isToday && entry.analysis && !entry.eveningCheckin && onStartCheckin && (
-                <div className="mt-6 pt-6 border-t border-[#dad7cd]/50 dark:border-gray-700/50">
-                    <h3 className="text-lg font-light text-center text-[#3a5a40] dark:text-emerald-300 mb-3">Ready to reflect on your day?</h3>
+                <div className="mt-6 pt-6 border-t border-gray-300/50 dark:border-gray-700/50">
+                    <h3 className="text-lg font-light text-center text-[var(--text-secondary)] mb-3">Ready to reflect on your day?</h3>
                     <button
                         onClick={onStartCheckin}
-                        className="w-full py-3 rounded-lg bg-[#3a5a40] text-white font-medium hover:bg-[#588157] transition-colors duration-300"
+                        className="w-full py-3 rounded-lg bg-[var(--accent-primary-hover)] text-white font-medium hover:bg-[var(--accent-primary)] transition-colors duration-300"
                     >
                         🌙 Start Evening Check-in
                     </button>
@@ -201,13 +216,13 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
       <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-40">
         <div className="max-w-3xl mx-auto w-full">
             <div className="mb-8 animate-fade-in">
-              <div className="flex justify-between items-center mb-1 text-sm font-light text-[#3a5a40] dark:text-emerald-300">
+              <div className="flex justify-between items-center mb-1 text-sm font-light text-[var(--text-secondary)]">
                 <span>Progress</span>
                 <span>Day {currentDay} of 90</span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                 <div
-                  className="bg-[#588157] dark:bg-emerald-400 h-1.5 rounded-full"
+                  className="bg-[var(--accent-primary)] dark:bg-[var(--accent-secondary)] h-1.5 rounded-full"
                   style={{ width: `${Math.min(100, (currentDay / 90) * 100)}%`, transition: 'width 0.5s ease-out' }}
                 ></div>
               </div>
@@ -215,6 +230,9 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
 
             <div className="space-y-6">
                 {sortedEntries.map(entry => {
+                    if (entry.type === 'weekly_summary_report' && entry.summaryData) {
+                        return <WeeklySummary key={entry.id} data={entry.summaryData} />;
+                    }
                     const isMostRecentDaily = mostRecentDailyEntry ? entry.id === mostRecentDailyEntry.id : false;
                     const isToday = entry.id === todaysEntry?.id;
 

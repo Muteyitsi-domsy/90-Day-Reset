@@ -15,10 +15,10 @@ const EntryAnalysisView: React.FC<EntryAnalysisViewProps> = ({ analysis }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="mt-6 border-t border-[#dad7cd]/50 dark:border-gray-700/50 pt-6">
+    <div className="mt-6 border-t border-gray-300/50 dark:border-gray-700/50 pt-6">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex justify-between items-center w-full text-left text-md font-light text-[#3a5a40] dark:text-emerald-300"
+        className="flex justify-between items-center w-full text-left text-md font-light text-[var(--text-secondary)]"
       >
         <span>Show Reflection</span>
         <ChevronDownIcon className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -27,27 +27,27 @@ const EntryAnalysisView: React.FC<EntryAnalysisViewProps> = ({ analysis }) => {
       {isOpen && (
         <div className="mt-6 space-y-6 animate-fade-in-slow">
           <div>
-            <h3 className="font-medium text-[#588157] dark:text-emerald-400 mb-2">Summary</h3>
-            <p className="font-light text-gray-700 dark:text-gray-300 leading-relaxed">{analysis.summary}</p>
+            <h3 className="font-medium text-[var(--accent-primary)] dark:text-[var(--accent-secondary)] mb-2">Summary</h3>
+            <p className="font-light text-[var(--text-primary)] leading-relaxed">{analysis.summary}</p>
           </div>
           <div>
-            <h3 className="font-medium text-[#588157] dark:text-emerald-400 mb-2">Insights</h3>
+            <h3 className="font-medium text-[var(--accent-primary)] dark:text-[var(--accent-secondary)] mb-2">Insights</h3>
             <ul className="list-disc list-inside space-y-1.5">
               {analysis.insights.map((insight, index) => (
-                <li key={index} className="font-light text-gray-700 dark:text-gray-300">{insight}</li>
+                <li key={index} className="font-light text-[var(--text-primary)]">{insight}</li>
               ))}
             </ul>
           </div>
           <div>
-            <h3 className="font-medium text-[#588157] dark:text-emerald-400 mb-2">Micro-Action</h3>
-            <p className="font-light text-gray-700 dark:text-gray-300">{analysis.microAction}</p>
+            <h3 className="font-medium text-[var(--accent-primary)] dark:text-[var(--accent-secondary)] mb-2">Micro-Action</h3>
+            <p className="font-light text-[var(--text-primary)]">{analysis.microAction}</p>
           </div>
           {analysis.tags && analysis.tags.length > 0 && (
              <div>
-                <h3 className="font-medium text-[#588157] dark:text-emerald-400 mb-2">Themes</h3>
+                <h3 className="font-medium text-[var(--accent-primary)] dark:text-[var(--accent-secondary)] mb-2">Themes</h3>
                 <div className="flex flex-wrap gap-2">
                     {analysis.tags.map((tag, index) => (
-                        <span key={index} className="bg-[#e9ede7] dark:bg-emerald-900/50 text-[#3a5a40] dark:text-emerald-300 text-xs font-medium px-2.5 py-1 rounded-full">
+                        <span key={index} className="bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] text-xs font-medium px-2.5 py-1 rounded-full">
                             {tag}
                         </span>
                     ))}
