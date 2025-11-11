@@ -45,10 +45,10 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, onUnlock }) =
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fdfbf7] to-[#f4f1ea] dark:from-gray-900 dark:to-gray-800 p-6 font-sans">
-            <div className={`max-w-sm w-full bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-white dark:border-gray-700 text-center ${error ? 'animate-shake' : ''}`}>
-                <h1 className="text-2xl font-light text-[#3a5a40] dark:text-emerald-300 mb-4">Enter PIN</h1>
-                <p className="text-md text-[#344e41] dark:text-gray-200 mb-8">
+        <div className="min-h-screen flex items-center justify-center p-6 font-sans">
+            <div className={`max-w-sm w-full bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] text-center ${error ? 'animate-shake' : ''}`}>
+                <h1 className="text-2xl font-light text-[var(--text-secondary)] mb-4">Enter PIN</h1>
+                <p className="text-md text-[var(--text-primary)] mb-8">
                     Enter your 4-letter PIN to continue.
                 </p>
                 <form onSubmit={handleSubmit} className="flex flex-col items-center">
@@ -62,14 +62,14 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, onUnlock }) =
                                 value={digit}
                                 onChange={(e) => handleChange(e, index)}
                                 onKeyDown={(e) => handleKeyDown(e, index)}
-                                className="w-12 h-14 text-center text-2xl font-semibold bg-white/50 dark:bg-gray-700/50 border-2 border-white dark:border-gray-600 rounded-lg text-[#344e41] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#a3b18a] dark:focus:ring-emerald-400 transition"
+                                className="w-12 h-14 text-center text-2xl font-semibold bg-[var(--input-bg)] border-2 border-[var(--input-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
                                 autoFocus={index === 0}
                             />
                         ))}
                     </div>
                     <button
                         type="submit"
-                        className="bg-[#588157] text-white px-8 py-3 rounded-lg text-lg font-medium shadow hover:bg-[#3a5a40] transition-colors duration-300"
+                        className="bg-[var(--accent-primary)] text-white px-8 py-3 rounded-lg text-lg font-medium shadow hover:bg-[var(--accent-primary-hover)] transition-colors duration-300"
                     >
                         Unlock
                     </button>
