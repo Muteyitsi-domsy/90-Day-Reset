@@ -75,3 +75,96 @@ After deployment, test the weekly summary feature:
 - Journal for 7 days
 - On day 7, you should see a "Generate Weekly Summary" button
 - If you see "Error generating summary", check that `GEMINI_API_KEY` is set in Vercel
+
+## Development Workflow with Google AI Studio
+
+This project uses a two-repository workflow:
+
+1. **AI Studio Repository** (`studio` remote) - Connected to Google AI Studio for rapid prototyping
+2. **Production Repository** (`origin` remote) - Connected to Vercel for deployment
+
+### Current Workflow
+
+```bash
+# Check your remotes
+git remote -v
+
+# Should show:
+# origin    https://github.com/Muteyitsi-domsy/90-Day-Reset.git
+# studio    <your-studio-repo-url>
+```
+
+### Syncing Changes from AI Studio
+
+When you make changes in Google AI Studio, they're automatically pushed to the `studio` remote. To bring them into production:
+
+```bash
+# 1. Fetch changes from studio
+git fetch studio
+
+# 2. Review what changed
+git log main..studio/main --oneline
+
+# 3. Merge studio changes into your local main
+git checkout main
+git merge studio/main
+
+# 4. Test locally
+npm run dev
+
+# 5. Push to production (triggers Vercel deployment)
+git push origin main
+```
+
+### Recommended: Streamlined Single-Repo Workflow
+
+To eliminate the double-work, consider one of these approaches:
+
+#### Option A: Make AI Studio push directly to origin (Recommended)
+1. In Google AI Studio settings, change the connected repository to your main production repo
+2. Set up branch protection on `main` to require pull requests
+3. AI Studio pushes to a feature branch like `ai-studio-updates`
+4. You review and merge via PR
+
+#### Option B: Use GitHub Actions for Auto-Sync
+Create `.github/workflows/sync-studio.yml`:
+
+```yaml
+name: Sync from AI Studio
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Add studio remote
+        run: git remote add studio <your-studio-repo-url>
+
+      - name: Fetch and merge
+        run: |
+          git fetch studio
+          git merge studio/main --no-edit
+
+      - name: Push to main
+        run: git push origin main
+```
+
+#### Option C: Use Git Hooks for Auto-Push
+Create a post-receive hook that automatically pushes studio changes to origin.
+
+### Working with Prompts
+
+Daily prompts are managed in `services/promptGenerator.ts`. The system includes:
+- **Anti-repetition logic**: Tracks last 5 prompts to avoid duplicates
+- **Persistent rotation**: Uses localStorage to maintain state across sessions
+- **Arc-based prompts**: Different prompt sets for healing, unstuck, and healed arcs
+- **Month-based progression**: Prompts evolve as users progress through their 90-day journey
+
+To modify prompts, edit the `PROMPTS` object in `promptGenerator.ts`.
