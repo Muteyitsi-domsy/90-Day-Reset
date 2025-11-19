@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { JournalEntry, EveningCheckin, Settings } from '../types';
+import { JournalEntry, EveningCheckin, Settings, HunchType } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EntryAnalysisView from './EntryAnalysisView';
 import FloatingButton from './FloatingButton';
@@ -15,8 +15,8 @@ interface JournalViewProps {
   allEntries: JournalEntry[];
   isLoading: boolean;
   onSaveDaily: (text: string) => void;
-  onSaveHunch: (text: string) => void;
-  onUpdate: (entryId: string, text: string, reanalyze: boolean) => void;
+  onSaveHunch: (text: string, hunchType?: HunchType) => void;
+  onUpdate: (entryId: string, text: string, reanalyze: boolean, hunchType?: HunchType) => void;
   onDelete: (entryId: string) => void;
   onSaveEveningCheckin: (entryId: string, checkinData: EveningCheckin) => void;
   settings: Settings;
@@ -64,19 +64,29 @@ const EntryCard: React.FC<{
 }> = ({ entry, isToday = false, isMostRecentDaily = false, onEdit, onDelete, isDeleting = false, onStartCheckin }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const isHunch = entry.type === 'hunch';
-    const isSummary = entry.type === 'weekly_summary';
+    const isSummary = entry.type === 'weekly_summary' || entry.type === 'weekly_summary_report' || entry.type === 'monthly_summary_report';
+
+    let cardColorClasses = 'bg-[var(--card-bg)] backdrop-blur-sm border-[var(--card-border)]';
+    let promptColorClasses = 'text-[var(--text-secondary)]';
+
+    if (isHunch) {
+        if (entry.hunchType === 'dream') {
+            cardColorClasses = 'bg-sky-50/70 dark:bg-sky-900/30 backdrop-blur-sm border-sky-200 dark:border-sky-800';
+            promptColorClasses = 'text-sky-700 dark:text-sky-300';
+        } else if (entry.hunchType === 'insight') {
+            cardColorClasses = 'bg-purple-50/70 dark:bg-purple-900/30 backdrop-blur-sm border-purple-200 dark:border-purple-800';
+            promptColorClasses = 'text-purple-700 dark:text-purple-300';
+        } else {
+            // Hunch or default
+            cardColorClasses = 'bg-amber-50/70 dark:bg-amber-900/30 backdrop-blur-sm border-amber-200 dark:border-amber-800';
+            promptColorClasses = 'text-amber-700 dark:text-amber-300';
+        }
+    }
 
     const cardBaseClasses = "rounded-2xl p-6 border transition-all duration-500";
-    const cardColorClasses = isHunch
-        ? 'bg-indigo-50/70 dark:bg-indigo-900/40 backdrop-blur-sm border-indigo-200 dark:border-indigo-800'
-        : 'bg-[var(--card-bg)] backdrop-blur-sm border-[var(--card-border)]';
     const cardShadowClasses = isToday ? 'shadow-lg' : 'shadow-sm';
     const animationClasses = isDeleting ? 'animate-fade-out-shrink' : 'animate-fade-in';
     
-    const promptColorClasses = isHunch
-        ? 'text-indigo-700 dark:text-indigo-300'
-        : 'text-[var(--text-secondary)]';
-
     const TRUNCATE_LENGTH = 350;
     const isTruncated = entry.rawText.length > TRUNCATE_LENGTH;
     const displayText = isExpanded ? entry.rawText : `${entry.rawText.slice(0, TRUNCATE_LENGTH)}${isTruncated ? '...' : ''}`;
@@ -84,7 +94,12 @@ const EntryCard: React.FC<{
     return (
         <div className={`${cardBaseClasses} ${cardColorClasses} ${cardShadowClasses} ${animationClasses}`}>
             <div className="flex justify-between items-center mb-3">
-                <p className={`font-semibold text-sm ${promptColorClasses}`}>{entry.prompt}</p>
+                <div className="flex flex-col">
+                    <p className={`font-semibold text-sm ${promptColorClasses}`}>{entry.prompt}</p>
+                    {isHunch && entry.hunchType && (
+                         <span className="text-xs uppercase tracking-wider opacity-70 font-bold mt-1">{entry.hunchType}</span>
+                    )}
+                </div>
                 <div className="flex items-center space-x-3">
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-light">{isToday ? "Today" : new Date(entry.date).toLocaleDateString()}</span>
                 {!isSummary && onEdit && (isMostRecentDaily || isHunch) && (
@@ -181,11 +196,11 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
     handleCloseModal();
   }
 
-  const handleSaveFromHunchModal = (text: string, reanalyze: boolean) => {
+  const handleSaveFromHunchModal = (text: string, reanalyze: boolean, hunchType?: HunchType) => {
     if (entryToEdit) {
-        onUpdate(entryToEdit.id, text, reanalyze);
+        onUpdate(entryToEdit.id, text, reanalyze, hunchType);
     } else {
-        onSaveHunch(text);
+        onSaveHunch(text, hunchType);
     }
     handleCloseModal();
   }
@@ -230,7 +245,9 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
 
             <div className="space-y-6">
                 {sortedEntries.map(entry => {
-                    if (entry.type === 'weekly_summary_report' && entry.summaryData) {
+                    if ((entry.type === 'weekly_summary_report' || entry.type === 'monthly_summary_report') && entry.summaryData) {
+                        // Summaries are now mostly viewed in the menu, but the prompt said "final report however should remain to appear in the main area".
+                        // We will render reports if they are in the stream, which they are by default.
                         return <WeeklySummary key={entry.id} data={entry.summaryData} />;
                     }
                     const isMostRecentDaily = mostRecentDailyEntry ? entry.id === mostRecentDailyEntry.id : false;
@@ -282,10 +299,11 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
           initialText={entryToEdit?.rawText}
           onSave={handleSaveFromHunchModal}
           onClose={handleCloseModal}
-          isSaving={false} // Saving hunches is local and fast
+          isSaving={false}
           settings={settings}
           entryType="hunch"
           isEditMode={!!entryToEdit}
+          initialHunchType={entryToEdit?.hunchType}
         />
       )}
       {isCheckinModalOpen && todaysEntry && (

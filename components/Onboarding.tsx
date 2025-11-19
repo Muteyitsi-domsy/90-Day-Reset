@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { UserProfile, OnboardingAnalysis } from "../types";
 import { analyzeOnboardingAnswers, OnboardingAnswers } from "../services/geminiService";
@@ -62,6 +61,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       arc: analysisResult.phase,
       startDate: new Date().toISOString(),
       week_count: 1,
+      month_count: 1,
       lastMilestoneDayCompleted: 0,
       journeyCompleted: false,
       streak: 0,
