@@ -27,8 +27,14 @@ interface Prompt {
     category: PromptCategory;
 }
 
+// Fisher-Yates shuffle algorithm for better randomization
 const shuffle = <T,>(array: T[]): T[] => {
-    return array.sort(() => Math.random() - 0.5);
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
 };
 
 // Simplified prompt store for demonstration. A real app might fetch these from a remote config.
@@ -95,8 +101,46 @@ const PROMPTS: Record<Arc, Record<number, Prompt[]>> = {
     },
 };
 
-// Use a simple in-memory cache to rotate through prompts and avoid immediate repetition.
-const rotationCache: Record<string, number> = {};
+// Persistent cache to track prompt rotation and recently used prompts
+const ROTATION_CACHE_KEY = 'promptRotationCache';
+const RECENT_PROMPTS_KEY = 'recentPrompts';
+
+// Load rotation cache from localStorage
+const loadRotationCache = (): Record<string, number> => {
+    try {
+        const saved = localStorage.getItem(ROTATION_CACHE_KEY);
+        return saved ? JSON.parse(saved) : {};
+    } catch {
+        return {};
+    }
+};
+
+// Save rotation cache to localStorage
+const saveRotationCache = (cache: Record<string, number>) => {
+    try {
+        localStorage.setItem(ROTATION_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+        console.warn('Failed to save rotation cache:', e);
+    }
+};
+
+// Track recently used prompts (last 5) to avoid repetition
+const loadRecentPrompts = (): string[] => {
+    try {
+        const saved = localStorage.getItem(RECENT_PROMPTS_KEY);
+        return saved ? JSON.parse(saved) : [];
+    } catch {
+        return [];
+    }
+};
+
+const saveRecentPrompts = (prompts: string[]) => {
+    try {
+        localStorage.setItem(RECENT_PROMPTS_KEY, JSON.stringify(prompts));
+    } catch (e) {
+        console.warn('Failed to save recent prompts:', e);
+    }
+};
 
 export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, totalEntries: number): string {
     const { arc, intentions } = userProfile;
@@ -122,18 +166,46 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, total
     
     const month = Math.min(3, Math.floor((dayIndex - 1) / 30) + 1);
     const promptsForMonth = PROMPTS[arc][month];
-    
+
     if (!promptsForMonth || promptsForMonth.length === 0) {
         return "How are you feeling today, in this moment?"; // Fallback
     }
 
     const cacheKey = `${arc}-${month}`;
-    const currentIndex = rotationCache[cacheKey] || 0;
-    
-    const prompt = promptsForMonth[currentIndex];
+    const rotationCache = loadRotationCache();
+    const recentPrompts = loadRecentPrompts();
 
-    // Update index for next time, looping back to 0 if at the end
+    let currentIndex = rotationCache[cacheKey] || 0;
+    let attempts = 0;
+    let selectedPrompt: Prompt | undefined;
+
+    // Try to find a prompt that hasn't been used recently (within last 5 prompts)
+    while (attempts < promptsForMonth.length) {
+        const candidatePrompt = promptsForMonth[currentIndex];
+
+        // Check if this prompt was used recently
+        if (!recentPrompts.includes(candidatePrompt.text)) {
+            selectedPrompt = candidatePrompt;
+            break;
+        }
+
+        // Move to next prompt
+        currentIndex = (currentIndex + 1) % promptsForMonth.length;
+        attempts++;
+    }
+
+    // If all prompts were recently used (unlikely), just use the current one
+    if (!selectedPrompt) {
+        selectedPrompt = promptsForMonth[currentIndex];
+    }
+
+    // Update rotation cache
     rotationCache[cacheKey] = (currentIndex + 1) % promptsForMonth.length;
-    
-    return prompt.text;
+    saveRotationCache(rotationCache);
+
+    // Update recent prompts list (keep last 5)
+    const updatedRecentPrompts = [selectedPrompt.text, ...recentPrompts].slice(0, 5);
+    saveRecentPrompts(updatedRecentPrompts);
+
+    return selectedPrompt.text;
 }
