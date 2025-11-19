@@ -1,15 +1,17 @@
+
 import React, { useState } from 'react';
-import { Settings } from '../types';
+import { Settings, HunchType } from '../types';
 
 interface JournalInputModalProps {
     prompt: string | null | undefined;
-    onSave: (text: string, reanalyze: boolean) => void;
+    onSave: (text: string, reanalyze: boolean, hunchType?: HunchType) => void;
     onClose: () => void;
     isSaving: boolean;
     initialText?: string;
     settings: Settings;
     entryType: 'daily' | 'hunch';
     isEditMode: boolean;
+    initialHunchType?: HunchType;
 }
 
 const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -18,13 +20,39 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
-const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, onClose, isSaving, initialText, settings, entryType, isEditMode }) => {
+const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, onClose, isSaving, initialText, settings, entryType, isEditMode, initialHunchType }) => {
     const [text, setText] = useState(initialText || '');
+    const [hunchType, setHunchType] = useState<HunchType>(initialHunchType || 'hunch');
 
     const handleSave = (reanalyze: boolean) => {
         if (text.trim()) {
-            onSave(text, reanalyze);
+            onSave(text, reanalyze, entryType === 'hunch' ? hunchType : undefined);
         }
+    };
+
+    const renderHunchTypeSelector = () => {
+        if (entryType !== 'hunch') return null;
+        
+        const types: {id: HunchType, label: string, color: string}[] = [
+            { id: 'insight', label: 'Insight', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border-purple-300' },
+            { id: 'dream', label: 'Dream', color: 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 border-sky-300' },
+            { id: 'hunch', label: 'Hunch', color: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300' },
+        ];
+
+        return (
+            <div className="flex gap-2 mb-4 justify-center">
+                {types.map(t => (
+                    <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setHunchType(t.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${hunchType === t.id ? `ring-2 ring-offset-1 ring-[var(--ring-color)] ${t.color}` : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-500'}`}
+                    >
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+        );
     };
 
     const renderButtons = () => {
@@ -33,7 +61,7 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
 
         // --- EDIT MODE ---
         if (isEditMode) {
-            const canReanalyze = !isHunch && settings.insightFrequency === 'daily';
+            const canReanalyze = !isHunch && settings.dailyAnalysis;
             if (canReanalyze) {
                 return (
                     <div className="flex flex-col sm:flex-row gap-3 mt-4">
@@ -56,7 +84,6 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
                     </div>
                 );
             }
-            // Edit mode but cannot re-analyze (it's a hunch or insights are off)
             return (
                  <button
                     type="button"
@@ -78,20 +105,19 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
                     disabled={isDisabled}
                     className="w-full mt-4 py-3 rounded-lg bg-indigo-500 text-white font-medium text-lg hover:bg-indigo-600 transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                    Save Insight
+                    Save {hunchType.charAt(0).toUpperCase() + hunchType.slice(1)}
                 </button>
             );
         }
 
-        // New daily entry
         return (
             <button
                 type="button"
-                onClick={() => handleSave(true)}
+                onClick={() => handleSave(settings.dailyAnalysis)}
                 disabled={isDisabled}
                 className="w-full mt-4 py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-                {isSaving ? 'Reflecting...' : 'Save & Reflect'}
+                {isSaving ? 'Processing...' : (settings.dailyAnalysis ? 'Save & Reflect' : 'Save Entry')}
             </button>
         );
     };
@@ -110,6 +136,7 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
                 <main className="flex-1 overflow-y-auto flex items-center justify-center">
                     <div className="max-w-3xl w-full h-full flex flex-col pt-12">
                         <h2 className="text-xl md:text-2xl font-light text-[var(--text-secondary)] mb-6 text-center whitespace-pre-wrap">{prompt || 'Loading...'}</h2>
+                        {renderHunchTypeSelector()}
                         <textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}

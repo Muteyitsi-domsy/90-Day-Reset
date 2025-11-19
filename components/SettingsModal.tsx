@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Settings, InsightFrequency, UserProfile } from '../types';
+import { Settings, UserProfile } from '../types';
+
+type InsightFrequency = 'daily' | 'weekly' | 'none';
 
 interface SettingsModalProps {
     settings: Settings;
@@ -29,7 +31,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
     };
 
     const handleInsightChange = (frequency: InsightFrequency) => {
-        onSave({ ...settings, insightFrequency: frequency });
+        let updates: Partial<Settings> = {};
+        switch (frequency) {
+            case 'daily':
+                updates = { dailyAnalysis: true, weeklyReports: true, monthlyReports: true };
+                break;
+            case 'weekly':
+                updates = { dailyAnalysis: false, weeklyReports: true, monthlyReports: true };
+                break;
+            case 'none':
+                updates = { dailyAnalysis: false, weeklyReports: false, monthlyReports: false };
+                break;
+        }
+        onSave({ ...settings, ...updates });
     };
 
     const handlePinSave = () => {
@@ -74,9 +88,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
     };
 
+    const getCurrentFrequency = (): InsightFrequency => {
+        if (settings.dailyAnalysis) return 'daily';
+        if (settings.weeklyReports) return 'weekly';
+        return 'none';
+    };
+
     const getInsightButtonClass = (frequency: InsightFrequency) => {
         const base = "px-4 py-2 rounded-lg transition-colors text-sm font-medium";
-        if (settings.insightFrequency === frequency) {
+        if (getCurrentFrequency() === frequency) {
             return `${base} bg-[var(--accent-primary)] text-white`;
         }
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;

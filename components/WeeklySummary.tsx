@@ -1,10 +1,9 @@
-
 import React from 'react';
-import { WeeklySummaryData } from '../types';
+import { SummaryData } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 interface WeeklySummaryProps {
-  data: WeeklySummaryData;
+  data: SummaryData;
 }
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -31,7 +30,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data }) => {
   return (
     <div className="rounded-2xl p-6 border bg-sky-50/70 dark:bg-sky-900/40 border-sky-200 dark:border-sky-800 animate-fade-in">
       <header className="text-center mb-6">
-        <h2 className="text-2xl font-light text-sky-800 dark:text-sky-200">Weekly Reflection: Week {data.weekNumber}</h2>
+        <h2 className="text-2xl font-light text-sky-800 dark:text-sky-200">Weekly Reflection: Week {data.period}</h2>
         <p className="text-sm text-sky-600 dark:text-sky-400">{data.dateRange}</p>
         <p className="text-md font-medium text-sky-700 dark:text-sky-300 mt-1 capitalize">{data.stage}</p>
       </header>

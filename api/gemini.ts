@@ -4,30 +4,18 @@
  * on platforms like Vercel or Netlify. The platform will automatically create the `/api/gemini` endpoint.
  */
 import { GoogleGenAI, Type } from "@google/genai";
-import { detectCrisis } from "../utils/crisisDetector"; // Adjust path as needed
+import { detectCrisis } from "../utils/crisisDetector"; 
 
-// This function would typically be part of a server's request handling logic.
-// In a serverless environment, this is the entry point for the function.
 export default async function handler(req: Request): Promise<Response> {
     if (req.method !== 'POST') {
         return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
     }
 
     try {
-        // --- EXPECTED REQUEST BODY ---
-        // {
-        //   "action": "generate_weekly_summary",
-        //   "week": 1,
-        //   "dateRange": "2023-10-26 - 2023-11-01",
-        //   "userProfile": { "name": "Alex", "arc": "healing", "idealSelfManifesto": "..." },
-        //   "entries": [ { "date": "...", "rawText": "...", "type": "daily"| "hunch" } ],
-        //   "checkinCompletionRate": 0.66,
-        //   "streak": 5
-        // }
         const body = await req.json();
 
-        if (body.action === 'generate_weekly_summary') {
-            const summary = await getWeeklySummary(body);
+        if (body.action === 'generate_weekly_summary' || body.action === 'generate_monthly_summary') {
+            const summary = await getSummary(body);
             return new Response(JSON.stringify(summary), { status: 200, headers: { 'Content-Type': 'application/json' } });
         } else {
             return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
@@ -39,7 +27,7 @@ export default async function handler(req: Request): Promise<Response> {
 }
 
 
-async function getWeeklySummary(data: any) {
+async function getSummary(data: any) {
     // --- CRISIS DETECTION ---
     const combinedText = data.entries.map((e: any) => e.rawText).join(' ');
     const severity = detectCrisis(combinedText);
@@ -56,24 +44,26 @@ async function getWeeklySummary(data: any) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
+    const isMonthly = data.periodType === 'month';
+    const periodLabel = isMonthly ? `Month ${data.period}` : `Week ${data.period}`;
 
     // --- GEMINI PROMPT TEMPLATE ---
-    const systemInstruction = `You are an empathetic and insightful identity coach. Your task is to analyze a user's journal entries from the past week and generate a structured, compassionate summary. The user is on a 90-day personal transformation journey. Your output must be a single, clean JSON object matching the provided schema, with no additional text, explanation, or markdown formatting. Be concise and pull direct evidence where possible.`;
+    const systemInstruction = `You are an empathetic and insightful identity coach. Your task is to analyze a user's journal entries from the past ${data.periodType} and generate a structured, compassionate summary. The user is on a 90-day personal transformation journey. Your output must be a single, clean JSON object matching the provided schema.`;
 
     const userPrompt = `
-        Please analyze the following data for ${data.userProfile.name}'s weekly summary.
+        Please analyze the following data for ${data.userProfile.name}'s ${isMonthly ? 'monthly' : 'weekly'} summary.
 
         **User Context:**
         - Arc: ${data.userProfile.arc}
         - Ideal Self Manifesto: "${data.userProfile.idealSelfManifesto}"
-        - Week Number: ${data.week}
+        - Period: ${periodLabel}
         - Date Range: ${data.dateRange}
 
-        **Weekly Journal Entries & Insights:**
+        **Journal Entries & Insights:**
         ${data.entries.map((e: any) => `[${e.type.toUpperCase()} on ${e.date}]: ${e.rawText}`).join('\n')}
 
         **Instructions:**
-        Based on all the provided context and entries, generate a JSON object that synthesizes the user's week.
+        Based on all the provided context and entries, generate a JSON object that synthesizes the user's growth and challenges.
     `;
 
     // --- SAFE SERVER-SIDE GEMINI CALL ---
@@ -86,11 +76,12 @@ async function getWeeklySummary(data: any) {
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    weekNumber: { type: Type.NUMBER },
+                    title: { type: Type.STRING, description: `A creative title for this ${data.periodType}'s summary` },
+                    period: { type: Type.NUMBER },
                     dateRange: { type: Type.STRING },
-                    stage: { type: Type.STRING, description: "A short descriptor of the current stage, e.g., 'Healing - Month 1 (Processing)'" },
-                    themes: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 short, bullet-point themes from the week." },
-                    challenges: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2 short, bullet-point challenges or blocks." },
+                    stage: { type: Type.STRING, description: "A short descriptor of the current stage/arc" },
+                    themes: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-5 bullet-point themes." },
+                    challenges: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2 bullet-point challenges or blocks." },
                     growth: {
                         type: Type.ARRAY,
                         items: {
@@ -100,20 +91,11 @@ async function getWeeklySummary(data: any) {
                                 evidence: { type: Type.STRING, description: "A brief, direct quote from an entry that supports the observation." }
                             }
                         },
-                        description: "4 concise observations of growth seen this week."
+                        description: "3-4 concise observations of growth."
                     },
-                    notableExcerpts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2-3 short, impactful user-written quotes." },
-                    actionPlan: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 bite-sized, actionable steps for the week ahead." },
-                    encouragement: { type: Type.STRING, description: "A short, warm, empowering closing paragraph." },
-                    metrics: {
-                        type: Type.OBJECT,
-                        properties: {
-                            entries: { type: Type.NUMBER },
-                            streak: { type: Type.NUMBER },
-                            completionRate: { type: Type.STRING }
-                        },
-                        description: "Metrics about the user's journal activity this week."
-                    }
+                    notableExcerpts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2-3 impactful user-written quotes." },
+                    actionPlan: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 bite-sized steps for the next period." },
+                    encouragement: { type: Type.STRING, description: "A short, warm, empowering closing paragraph." }
                 },
             }
         }

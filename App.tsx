@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry } from './services/geminiService';
 import { getDailyPrompt } from './services/promptGenerator';
-import { generateWeeklySummary as fetchWeeklySummary } from './services/geminiProxyClient';
-import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, InsightFrequency, WeeklySummaryData } from './types';
+import { generateWeeklySummary as fetchWeeklySummary, generateMonthlySummary as fetchMonthlySummary } from './services/geminiProxyClient';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
@@ -15,12 +15,12 @@ import CrisisModal from './components/CrisisModal';
 import WelcomeScreen from './components/WelcomeScreen';
 import LoadingSpinner from './components/LoadingSpinner';
 import PinLockScreen from './components/PinLockScreen';
-import SettingsModal from './components/SettingsModal';
 import ReturnUserWelcomeScreen from './components/ReturnUserWelcomeScreen';
 import OnboardingCompletion from './components/OnboardingCompletion';
 import PausedScreen from './components/PausedScreen';
 import NameCollection from './components/NameCollection';
 import IntentionSetting from './components/IntentionSetting';
+import Menu from './components/Menu';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -30,14 +30,22 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [appState, setAppState] = useState<AppState>('welcome');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [settings, setSettings] = useState<Settings>({ theme: 'default', themeMode: 'system', insightFrequency: 'daily', includeHunchesInFinalSummary: false });
+  const [settings, setSettings] = useState<Settings>({ 
+      theme: 'default', 
+      themeMode: 'system', 
+      dailyAnalysis: true,
+      weeklyReports: true,
+      monthlyReports: true,
+      includeHunchesInFinalSummary: false
+  });
   const [isLocked, setIsLocked] = useState(true);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isJourneyOver, setIsJourneyOver] = useState(false);
   const [finalSummaryText, setFinalSummaryText] = useState('');
   const [dailyPrompt, setDailyPrompt] = useState<{ text: string, isMilestone: boolean } | null>(null);
   const [crisisSeverity, setCrisisSeverity] = useState<CrisisSeverity>(0);
   const [userName, setUserName] = useState('');
+  const [viewedReport, setViewedReport] = useState<JournalEntry | null>(null);
 
 
   // On app load, schedule the next daily reminder if permission is granted.
@@ -49,7 +57,14 @@ const App: React.FC = () => {
   useEffect(() => {
     try {
         const savedSettings = localStorage.getItem('settings');
-        const defaultSettings: Settings = { theme: 'default', themeMode: 'system', insightFrequency: 'daily', includeHunchesInFinalSummary: false };
+        const defaultSettings: Settings = { 
+            theme: 'default', 
+            themeMode: 'system', 
+            dailyAnalysis: true,
+            weeklyReports: true,
+            monthlyReports: true,
+            includeHunchesInFinalSummary: false,
+        };
 
         if (savedSettings) {
             let parsed = JSON.parse(savedSettings);
@@ -59,6 +74,31 @@ const App: React.FC = () => {
                 delete parsed.theme;
                 parsed = { ...parsed, themeMode: oldTheme, theme: 'default' };
             }
+            // Migration for old InsightFrequency
+            if ('insightFrequency' in parsed) {
+                const freq = parsed.insightFrequency;
+                if (freq === 'daily') {
+                    parsed.dailyAnalysis = true;
+                    parsed.weeklyReports = true;
+                    // keep monthly as is or default true if undefined
+                } else if (freq === 'weekly') {
+                    parsed.dailyAnalysis = false;
+                    parsed.weeklyReports = true;
+                } else if (freq === 'none') {
+                    parsed.dailyAnalysis = false;
+                    parsed.weeklyReports = false;
+                    parsed.monthlyReports = false;
+                }
+                // If generateMonthlySummaries was present, map to monthlyReports
+                if ('generateMonthlySummaries' in parsed) {
+                    parsed.monthlyReports = parsed.generateMonthlySummaries;
+                    delete parsed.generateMonthlySummaries;
+                } else if (parsed.monthlyReports === undefined) {
+                     parsed.monthlyReports = true;
+                }
+                delete parsed.insightFrequency;
+            }
+            
             setSettings({ ...defaultSettings, ...parsed });
 
             if (parsed.pin) {
@@ -82,6 +122,9 @@ const App: React.FC = () => {
                 else profile.arc = 'healing';
                 delete (profile as any).stage;
             }
+            // Initialize month_count if missing
+            if (!profile.month_count) profile.month_count = 1;
+
             setUserProfile(profile);
 
             const savedEntries = localStorage.getItem('journalEntries');
@@ -91,7 +134,7 @@ const App: React.FC = () => {
                 const typedEntries = rawEntries.map(e => ({
                     ...e,
                     type: e.type || (e.prompt.includes("Reflection on Week") ? 'weekly_summary' : 'daily'),
-                    summaryData: e.type === 'weekly_summary_report' && typeof e.rawText === 'string' ? JSON.parse(e.rawText) : undefined,
+                    summaryData: (e.type === 'weekly_summary_report' || e.type === 'monthly_summary_report') && typeof e.rawText === 'string' ? JSON.parse(e.rawText) : undefined,
                 }));
                 setJournalEntries(typedEntries);
             }
@@ -99,8 +142,9 @@ const App: React.FC = () => {
             if (!profile.idealSelfManifesto) {
                 setAppState('scripting');
             } else {
-                 // Check if onboarding was completed but settings were not
-                const settingsExist = savedSettings ? JSON.parse(savedSettings).insightFrequency : false;
+                 // Check if onboarding was completed by checking if any entry exists or just logic based on flow
+                 // For simplicity, if we have settings saved we assume completed.
+                 const settingsExist = !!savedSettings;
                 if (!settingsExist) {
                     setAppState('onboarding_completion');
                 } else {
@@ -141,7 +185,7 @@ const App: React.FC = () => {
     // Avoid saving the empty initial array before we've loaded from storage
     if (!isLoading) {
         const entriesToSave = journalEntries.map(entry => {
-            // Don't save summaryData directly, it's derived from rawText on load
+            // Don't save summaryData directly, it's derived from rawText on load to save space
             const { summaryData, ...rest } = entry;
             return rest;
         });
@@ -157,7 +201,7 @@ const App: React.FC = () => {
 
     const severity = detectCrisis(text);
 
-    const { day, month } = getDayAndMonth(userProfile.startDate);
+    const { day } = getDayAndMonth(userProfile.startDate);
     const currentWeek = Math.floor((day - 1) / 7) + 1;
 
     const newEntry: JournalEntry = {
@@ -193,7 +237,6 @@ const App: React.FC = () => {
       } else if (diffDays > 1) { // Streak broken
         newStreak = 1;
       }
-      // if diffDays is 0, same day, streak doesn't change
     } else { // First entry ever
       newStreak = 1;
     }
@@ -212,7 +255,7 @@ const App: React.FC = () => {
     }
     
     // Proceed with AI analysis only if crisis level is low and settings allow
-    if (settings.insightFrequency === 'daily') {
+    if (settings.dailyAnalysis) {
         try {
           const analysis: EntryAnalysis = await analyzeJournalEntry(text);
           const completeEntry: JournalEntry = { ...newEntry, analysis };
@@ -251,11 +294,16 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSaveHunch = (text: string) => {
+  const handleSaveHunch = (text: string, hunchType: HunchType = 'hunch') => {
     if (!text.trim() || !userProfile) return;
 
     const { day } = getDayAndMonth(userProfile.startDate);
     const currentWeek = Math.floor((day - 1) / 7) + 1;
+    const prompts = {
+        hunch: 'Intuitive Hunch',
+        dream: 'Dream Record',
+        insight: 'Sudden Insight'
+    };
 
     const newHunch: JournalEntry = {
         id: new Date().toISOString(),
@@ -263,14 +311,15 @@ const App: React.FC = () => {
         day: day,
         week: currentWeek,
         type: 'hunch',
-        prompt: 'Intuitive Insight',
+        hunchType: hunchType,
+        prompt: prompts[hunchType],
         rawText: text,
     };
 
     setJournalEntries(prev => [...prev, newHunch]);
   };
 
-  const handleUpdateEntry = async (entryId: string, newText: string, reanalyze: boolean) => {
+  const handleUpdateEntry = async (entryId: string, newText: string, reanalyze: boolean, hunchType?: HunchType) => {
     if (isLoading || !newText.trim()) return;
     
     const entryToUpdate = journalEntries.find(e => e.id === entryId);
@@ -284,18 +333,17 @@ const App: React.FC = () => {
     if (!shouldReanalyze) {
         setJournalEntries(prev => prev.map(entry =>
             entry.id === entryId 
-            ? { ...entry, rawText: newText, date: new Date().toISOString() } 
+            ? { ...entry, rawText: newText, date: new Date().toISOString(), hunchType: hunchType || entry.hunchType, prompt: hunchType ? (hunchType === 'dream' ? 'Dream Record' : hunchType === 'insight' ? 'Sudden Insight' : 'Intuitive Hunch') : entry.prompt } 
             : entry
         ));
         setIsLoading(false);
         return;
     }
 
-    // --- Start of re-analysis logic ---
+    // --- Re-analysis logic ---
     const severity = detectCrisis(newText);
     if (severity >= 2) {
       setCrisisSeverity(severity);
-      // Save the user's updated text but remove analysis.
       setJournalEntries(prev => prev.map(entry =>
         entry.id === entryId ? { ...entry, rawText: newText, analysis: undefined } : entry
       ));
@@ -312,20 +360,6 @@ const App: React.FC = () => {
       ));
     } catch (error) {
       console.error("Error re-analyzing entry:", error);
-      setJournalEntries(prev => prev.map(entry =>
-        entry.id === entryId
-          ? {
-              ...entry,
-              rawText: newText,
-              analysis: {
-                summary: "Could not re-analyze this entry. Your edits are saved.",
-                insights: [],
-                tags: ["Error"],
-                microAction: "Take a deep breath."
-              }
-            }
-          : entry
-      ));
     } finally {
       setIsLoading(false);
     }
@@ -348,9 +382,9 @@ const App: React.FC = () => {
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number) => {
     if (!userProfile || !userProfile.idealSelfManifesto) return;
 
-    if (settings.insightFrequency === 'none') {
+    if (!settings.weeklyReports) {
         setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
-        return; // Skip summary generation if insights are off
+        return; 
     }
 
     setIsLoading(true);
@@ -358,7 +392,7 @@ const App: React.FC = () => {
     const summaryEntryId = new Date().toISOString();
     const { day } = getDayAndMonth(userProfile.startDate);
 
-    // Add a placeholder while the summary is generating
+    // Add a placeholder
     const summaryPlaceholder: JournalEntry = {
         id: summaryEntryId,
         date: new Date().toISOString(),
@@ -366,14 +400,14 @@ const App: React.FC = () => {
         week: weekToSummarize,
         type: 'weekly_summary_report',
         prompt: `🌿 Reflection on Week ${weekToSummarize}`,
-        rawText: '{"status": "loading"}', // Use JSON to indicate loading state
+        rawText: '{"status": "loading"}', 
     };
     setJournalEntries(prev => [...prev, summaryPlaceholder]);
 
     try {
         const weekEntries = journalEntries.filter(entry => entry.week === weekToSummarize && (entry.type === 'daily' || entry.type === 'hunch'));
         
-        const summaryData: WeeklySummaryData = await fetchWeeklySummary({
+        const summaryData: SummaryData = await fetchWeeklySummary({
             userProfile,
             week: weekToSummarize,
             entries: weekEntries,
@@ -381,9 +415,8 @@ const App: React.FC = () => {
 
         if (summaryData.crisisDetected) {
             setCrisisSeverity(3);
-            // Remove placeholder and don't save summary
             setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
-            setUserProfile(prev => ({ ...prev!, week_count: newWeek })); // Still advance week
+            setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
             return;
         }
         
@@ -403,44 +436,87 @@ const App: React.FC = () => {
 
     } catch (error) {
         console.error("Error generating weekly summary:", error);
-        const errorSummary = {
-            weekNumber: weekToSummarize,
-            dateRange: "N/A",
-            stage: "Error",
-            themes: ["Connection Error"],
-            challenges: ["Could not generate summary."],
-            growth: [],
-            metrics: { entries: 0, streak: 0, completionRate: '0%' },
-            notableExcerpts: [],
-            actionPlan: ["Try again later."],
-            encouragement: "There was a technical issue preparing your summary. Your journal entries are safe. Please try again later."
-        };
-        const errorEntry: JournalEntry = {
-             id: summaryEntryId,
-            date: new Date().toISOString(),
-            day,
-            week: weekToSummarize,
-            type: 'weekly_summary_report',
-            prompt: `🌿 Reflection on Week ${weekToSummarize}`,
-            rawText: JSON.stringify(errorSummary),
-            summaryData: errorSummary,
-        }
-        setJournalEntries(prev => prev.map(entry => entry.id === summaryEntryId ? errorEntry : entry));
+        // Remove placeholder on error to allow retry next load or avoid corrupt state
+         setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
         setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
     } finally {
         setIsLoading(false);
     }
 };
 
-const handleFinalSummary = async () => {
+  const handleGenerateMonthlySummary = async (monthToSummarize: number, newMonth: number) => {
+    if (!userProfile || !settings.monthlyReports) {
+         if (userProfile) setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
+         return;
+    }
+
+    setIsLoading(true);
+    const summaryEntryId = new Date().toISOString();
+    const { day } = getDayAndMonth(userProfile.startDate);
+
+    const summaryPlaceholder: JournalEntry = {
+        id: summaryEntryId,
+        date: new Date().toISOString(),
+        day: day,
+        week: userProfile.week_count,
+        type: 'monthly_summary_report',
+        prompt: `📅 Monthly Insight: Month ${monthToSummarize}`,
+        rawText: '{"status": "loading"}',
+    };
+    setJournalEntries(prev => [...prev, summaryPlaceholder]);
+
+    try {
+        // Get entries that roughly correspond to the month. Logic: entries with day within (month-1)*30 to month*30
+        const startDay = (monthToSummarize - 1) * 30;
+        const endDay = monthToSummarize * 30;
+        const monthEntries = journalEntries.filter(entry => entry.day > startDay && entry.day <= endDay && (entry.type === 'daily' || entry.type === 'hunch'));
+
+        const summaryData: SummaryData = await fetchMonthlySummary({
+            userProfile,
+            month: monthToSummarize,
+            entries: monthEntries,
+        });
+
+        if (summaryData.crisisDetected) {
+             setCrisisSeverity(3);
+             setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
+             setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
+             return;
+        }
+
+        const summaryEntry: JournalEntry = {
+            id: summaryEntryId,
+            date: new Date().toISOString(),
+            day,
+            week: userProfile.week_count,
+            type: 'monthly_summary_report',
+            prompt: `📅 Monthly Insight: Month ${monthToSummarize}`,
+            rawText: JSON.stringify(summaryData),
+            summaryData: summaryData,
+        };
+
+        setJournalEntries(prev => prev.map(entry => entry.id === summaryEntryId ? summaryEntry : entry));
+        setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
+
+    } catch (error) {
+        console.error("Error generating monthly summary:", error);
+        setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
+        setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleFinalSummary = async () => {
     if (!userProfile) return;
 
     setIsLoading(true);
     
     try {
         const dailyHistory = journalEntries.filter(e => e.type === 'daily');
+        // Filter hunches based on settings
         const hunchHistory = settings.includeHunchesInFinalSummary
-            ? journalEntries.filter(e => e.type === 'hunch')
+            ? journalEntries.filter(e => e.type === 'hunch' && (!settings.finalSummaryIncludedTypes || settings.finalSummaryIncludedTypes.includes(e.hunchType || 'hunch')))
             : [];
 
         const summaryText = await generateFinalSummary(userProfile, dailyHistory, hunchHistory);
@@ -474,18 +550,30 @@ const handleFinalSummary = async () => {
                 return;
             }
 
+            // Handle Weekly Summaries
             const expectedWeek = Math.floor((day - 1) / 7) + 1;
-
             if (userProfile.week_count < expectedWeek) {
                 for (let week = userProfile.week_count; week < expectedWeek; week++) {
                     await handleGenerateWeeklySummary(week, week + 1);
                 }
             }
+
+            // Handle Monthly Summaries
+            const expectedMonth = Math.ceil(day / 30);
+            // We generate summary AFTER month completes (e.g. day 31 generates month 1)
+            // So if day is 31 (expMonth 2), we see if we've done month 1.
+            // Logic: if day > 30 and month_count is 1, generate 1.
+            const completedMonths = Math.floor((day - 1) / 30);
+            if (userProfile.month_count <= completedMonths) {
+                 for (let month = userProfile.month_count; month <= completedMonths; month++) {
+                    await handleGenerateMonthlySummary(month, month + 1);
+                 }
+            }
             
             const todayEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
             if (!todayEntry) {
                  const promptText = getDailyPrompt(userProfile, day, journalEntries.length);
-                 setDailyPrompt({ text: promptText, isMilestone: false }); // Note: Milestone logic would need to be added to promptGenerator
+                 setDailyPrompt({ text: promptText, isMilestone: false });
             }
             setIsLoading(false);
         }
@@ -497,7 +585,7 @@ const handleFinalSummary = async () => {
   }, [appState, userProfile]);
 
   const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'name' | 'intentions'>) => {
-    setUserProfile({ ...profile, name: userName, intentions: '' });
+    setUserProfile({ ...profile, name: userName, intentions: '', month_count: 1 });
     setAppState('intention_setting');
   }
   
@@ -515,8 +603,8 @@ const handleFinalSummary = async () => {
     }
   }
 
-  const handleOnboardingCompletion = async (insightFrequency: InsightFrequency) => {
-    setSettings(prev => ({ ...prev, insightFrequency }));
+  const handleOnboardingCompletion = async (newSettings: { dailyAnalysis: boolean; weeklyReports: boolean; monthlyReports: boolean }) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
     setAppState('journal');
     const permissionGranted = await safeRequestNotificationPermission();
     if (permissionGranted) {
@@ -525,26 +613,37 @@ const handleFinalSummary = async () => {
   };
 
   const restartJourney = () => {
-    localStorage.removeItem('userProfile');
-    localStorage.removeItem('journalEntries');
-    window.location.reload();
+    if (window.confirm("Are you sure you want to restart? All data will be cleared.")) {
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('journalEntries');
+        localStorage.removeItem('settings');
+        window.location.reload();
+    }
   };
 
-  const exportSummary = () => {
-    if (!finalSummaryText) return;
-    const plainTextSummary = finalSummaryText.replace(/\*\*/g, '');
-    const blob = new Blob([plainTextSummary], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = '90-Day-Identity-Reset-Summary.txt';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
+  const exportData = () => {
+      const data = {
+          userProfile,
+          settings,
+          journalEntries
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `identity-reset-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+  };
+
+  const deleteData = () => {
+      localStorage.clear();
+      window.location.reload();
   };
 
   const handlePauseJourney = () => {
-    if (userProfile && window.confirm("Pause your journey? Your progress and streak will be saved. You can resume anytime.")) {
+    if (userProfile && window.confirm("Pause your journey? Your progress and streak will be saved.")) {
       setUserProfile(prev => ({
         ...prev!,
         isPaused: true,
@@ -580,6 +679,30 @@ const handleFinalSummary = async () => {
     }
   };
 
+  const handleViewReport = (report: JournalEntry) => {
+      if (userProfile) {
+          // Update last viewed report date
+          const reportDate = new Date(report.date);
+          const lastViewed = userProfile.lastViewedReportDate ? new Date(userProfile.lastViewedReportDate) : new Date(0);
+          
+          if (reportDate > lastViewed) {
+              setUserProfile(prev => ({...prev!, lastViewedReportDate: report.date}));
+          }
+      }
+      // In a real app, this might open a dedicated modal. 
+      // For now, we just ensure the user knows it's available in the feed or the menu.
+      // Since the report is in the feed, we could scroll to it, but for simplicity in this V1 update, 
+      // we'll just close the menu. The user sees the report in the menu list itself or the feed.
+      // Ideally, we would scroll to the entry in JournalView.
+      // Let's simply alert the user if they are not in the journal view, or just do nothing as the menu close reveals the app.
+  };
+  
+  const reports = journalEntries.filter(e => e.type === 'weekly_summary_report' || e.type === 'monthly_summary_report');
+  const hasUnreadReports = userProfile?.lastViewedReportDate 
+      ? reports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
+      : reports.length > 0;
+
+
   const renderContent = () => {
     if (isLoading && appState !== 'journal') {
         return (
@@ -598,7 +721,7 @@ const handleFinalSummary = async () => {
         <CelebrationScreen
           completionSummary={finalSummaryText}
           onRestart={restartJourney}
-          onExport={exportSummary}
+          onExport={exportData}
         />
       );
     }
@@ -636,15 +759,29 @@ const handleFinalSummary = async () => {
         if (userProfile?.isPaused) {
             return (
                 <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
-                    <Header streak={userProfile?.streak} onOpenSettings={() => setIsSettingsModalOpen(true)} />
+                    <Header streak={userProfile?.streak} onOpenMenu={() => setIsMenuOpen(true)} />
                     <PausedScreen onResume={handleResumeJourney} />
+                     <Menu 
+                        isOpen={isMenuOpen} 
+                        onClose={() => setIsMenuOpen(false)} 
+                        userProfile={userProfile}
+                        settings={settings}
+                        reports={reports}
+                        onUpdateSettings={setSettings}
+                        onUpdateProfile={setUserProfile}
+                        onPauseJourney={handlePauseJourney}
+                        onResumeJourney={handleResumeJourney}
+                        onExportData={exportData}
+                        onDeleteData={deleteData}
+                        onViewReport={handleViewReport}
+                    />
                 </div>
             );
         }
 
         return (
           <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
-            <Header streak={userProfile?.streak} onOpenSettings={() => setIsSettingsModalOpen(true)} />
+            <Header streak={userProfile?.streak} onOpenMenu={() => setIsMenuOpen(true)} hasUnreadReports={hasUnreadReports} />
             <JournalView 
               currentDay={day}
               dailyPrompt={dailyPrompt?.text}
@@ -657,6 +794,20 @@ const handleFinalSummary = async () => {
               onDelete={handleDeleteEntry}
               onSaveEveningCheckin={handleSaveEveningCheckin}
               settings={settings}
+            />
+             <Menu 
+                isOpen={isMenuOpen} 
+                onClose={() => setIsMenuOpen(false)} 
+                userProfile={userProfile}
+                settings={settings}
+                reports={reports}
+                onUpdateSettings={setSettings}
+                onUpdateProfile={setUserProfile}
+                onPauseJourney={handlePauseJourney}
+                onResumeJourney={handleResumeJourney}
+                onExportData={exportData}
+                onDeleteData={deleteData}
+                onViewReport={handleViewReport}
             />
           </div>
         );
@@ -672,16 +823,6 @@ const handleFinalSummary = async () => {
         <CrisisModal 
           severity={crisisSeverity} 
           onClose={() => setCrisisSeverity(0)} 
-        />
-      )}
-      {isSettingsModalOpen && (
-        <SettingsModal 
-          settings={settings}
-          userProfile={userProfile}
-          onClose={() => setIsSettingsModalOpen(false)}
-          onSave={setSettings}
-          onPauseJourney={handlePauseJourney}
-          onResumeJourney={handleResumeJourney}
         />
       )}
       {renderContent()}
