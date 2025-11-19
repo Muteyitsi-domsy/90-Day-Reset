@@ -3,8 +3,6 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, Arc, OnboardingAnalysis, JournalEntry, EntryAnalysis } from "../types";
 
 // ✅ Environment setup for Vite (browser-safe)
-import { GoogleGenAI } from "@google/genai";
-
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
 if (!GEMINI_KEY) {
@@ -63,7 +61,7 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
     `;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
             responseMimeType: 'application/json',
@@ -98,7 +96,7 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
     `;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         contents: prompt,
     });
 
@@ -131,7 +129,7 @@ export async function analyzeJournalEntry(entryText: string): Promise<EntryAnaly
     `;
 
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
             responseMimeType: 'application/json',
@@ -205,7 +203,7 @@ ${hunchEntriesText}
     `;
     
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro', // Using a more powerful model for the final, complex summary
+        model: 'gemini-1.5-pro', // Using a more powerful model for the final, complex summary
         contents: prompt,
     });
 
