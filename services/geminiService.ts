@@ -32,6 +32,11 @@ export interface IdealSelfAnswers {
 }
 
 export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Promise<OnboardingAnalysis> {
+    // Check if AI client is available
+    if (!ai) {
+        throw new Error("Gemini API key not configured. Please ensure VITE_GEMINI_API_KEY is set in your environment.");
+    }
+
     const prompt = `
         You are an empathetic, mindful identity coach. Analyze the user's answers to the onboarding questions to determine their current arc in their personal transformation journey.
 
@@ -60,28 +65,38 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
         }
     `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    phase: { type: Type.STRING, enum: ['healing', 'unstuck', 'healed'] },
-                    summary: { type: Type.STRING },
-                    encouragement: { type: Type.STRING }
-                },
-                required: ['phase', 'summary', 'encouragement']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        phase: { type: Type.STRING, enum: ['healing', 'unstuck', 'healed'] },
+                        summary: { type: Type.STRING },
+                        encouragement: { type: Type.STRING }
+                    },
+                    required: ['phase', 'summary', 'encouragement']
+                }
             }
-        }
-    });
+        });
 
-    const jsonText = response.text.trim();
-    return JSON.parse(jsonText) as OnboardingAnalysis;
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText) as OnboardingAnalysis;
+    } catch (error) {
+        console.error("Error analyzing onboarding answers:", error);
+        throw new Error(`Failed to analyze onboarding: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Promise<string> {
+    // Check if AI client is available
+    if (!ai) {
+        throw new Error("Gemini API key not configured. Please ensure VITE_GEMINI_API_KEY is set in your environment.");
+    }
+
     const prompt = `
         You are a poetic, emotionally intelligent writer. Based on the user's answers about their Ideal Self, compile them into a beautiful, first-person paragraph that reads like a "Manifesto."
 
@@ -92,15 +107,20 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
         - Boundaries or behaviors they practice: "${answers.boundaries}"
         - How they treat themselves and others: "${answers.treatmentOfSelf}"
 
-        Craft a single, poetic paragraph. Start with a phrase like "I am becoming someone who..." or "The version of me I’m stepping into..." Weave their answers into a cohesive and inspiring vision of the person they are growing into. The tone should be gentle, empowering, and affirmative.
+        Craft a single, poetic paragraph. Start with a phrase like "I am becoming someone who..." or "The version of me I'm stepping into..." Weave their answers into a cohesive and inspiring vision of the person they are growing into. The tone should be gentle, empowering, and affirmative.
     `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: prompt,
-    });
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: prompt,
+        });
 
-    return response.text.trim();
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating manifesto:", error);
+        throw new Error(`Failed to generate manifesto: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 
