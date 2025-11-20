@@ -47,11 +47,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       setAnalysisResult(result);
     } catch (error) {
       console.error("Error analyzing onboarding answers:", error);
+      // Use readiness scale to determine fallback arc
+      let fallbackArc: 'healing' | 'unstuck' | 'healed' = 'unstuck';
+      if (answers.readinessScale <= 5) fallbackArc = 'healing';
+      else if (answers.readinessScale >= 8) fallbackArc = 'healed';
+
       setAnalysisResult({
-          phase: 'unstuck', // Safe default
-          summary: 'There was a small issue connecting, but that\'s okay. We can begin from a place of gentle reconstruction.',
+          phase: fallbackArc,
+          summary: 'There was a small issue connecting, but that\'s okay. Based on your responses, we\'ll begin your journey from here.',
           encouragement: 'Every journey begins with a single step forward.'
       });
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
