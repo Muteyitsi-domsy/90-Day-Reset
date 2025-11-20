@@ -53,8 +53,8 @@ const Menu: React.FC<MenuProps> = ({
 
     if (!isOpen) return null;
 
-    // Sort reports: Monthly first, then Weekly. Within type, newest first.
-    const sortedReports = [...reports].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Sort reports by day (newest first) to maintain consistent ordering
+    const sortedReports = [...reports].sort((a, b) => b.day - a.day);
     const hasUnread = userProfile?.lastViewedReportDate 
         ? sortedReports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
         : sortedReports.length > 0;

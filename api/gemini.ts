@@ -47,23 +47,40 @@ async function getSummary(data: any) {
     const isMonthly = data.periodType === 'month';
     const periodLabel = isMonthly ? `Month ${data.period}` : `Week ${data.period}`;
 
-    // --- GEMINI PROMPT TEMPLATE ---
-    const systemInstruction = `You are an empathetic and insightful identity coach. Your task is to analyze a user's journal entries from the past ${data.periodType} and generate a structured, compassionate summary. The user is on a 90-day personal transformation journey. Your output must be a single, clean JSON object matching the provided schema.`;
+    // --- GEMINI PROMPT TEMPLATE (Reflective Mirror Approach) ---
+    const systemInstruction = `You are a reflective mirror for personal journal entries. Your role is to observe and reflect patterns back to the user WITHOUT judgment, diagnosis, advice, or encouragement. You do not coach, suggest, or prescribe. You simply reveal what is present in the writing.
+
+CRITICAL RULES:
+- NEVER use diagnostic or clinical language
+- NEVER give advice or action items
+- NEVER use phrases like "you should", "consider", "try to"
+- NEVER judge entries as good/bad, healthy/unhealthy
+- Use neutral, observational language: "appeared", "emerged", "was present"
+- Describe tensions as "a pull between X and Y" not "you struggled with"
+- Let the user's own words carry the weight - quote them directly
+- End with synthesis, not prescription
+
+Your output must be a single, clean JSON object matching the provided schema.`;
 
     const userPrompt = `
-        Please analyze the following data for ${data.userProfile.name}'s ${isMonthly ? 'monthly' : 'weekly'} summary.
+        Reflect the following journal data for ${data.userProfile.name}'s ${isMonthly ? 'monthly' : 'weekly'} summary.
 
-        **User Context:**
+        **Context:**
         - Arc: ${data.userProfile.arc}
         - Ideal Self Manifesto: "${data.userProfile.idealSelfManifesto}"
         - Period: ${periodLabel}
         - Date Range: ${data.dateRange}
 
-        **Journal Entries & Insights:**
-        ${data.entries.map((e: any) => `[${e.type.toUpperCase()} on ${e.date}]: ${e.rawText}`).join('\n')}
+        **Journal Entries:**
+        ${data.entries.map((e: any, i: number) => `[Day ${e.day || i + 1}, ${e.type.toUpperCase()}]: ${e.rawText}`).join('\n\n')}
 
         **Instructions:**
-        Based on all the provided context and entries, generate a JSON object that synthesizes the user's growth and challenges.
+        Analyze these entries and generate a JSON object that mirrors back what appeared, without judgment or advice. Focus on:
+        1. What themes dominated this period
+        2. What patterns repeated or shifted
+        3. What tensions were present (frame neutrally as "a pull between...")
+        4. Direct quotes that reveal the journey
+        5. A poetic synthesis that weaves it together without prescribing next steps
     `;
 
     // --- SAFE SERVER-SIDE GEMINI CALL ---
@@ -76,26 +93,49 @@ async function getSummary(data: any) {
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    title: { type: Type.STRING, description: `A creative title for this ${data.periodType}'s summary` },
+                    title: { type: Type.STRING, description: "A poetic, evocative title for this period (e.g., 'The Week of Quiet Unfolding')" },
                     period: { type: Type.NUMBER },
                     dateRange: { type: Type.STRING },
-                    stage: { type: Type.STRING, description: "A short descriptor of the current stage/arc" },
-                    themes: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-5 bullet-point themes." },
-                    challenges: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2 bullet-point challenges or blocks." },
-                    growth: {
+                    dominantThemes: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "3-5 themes that emerged, phrased as observations (e.g., 'Grief finding its voice', 'Permission to be still')"
+                    },
+                    emotionalTerrain: {
+                        type: Type.STRING,
+                        description: "2-3 sentences describing the emotional texture of this period. Use neutral, observational language."
+                    },
+                    recurringThreads: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "2-3 patterns that appeared multiple times (e.g., 'References to childhood', 'The word enough appearing in multiple contexts')"
+                    },
+                    shifts: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "2-3 observable changes from earlier in the journey (e.g., 'Earlier entries focused on X; this period moved toward Y')"
+                    },
+                    mirrors: {
                         type: Type.ARRAY,
                         items: {
                             type: Type.OBJECT,
                             properties: {
-                                observation: { type: Type.STRING },
-                                evidence: { type: Type.STRING, description: "A brief, direct quote from an entry that supports the observation." }
+                                pattern: { type: Type.STRING, description: "Brief label for what this excerpt reflects" },
+                                excerpt: { type: Type.STRING, description: "Direct quote from their entry" },
+                                day: { type: Type.NUMBER, description: "Which day this came from" }
                             }
                         },
-                        description: "3-4 concise observations of growth."
+                        description: "4-5 significant excerpts that reveal the journey. Use their exact words."
                     },
-                    notableExcerpts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2-3 impactful user-written quotes." },
-                    actionPlan: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 bite-sized steps for the next period." },
-                    encouragement: { type: Type.STRING, description: "A short, warm, empowering closing paragraph." }
+                    tensions: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "2-3 areas where opposing forces appeared, phrased neutrally (e.g., 'A pull between wanting to heal quickly and honoring the pace that feels true')"
+                    },
+                    synthesis: {
+                        type: Type.STRING,
+                        description: "2-3 sentences weaving the period together. End with observation, NOT advice. Do not tell them what to do next."
+                    }
                 },
             }
         }

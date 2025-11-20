@@ -105,6 +105,11 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
 
 
 export async function analyzeJournalEntry(entryText: string): Promise<EntryAnalysis> {
+    // Check if AI client is available
+    if (!ai) {
+        throw new Error("Gemini API key not configured. Daily insights are unavailable.");
+    }
+
     const prompt = `
     You are an empathetic, mindful AI assistant. Your role is to analyze a user's journal entry and provide a synthesis for their reflection. Do not be conversational. Your output must be a pure JSON object.
 
@@ -128,36 +133,46 @@ export async function analyzeJournalEntry(entryText: string): Promise<EntryAnaly
     }
     `;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    summary: { type: Type.STRING },
-                    insights: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    microAction: { type: Type.STRING }
-                },
-                required: ['summary', 'insights', 'tags', 'microAction']
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        summary: { type: Type.STRING },
+                        insights: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        microAction: { type: Type.STRING }
+                    },
+                    required: ['summary', 'insights', 'tags', 'microAction']
+                }
             }
-        }
-    });
+        });
 
-    const jsonText = response.text.trim();
-    return JSON.parse(jsonText) as EntryAnalysis;
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText) as EntryAnalysis;
+    } catch (error) {
+        console.error("Error in analyzeJournalEntry:", error);
+        throw new Error(`Failed to analyze journal entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 export async function generateFinalSummary(profile: UserProfile, journalHistory: JournalEntry[], hunchHistory: JournalEntry[]): Promise<string> {
+    // Check if AI client is available
+    if (!ai) {
+        throw new Error("Gemini API key not configured. Final summary generation is unavailable.");
+    }
+
     const historyText = journalHistory.map(entry => `Day ${entry.day}: ${entry.rawText}`).join('\n\n');
 
     let hunchTextSection = '';
     if (hunchHistory && hunchHistory.length > 0) {
         const hunchEntriesText = hunchHistory.map(h => `Recorded on Day ${h.day}: ${h.rawText}`).join('\n\n');
         hunchTextSection = `
-You also have access to the user's private "Intuitive Insights"—a collection of dreams and hunches they recorded. Use these to add color and depth to the summary.
+You also have access to the user's private "Intuitive Insights"—a collection of dreams and hunches they recorded.
 """
 ${hunchEntriesText}
 """
@@ -168,8 +183,24 @@ ${hunchEntriesText}
         ? `Their intention for the journey was: "${profile.intentions}"`
         : '';
 
+    // Arc-specific reflection guidance
+    const arcReflection = {
+        healing: "What was recognized, what was released, what softened over these 90 days",
+        unstuck: "What beliefs shifted, what momentum built, what was shed over these 90 days",
+        healed: "What was embodied, what became natural, what expanded over these 90 days"
+    };
+
     const prompt = `
-        You are a reflective narrator concluding the user's 90-Day Identity Reset journey.
+        You are a reflective mirror concluding a user's 90-Day Identity Reset journey. Your role is to observe and reflect—NOT to coach, advise, or prescribe. You do not give forward guidance or tell them what to do next. You simply reveal what the 90 days contained.
+
+        CRITICAL RULES:
+        - NO advice or suggestions for the future
+        - NO phrases like "consider", "try to", "remember to"
+        - NO forward guidance paragraphs
+        - Use neutral, observational language
+        - Let their own words carry the weight
+        - End with reflection, not prescription
+
         The user's name is ${profile.name}.
         They started in the "${profile.arc}" arc.
         ${intentionSection}
@@ -181,33 +212,42 @@ ${hunchEntriesText}
         """
         ${hunchTextSection}
 
-        Your task is to use this complete history to write a personalized closing summary.
-        The response MUST be under 300 words, poetic yet grounded, and follow this exact structure:
+        Generate a reflective summary following this EXACT structure (400 words max):
 
-        **Title:** Your 90-Day Evolution
+        **[PERSONALIZED TITLE BASED ON THEIR JOURNEY - not generic]**
 
-        **Paragraph 1:** A warm congratulations to ${profile.name}, acknowledging their commitment and the courage it takes to show up for oneself consistently.
+        **THE BEGINNING**
+        2-3 sentences on where they started—their arc, their intention (if provided), what was present in the early entries. Observational, not judgmental.
 
-        **Paragraph 2:** A summary of the key themes of growth you detected in their reflections. Mention specific mindset shifts, new habits, or changes in self-perception that are evident from their entries. ${profile.intentions ? "Briefly touch upon how their journey reflects their initial intention." : ""} ${hunchHistory.length > 0 ? "If you see connections, briefly weave in themes from their intuitive insights, noting how their inner knowing might have guided their conscious journey." : ""}
+        **THE TERRAIN**
+        3-4 sentences on the major themes that moved through the 90 days. What kept appearing? What evolved? Reference specific phases or turning points. Use their own words as evidence where possible.
 
-        **Paragraph 3:** A reflection on their specific transformation arc, based on their starting arc:
-        - If their arc was "healing": Highlight their journey of emotional release, self-compassion, and self-forgiveness.
-        - If their arc was "unstuck": Highlight how they regained momentum, challenged old beliefs, and built new foundations.
-        - If their arc was "healed": Highlight how they moved into a state of embodiment, effortless alignment, and living as their Ideal Self.
+        **THE ARC**
+        2-3 sentences specific to their arc: ${arcReflection[profile.arc]}. Describe what was observed, not what was achieved.
 
-        **Paragraph 4:** Gentle forward guidance. Remind them that growth is a spiral, not a straight line. Invite them to rest and integrate, or to begin a new cycle when they feel ready.
+        **THE THREADS**
+        2-3 sentences weaving together recurring elements—images, words, or themes that appeared across the journey.${hunchHistory.length > 0 ? " Note any patterns between conscious entries and intuitive insights." : ""}
 
-        **Final Line:** A single, powerful, one-line affirmation spoken in their Ideal-Self's voice, derived from their manifesto.
+        **THE MIRRORS**
+        3-4 direct quotes from their entries across different phases of the journey (early, middle, late), showing the arc through their own words. Format each quote on its own line with the day number.
 
-        The entire response should be a single block of text formatted with Markdown for the title (using **).
+        **THE CLOSING**
+        2-3 sentences of synthesis—not advice, not encouragement, just a poetic observation of what 90 days held. End with a single line from or inspired by their Ideal Self Manifesto, presented as a reflection of who they have been becoming. Do NOT tell them what to do next.
+
+        Format with Markdown: Use ** for section headers. The response should read as a cohesive narrative, not a list.
     `;
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-1.5-pro', // Using a more powerful model for the final, complex summary
-        contents: prompt,
-    });
 
-    return response.text.trim();
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-pro', // Using a more powerful model for the final, complex summary
+            contents: prompt,
+        });
+
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating final summary:", error);
+        throw new Error(`Failed to generate final summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 

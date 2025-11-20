@@ -58,18 +58,35 @@ export interface SummaryData {
     title: string;
     period: number; // Week number or Month number
     dateRange: string;
-    stage: string;
-    themes: string[];
-    challenges: string[];
-    growth: { observation: string; evidence: string }[];
+
+    // THE LANDSCAPE - What appeared
+    dominantThemes: string[];
+    emotionalTerrain: string;
+
+    // THE PATTERNS - What repeated or shifted
+    recurringThreads: string[];
+    shifts: string[];
+
+    // THE EVIDENCE - User's own words
+    mirrors: {
+        pattern: string;
+        excerpt: string;
+        day: number;
+    }[];
+
+    // THE TENSIONS - Neutral observation of friction
+    tensions: string[];
+
+    // THE CLOSING - Poetic reflection
+    synthesis: string;
+
+    // METADATA
     metrics: {
         entries: number;
         streak: number;
         completionRate: string;
     };
-    notableExcerpts: string[];
-    actionPlan: string[];
-    encouragement: string;
+
     crisisDetected?: boolean;
 }
 

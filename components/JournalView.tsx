@@ -153,7 +153,15 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
 
   const sortedEntries = useMemo(() => {
-    return allEntries.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Sort by day (descending) first, then by creation timestamp (id) for entries on the same day
+    // This ensures entries maintain their original order even after edits
+    return allEntries.slice().sort((a, b) => {
+      if (b.day !== a.day) {
+        return b.day - a.day; // Newer days first
+      }
+      // For same day, sort by creation time (id is ISO timestamp)
+      return new Date(b.id).getTime() - new Date(a.id).getTime();
+    });
   }, [allEntries]);
   
   const mostRecentDailyEntry = useMemo(() => {

@@ -572,7 +572,7 @@ const App: React.FC = () => {
             
             const todayEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
             if (!todayEntry) {
-                 const promptText = getDailyPrompt(userProfile, day, journalEntries.length);
+                 const promptText = getDailyPrompt(userProfile, day, journalEntries);
                  setDailyPrompt({ text: promptText, isMilestone: false });
             }
             setIsLoading(false);
