@@ -1,6 +1,50 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Settings, HunchType } from '../types';
+
+// Web Speech API types
+interface SpeechRecognitionEvent extends Event {
+    results: SpeechRecognitionResultList;
+    resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+    length: number;
+    item(index: number): SpeechRecognitionResult;
+    [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+    length: number;
+    item(index: number): SpeechRecognitionAlternative;
+    [index: number]: SpeechRecognitionAlternative;
+    isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    start(): void;
+    stop(): void;
+    abort(): void;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    onerror: ((event: Event) => void) | null;
+    onend: (() => void) | null;
+    onstart: (() => void) | null;
+}
+
+declare global {
+    interface Window {
+        SpeechRecognition: new () => SpeechRecognition;
+        webkitSpeechRecognition: new () => SpeechRecognition;
+    }
+}
 
 interface JournalInputModalProps {
     prompt: string | null | undefined;
@@ -20,9 +64,101 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
+const MicrophoneIcon: React.FC<{ className: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+    </svg>
+);
+
+const StopIcon: React.FC<{ className: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z" />
+    </svg>
+);
+
 const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, onClose, isSaving, initialText, settings, entryType, isEditMode, initialHunchType }) => {
     const [text, setText] = useState(initialText || '');
     const [hunchType, setHunchType] = useState<HunchType>(initialHunchType || 'hunch');
+    const [isListening, setIsListening] = useState(false);
+    const [interimTranscript, setInterimTranscript] = useState('');
+    const [isVoiceSupported, setIsVoiceSupported] = useState(false);
+    const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+    // Check for Web Speech API support
+    useEffect(() => {
+        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+        setIsVoiceSupported(!!SpeechRecognitionAPI);
+    }, []);
+
+    // Setup speech recognition
+    useEffect(() => {
+        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognitionAPI) return;
+
+        const recognition = new SpeechRecognitionAPI();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            setIsListening(true);
+        };
+
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+            let finalTranscript = '';
+            let interim = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interim += transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                setText(prev => {
+                    const needsSpace = prev.length > 0 && !prev.endsWith(' ') && !prev.endsWith('\n');
+                    return prev + (needsSpace ? ' ' : '') + finalTranscript;
+                });
+            }
+            setInterimTranscript(interim);
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event);
+            setIsListening(false);
+            setInterimTranscript('');
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+            setInterimTranscript('');
+        };
+
+        recognitionRef.current = recognition;
+
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.abort();
+            }
+        };
+    }, []);
+
+    const toggleVoiceInput = () => {
+        if (!recognitionRef.current) return;
+
+        if (isListening) {
+            recognitionRef.current.stop();
+        } else {
+            try {
+                recognitionRef.current.start();
+            } catch (error) {
+                console.error('Failed to start speech recognition:', error);
+            }
+        }
+    };
 
     const handleSave = (reanalyze: boolean) => {
         if (text.trim()) {
@@ -137,14 +273,42 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
                     <div className="max-w-3xl w-full h-full flex flex-col pt-12">
                         <h2 className="text-xl md:text-2xl font-light text-[var(--text-secondary)] mb-6 text-center whitespace-pre-wrap">{prompt || 'Loading...'}</h2>
                         {renderHunchTypeSelector()}
-                        <textarea
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                            placeholder="Write freely..."
-                            className="w-full flex-1 bg-[var(--card-bg)] backdrop-blur-sm border border-[var(--card-border)] rounded-xl p-4 text-[var(--text-primary)] placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition-all resize-none text-lg font-light leading-relaxed"
-                            disabled={isSaving || !prompt}
-                            autoFocus
-                        />
+                        <div className="relative flex-1 flex flex-col">
+                            <textarea
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder={isListening ? "Listening... speak now" : "Write freely or tap the mic to speak..."}
+                                className={`w-full flex-1 bg-[var(--card-bg)] backdrop-blur-sm border rounded-xl p-4 pr-14 text-[var(--text-primary)] placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition-all resize-none text-lg font-light leading-relaxed ${isListening ? 'border-red-400 dark:border-red-500' : 'border-[var(--card-border)]'}`}
+                                disabled={isSaving || !prompt}
+                                autoFocus
+                            />
+                            {/* Voice input button */}
+                            {isVoiceSupported && (
+                                <button
+                                    type="button"
+                                    onClick={toggleVoiceInput}
+                                    disabled={isSaving || !prompt}
+                                    className={`absolute top-3 right-3 p-2 rounded-full transition-all ${
+                                        isListening
+                                            ? 'bg-red-500 text-white animate-pulse'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    aria-label={isListening ? 'Stop recording' : 'Start voice input'}
+                                >
+                                    {isListening ? (
+                                        <StopIcon className="w-5 h-5" />
+                                    ) : (
+                                        <MicrophoneIcon className="w-5 h-5" />
+                                    )}
+                                </button>
+                            )}
+                            {/* Interim transcript preview */}
+                            {interimTranscript && (
+                                <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-500 dark:text-gray-400 italic">
+                                    {interimTranscript}...
+                                </div>
+                            )}
+                        </div>
                         {renderButtons()}
                     </div>
                 </main>
