@@ -25,7 +25,7 @@ export interface Settings {
   theme: 'default' | 'ocean' | 'sunset' | 'forest';
   themeMode: 'light' | 'dark' | 'system';
   pin?: string;
-  
+
   // Granular report settings
   dailyAnalysis: boolean;
   weeklyReports: boolean;
@@ -33,6 +33,12 @@ export interface Settings {
 
   includeHunchesInFinalSummary: boolean;
   finalSummaryIncludedTypes?: HunchType[]; // Specific types to include
+
+  // Daily ritual settings
+  ritualName?: string;
+  ritualDuration?: number; // in minutes
+  ritualCompletedToday?: boolean;
+  lastRitualDate?: string; // ISO date to reset completion daily
 }
 
 export interface OnboardingAnalysis {

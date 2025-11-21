@@ -408,15 +408,46 @@ const shuffle = <T,>(array: T[]): T[] => {
 export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journalEntries: JournalEntry[]): string {
     const { arc, intentions } = userProfile;
 
+    // Get Day 1 entry for "Then & Now" reflections
+    const dayOneEntry = journalEntries.find(e => e.day === 1 && e.type === 'daily');
+    const dayOneText = dayOneEntry?.rawText || null;
+
     // Special milestone prompts (these are unique and only shown once)
+
+    // Day 30: First "Then & Now" reflection
+    if (dayIndex === 30 && dayOneText) {
+        const milestonePrompt = `You've completed your first month. Here's what you wrote on Day 1:\n\n"${dayOneText.slice(0, 500)}${dayOneText.length > 500 ? '...' : ''}"\n\nThis was where you started. Reading this now, what do you notice? What would you tell that version of yourself?`;
+        addToPromptsHistory(milestonePrompt);
+        return milestonePrompt;
+    }
+
     if (dayIndex === 45 && intentions) {
         const milestonePrompt = `You've reached the halfway point of your journey. Your intention was:\n\n"${intentions}"\n\nTake a moment to reflect on this. How do you feel in relation to this intention today? Are you closer, further, or has the intention itself shifted?`;
         addToPromptsHistory(milestonePrompt);
         return milestonePrompt;
     }
 
-    if (dayIndex === 90 && intentions) {
-        const finalPrompt = `You've arrived at your final daily reflection. Your journey began with the intention:\n\n"${intentions}"\n\nLooking back over the past 90 days, what significance has this journey had on your life and your relationship with this intention, regardless of whether you feel you've "achieved" it?`;
+    // Day 60: Second "Then & Now" reflection
+    if (dayIndex === 60 && dayOneText) {
+        const milestonePrompt = `Two months in. Let's revisit where you began. On Day 1, you wrote:\n\n"${dayOneText.slice(0, 500)}${dayOneText.length > 500 ? '...' : ''}"\n\nHow has your relationship with these words changed? What growth do you see in the space between then and now?`;
+        addToPromptsHistory(milestonePrompt);
+        return milestonePrompt;
+    }
+
+    // Day 90: Final "Then & Now" reflection
+    if (dayIndex === 90) {
+        let finalPrompt = `You've arrived at your final daily reflection.`;
+
+        if (dayOneText) {
+            finalPrompt += `\n\nOn Day 1, you wrote:\n\n"${dayOneText.slice(0, 500)}${dayOneText.length > 500 ? '...' : ''}"`;
+        }
+
+        if (intentions) {
+            finalPrompt += `\n\nYour intention was: "${intentions}"`;
+        }
+
+        finalPrompt += `\n\nLooking back over the past 90 days, what has this journey meant to you? What wisdom would you offer to someone just beginning?`;
+
         addToPromptsHistory(finalPrompt);
         return finalPrompt;
     }

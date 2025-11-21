@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Settings, UserProfile, JournalEntry, HunchType } from '../types';
 
 interface MenuProps {
@@ -33,6 +33,41 @@ const Menu: React.FC<MenuProps> = ({
     const [pinError, setPinError] = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    // Daily Ritual state
+    const [isEditingRitual, setIsEditingRitual] = useState(false);
+    const [ritualNameInput, setRitualNameInput] = useState(settings.ritualName || '');
+    const [ritualDurationInput, setRitualDurationInput] = useState(settings.ritualDuration?.toString() || '');
+    const [timerRunning, setTimerRunning] = useState(false);
+    const [timerSeconds, setTimerSeconds] = useState(0);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Check if ritual was completed today (reset daily)
+    const today = new Date().toISOString().split('T')[0];
+    const ritualCompletedToday = settings.lastRitualDate === today && settings.ritualCompletedToday;
+
+    // Timer effect
+    useEffect(() => {
+        if (timerRunning && settings.ritualDuration) {
+            const targetSeconds = settings.ritualDuration * 60;
+            if (timerSeconds < targetSeconds) {
+                timerRef.current = setTimeout(() => {
+                    setTimerSeconds(prev => prev + 1);
+                }, 1000);
+            } else {
+                setTimerRunning(false);
+            }
+        }
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, [timerRunning, timerSeconds, settings.ritualDuration]);
+
+    // Reset timer inputs when settings change
+    useEffect(() => {
+        setRitualNameInput(settings.ritualName || '');
+        setRitualDurationInput(settings.ritualDuration?.toString() || '');
+    }, [settings.ritualName, settings.ritualDuration]);
+
     const toggleSection = (section: string) => {
         setOpenSection(openSection === section ? null : section);
     };
@@ -49,6 +84,46 @@ const Menu: React.FC<MenuProps> = ({
 
     const handleSyncBackup = () => {
         onExportData(); // Reusing export as backup for V1
+    };
+
+    // Daily Ritual handlers
+    const handleSaveRitual = () => {
+        const duration = ritualDurationInput ? parseInt(ritualDurationInput, 10) : undefined;
+        onUpdateSettings({
+            ...settings,
+            ritualName: ritualNameInput || undefined,
+            ritualDuration: duration && duration > 0 ? duration : undefined,
+        });
+        setIsEditingRitual(false);
+    };
+
+    const handleCompleteRitual = () => {
+        onUpdateSettings({
+            ...settings,
+            ritualCompletedToday: true,
+            lastRitualDate: today,
+        });
+        setTimerRunning(false);
+        setTimerSeconds(0);
+    };
+
+    const handleStartTimer = () => {
+        if (!timerRunning) {
+            setTimerRunning(true);
+        } else {
+            setTimerRunning(false);
+        }
+    };
+
+    const handleResetTimer = () => {
+        setTimerRunning(false);
+        setTimerSeconds(0);
+    };
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     if (!isOpen) return null;
@@ -81,6 +156,140 @@ const Menu: React.FC<MenuProps> = ({
                         {openSection === 'intention' && (
                             <div className="p-4 bg-[var(--card-bg)] text-[var(--text-primary)] font-light italic border-t border-gray-200 dark:border-gray-700">
                                 "{userProfile?.intentions || 'No intention set yet.'}"
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Daily Ritual */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <button onClick={() => toggleSection('ritual')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium text-[var(--text-primary)]">Daily Ritual</span>
+                                {ritualCompletedToday && <span className="text-xs text-green-600 dark:text-green-400">Done</span>}
+                            </div>
+                            <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'ritual' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openSection === 'ritual' && (
+                            <div className="p-4 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700">
+                                {!settings.ritualName && !isEditingRitual ? (
+                                    // No ritual set - show setup prompt
+                                    <div className="text-center space-y-3">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Define your daily ritual to anchor your practice.</p>
+                                        <button
+                                            onClick={() => setIsEditingRitual(true)}
+                                            className="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-primary-hover)]"
+                                        >
+                                            Set Up Ritual
+                                        </button>
+                                    </div>
+                                ) : isEditingRitual ? (
+                                    // Edit mode
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Ritual Name</label>
+                                            <input
+                                                type="text"
+                                                value={ritualNameInput}
+                                                onChange={(e) => setRitualNameInput(e.target.value)}
+                                                placeholder="e.g., Morning Meditation"
+                                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-transparent text-[var(--text-primary)]"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Duration (minutes, optional)</label>
+                                            <input
+                                                type="number"
+                                                value={ritualDurationInput}
+                                                onChange={(e) => setRitualDurationInput(e.target.value)}
+                                                placeholder="e.g., 10"
+                                                min="1"
+                                                max="120"
+                                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-transparent text-[var(--text-primary)]"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={handleSaveRitual}
+                                                className="flex-1 py-2 bg-[var(--accent-primary)] text-white rounded-md text-sm font-medium"
+                                            >
+                                                Save
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setIsEditingRitual(false);
+                                                    setRitualNameInput(settings.ritualName || '');
+                                                    setRitualDurationInput(settings.ritualDuration?.toString() || '');
+                                                }}
+                                                className="flex-1 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-sm"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // Display mode with timer
+                                    <div className="space-y-4">
+                                        <div className="text-center">
+                                            <h4 className="font-medium text-[var(--text-primary)]">{settings.ritualName}</h4>
+                                            {settings.ritualDuration && (
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">{settings.ritualDuration} minutes</p>
+                                            )}
+                                        </div>
+
+                                        {/* Timer display */}
+                                        {settings.ritualDuration && (
+                                            <div className="text-center">
+                                                <div className="text-3xl font-mono text-[var(--text-primary)] mb-3">
+                                                    {formatTime(timerSeconds)} / {formatTime(settings.ritualDuration * 60)}
+                                                </div>
+                                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+                                                    <div
+                                                        className="bg-[var(--accent-primary)] h-2 rounded-full transition-all duration-1000"
+                                                        style={{ width: `${Math.min(100, (timerSeconds / (settings.ritualDuration * 60)) * 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                                <div className="flex gap-2 justify-center">
+                                                    <button
+                                                        onClick={handleStartTimer}
+                                                        className={`px-4 py-2 rounded-md text-sm font-medium ${timerRunning ? 'bg-amber-500 text-white' : 'bg-[var(--accent-primary)] text-white'}`}
+                                                    >
+                                                        {timerRunning ? 'Pause' : timerSeconds > 0 ? 'Resume' : 'Start'}
+                                                    </button>
+                                                    {timerSeconds > 0 && (
+                                                        <button
+                                                            onClick={handleResetTimer}
+                                                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-sm"
+                                                        >
+                                                            Reset
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Complete button */}
+                                        {!ritualCompletedToday ? (
+                                            <button
+                                                onClick={handleCompleteRitual}
+                                                className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium"
+                                            >
+                                                Mark as Complete
+                                            </button>
+                                        ) : (
+                                            <div className="text-center py-2 text-green-600 dark:text-green-400 text-sm font-medium">
+                                                Completed for today
+                                            </div>
+                                        )}
+
+                                        {/* Edit button */}
+                                        <button
+                                            onClick={() => setIsEditingRitual(true)}
+                                            className="w-full py-2 text-xs text-gray-500 hover:text-[var(--text-primary)]"
+                                        >
+                                            Edit Ritual
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
