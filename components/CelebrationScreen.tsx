@@ -1,13 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Confetti from './Confetti';
+import { UserProfile, JournalEntry, Settings } from '../types';
+import { generateJourneyKeepsake } from '../services/pdfKeepsakeService';
 
 interface CelebrationScreenProps {
   completionSummary: string;
+  userProfile: UserProfile;
+  journalEntries: JournalEntry[];
+  settings: Settings;
   onRestart: () => void;
   onExport: () => void;
 }
 
-const CelebrationScreen: React.FC<CelebrationScreenProps> = ({ completionSummary, onRestart, onExport }) => {
+const CelebrationScreen: React.FC<CelebrationScreenProps> = ({
+  completionSummary,
+  userProfile,
+  journalEntries,
+  settings,
+  onRestart,
+  onExport
+}) => {
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const handleGenerateKeepsake = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      await generateJourneyKeepsake({
+        userProfile,
+        journalEntries,
+        settings,
+        finalSummary: completionSummary
+      });
+    } catch (error) {
+      console.error('Error generating PDF keepsake:', error);
+      alert('There was an error generating your keepsake. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
   // The title is part of the layout, so we remove it from the summary text.
   const summaryContent = completionSummary.replace(/\*\*Your 90-Day Evolution\*\*/gi, '').trim();
 
@@ -23,13 +53,22 @@ const CelebrationScreen: React.FC<CelebrationScreenProps> = ({ completionSummary
           <p className="text-[var(--text-primary)] whitespace-pre-line font-light leading-relaxed">{summaryContent}</p>
         </div>
 
-        <div className="mt-8 flex gap-4 justify-center">
-          <button onClick={onRestart} className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors duration-300">
-            🌱 Start a New Cycle
+        <div className="mt-8 flex flex-col gap-4 items-center">
+          <button
+            onClick={handleGenerateKeepsake}
+            disabled={isGeneratingPDF}
+            className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed w-64"
+          >
+            {isGeneratingPDF ? '✨ Creating...' : '📖 Download Journey Keepsake'}
           </button>
-          <button onClick={onExport} className="border border-emerald-600 text-emerald-600 px-6 py-3 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors duration-300">
-            📄 Download Summary
-          </button>
+          <div className="flex gap-4">
+            <button onClick={onRestart} className="border border-emerald-600 text-emerald-600 px-6 py-3 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors duration-300">
+              🌱 Start a New Cycle
+            </button>
+            <button onClick={onExport} className="border border-gray-400 text-gray-600 dark:text-gray-400 px-6 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors duration-300">
+              💾 Export Data
+            </button>
+          </div>
         </div>
       </div>
       <style>{`

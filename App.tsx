@@ -716,10 +716,13 @@ const App: React.FC = () => {
         return <PinLockScreen correctPin={settings.pin!} onUnlock={() => setIsLocked(false)} />;
     }
 
-    if (isJourneyOver && finalSummaryText) {
+    if (isJourneyOver && finalSummaryText && userProfile) {
       return (
         <CelebrationScreen
           completionSummary={finalSummaryText}
+          userProfile={userProfile}
+          journalEntries={journalEntries}
+          settings={settings}
           onRestart={restartJourney}
           onExport={exportData}
         />
