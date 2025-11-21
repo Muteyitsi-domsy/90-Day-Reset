@@ -83,6 +83,7 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
     const [interimTranscript, setInterimTranscript] = useState('');
     const [isVoiceSupported, setIsVoiceSupported] = useState(false);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
+    const shouldKeepListeningRef = useRef(false);
 
     // Check for Web Speech API support
     useEffect(() => {
@@ -96,7 +97,7 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
         if (!SpeechRecognitionAPI) return;
 
         const recognition = new SpeechRecognitionAPI();
-        recognition.continuous = true;
+        recognition.continuous = false; // Use non-continuous mode to avoid duplicates
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
@@ -108,38 +109,52 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
             let finalTranscript = '';
             let interim = '';
 
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
+            for (let i = 0; i < event.results.length; i++) {
+                const result = event.results[i];
+                if (result.isFinal) {
+                    finalTranscript += result[0].transcript;
                 } else {
-                    interim += transcript;
+                    interim += result[0].transcript;
                 }
             }
+
+            setInterimTranscript(interim);
 
             if (finalTranscript) {
                 setText(prev => {
                     const needsSpace = prev.length > 0 && !prev.endsWith(' ') && !prev.endsWith('\n');
                     return prev + (needsSpace ? ' ' : '') + finalTranscript;
                 });
+                setInterimTranscript('');
             }
-            setInterimTranscript(interim);
         };
 
         recognition.onerror = (event) => {
             console.error('Speech recognition error:', event);
             setIsListening(false);
             setInterimTranscript('');
+            shouldKeepListeningRef.current = false;
         };
 
         recognition.onend = () => {
-            setIsListening(false);
+            // Auto-restart if user wants to keep listening
+            if (shouldKeepListeningRef.current && recognitionRef.current) {
+                try {
+                    recognitionRef.current.start();
+                } catch (e) {
+                    setIsListening(false);
+                    shouldKeepListeningRef.current = false;
+                }
+            } else {
+                setIsListening(false);
+            }
             setInterimTranscript('');
         };
 
         recognitionRef.current = recognition;
 
         return () => {
+            shouldKeepListeningRef.current = false;
             if (recognitionRef.current) {
                 recognitionRef.current.abort();
             }
@@ -150,12 +165,15 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
         if (!recognitionRef.current) return;
 
         if (isListening) {
+            shouldKeepListeningRef.current = false;
             recognitionRef.current.stop();
         } else {
+            shouldKeepListeningRef.current = true;
             try {
                 recognitionRef.current.start();
             } catch (error) {
                 console.error('Failed to start speech recognition:', error);
+                shouldKeepListeningRef.current = false;
             }
         }
     };
