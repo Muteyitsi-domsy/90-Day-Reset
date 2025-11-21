@@ -67,7 +67,7 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -112,7 +112,7 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
         });
 
@@ -155,7 +155,7 @@ export async function analyzeJournalEntry(entryText: string): Promise<EntryAnaly
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -259,7 +259,7 @@ ${hunchEntriesText}
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-pro', // Using a more powerful model for the final, complex summary
+            model: 'gemini-2.0-flash', // Using a powerful model for the final, complex summary
             contents: prompt,
         });
 

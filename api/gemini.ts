@@ -85,7 +85,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
 
     // --- SAFE SERVER-SIDE GEMINI CALL ---
     const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         config: {
             systemInstruction,
