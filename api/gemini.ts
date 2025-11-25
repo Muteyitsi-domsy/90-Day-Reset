@@ -7,8 +7,21 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { detectCrisis } from "../utils/crisisDetector"; 
 
 export default async function handler(req: Request): Promise<Response> {
+    // CORS headers
+    const headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    };
+
+    // Handle OPTIONS request for CORS
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { status: 200, headers });
+    }
+
     if (req.method !== 'POST') {
-        return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
     }
 
     try {
@@ -16,13 +29,13 @@ export default async function handler(req: Request): Promise<Response> {
 
         if (body.action === 'generate_weekly_summary' || body.action === 'generate_monthly_summary') {
             const summary = await getSummary(body);
-            return new Response(JSON.stringify(summary), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify(summary), { status: 200, headers });
         } else {
-            return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers });
         }
     } catch (error) {
         console.error('Error in API handler:', error);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }), { status: 500, headers });
     }
 }
 
