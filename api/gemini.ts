@@ -51,6 +51,15 @@ async function getSummary(data: any) {
     // Check for API key - try multiple environment variable names
     const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
 
+    // Debug logging
+    console.log('Environment variables check:', {
+        hasGEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
+        hasAPI_KEY: !!process.env.API_KEY,
+        hasVITE_GEMINI_API_KEY: !!process.env.VITE_GEMINI_API_KEY,
+        apiKeyFound: !!apiKey,
+        apiKeyLength: apiKey?.length || 0
+    });
+
     if (!apiKey) {
         console.error('Gemini API key not found. Please set GEMINI_API_KEY, API_KEY, or VITE_GEMINI_API_KEY environment variable.');
         throw new Error('API key not configured. Please set the GEMINI_API_KEY environment variable in your deployment settings.');
@@ -97,64 +106,82 @@ Your output must be a single, clean JSON object matching the provided schema.`;
     `;
 
     // --- SAFE SERVER-SIDE GEMINI CALL ---
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        config: {
-            systemInstruction,
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    title: { type: Type.STRING, description: "A poetic, evocative title for this period (e.g., 'The Week of Quiet Unfolding')" },
-                    period: { type: Type.NUMBER },
-                    dateRange: { type: Type.STRING },
-                    dominantThemes: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING },
-                        description: "3-5 themes that emerged, phrased as observations (e.g., 'Grief finding its voice', 'Permission to be still')"
-                    },
-                    emotionalTerrain: {
-                        type: Type.STRING,
-                        description: "2-3 sentences describing the emotional texture of this period. Use neutral, observational language."
-                    },
-                    recurringThreads: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING },
-                        description: "2-3 patterns that appeared multiple times (e.g., 'References to childhood', 'The word enough appearing in multiple contexts')"
-                    },
-                    shifts: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING },
-                        description: "2-3 observable changes from earlier in the journey (e.g., 'Earlier entries focused on X; this period moved toward Y')"
-                    },
-                    mirrors: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                pattern: { type: Type.STRING, description: "Brief label for what this excerpt reflects" },
-                                excerpt: { type: Type.STRING, description: "Direct quote from their entry" },
-                                day: { type: Type.NUMBER, description: "Which day this came from" }
-                            },
-                            required: ["pattern", "excerpt", "day"]
-                        },
-                        description: "4-5 significant excerpts that reveal the journey. Use their exact words."
-                    },
-                    tensions: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING },
-                        description: "2-3 areas where opposing forces appeared, phrased neutrally (e.g., 'A pull between wanting to heal quickly and honoring the pace that feels true')"
-                    },
-                    synthesis: {
-                        type: Type.STRING,
-                        description: "2-3 sentences weaving the period together. End with observation, NOT advice. Do not tell them what to do next."
-                    }
-                },
-                required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
-            }
-        }
+    console.log('Calling Gemini API for summary generation...', {
+        period: periodLabel,
+        entriesCount: data.entries.length,
+        model: 'gemini-2.0-flash'
     });
+
+    let response;
+    try {
+        response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: "A poetic, evocative title for this period (e.g., 'The Week of Quiet Unfolding')" },
+                        period: { type: Type.NUMBER },
+                        dateRange: { type: Type.STRING },
+                        dominantThemes: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: "3-5 themes that emerged, phrased as observations (e.g., 'Grief finding its voice', 'Permission to be still')"
+                        },
+                        emotionalTerrain: {
+                            type: Type.STRING,
+                            description: "2-3 sentences describing the emotional texture of this period. Use neutral, observational language."
+                        },
+                        recurringThreads: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: "2-3 patterns that appeared multiple times (e.g., 'References to childhood', 'The word enough appearing in multiple contexts')"
+                        },
+                        shifts: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: "2-3 observable changes from earlier in the journey (e.g., 'Earlier entries focused on X; this period moved toward Y')"
+                        },
+                        mirrors: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    pattern: { type: Type.STRING, description: "Brief label for what this excerpt reflects" },
+                                    excerpt: { type: Type.STRING, description: "Direct quote from their entry" },
+                                    day: { type: Type.NUMBER, description: "Which day this came from" }
+                                },
+                                required: ["pattern", "excerpt", "day"]
+                            },
+                            description: "4-5 significant excerpts that reveal the journey. Use their exact words."
+                        },
+                        tensions: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: "2-3 areas where opposing forces appeared, phrased neutrally (e.g., 'A pull between wanting to heal quickly and honoring the pace that feels true')"
+                        },
+                        synthesis: {
+                            type: Type.STRING,
+                            description: "2-3 sentences weaving the period together. End with observation, NOT advice. Do not tell them what to do next."
+                        }
+                    },
+                    required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                }
+            }
+        });
+        console.log('Gemini API call successful');
+    } catch (geminiError: any) {
+        console.error('Gemini API call failed:', {
+            error: geminiError.message,
+            status: geminiError.status,
+            statusText: geminiError.statusText,
+            details: geminiError
+        });
+        throw new Error(`Gemini API error: ${geminiError.message || 'Unknown error'}`);
+    }
 
     const summaryJson = JSON.parse(response.text);
 
