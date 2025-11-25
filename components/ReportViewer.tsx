@@ -75,6 +75,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({ report, onClose }) => {
                         </div>
                     )}
                 </div>
+                </div>
             </div>
         </>
     );
