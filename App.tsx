@@ -710,7 +710,11 @@ const App: React.FC = () => {
       // Let's simply alert the user if they are not in the journal view, or just do nothing as the menu close reveals the app.
   };
   
-  const reports = journalEntries.filter(e => e.type === 'weekly_summary_report' || e.type === 'monthly_summary_report');
+  const reports = journalEntries.filter(e =>
+    (e.type === 'weekly_summary_report' || e.type === 'monthly_summary_report') &&
+    e.summaryData &&
+    !(e.summaryData as any).status
+  );
   const hasUnreadReports = userProfile?.lastViewedReportDate 
       ? reports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
       : reports.length > 0;

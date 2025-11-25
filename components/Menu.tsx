@@ -428,7 +428,6 @@ const Menu: React.FC<MenuProps> = ({
                                             onClick={() => {
                                                 const currentWeek = userProfile.week_count;
                                                 onRegenerateReport(currentWeek, 'weekly');
-                                                onClose();
                                             }}
                                             className="w-full py-2 px-3 text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-from)] rounded-md transition-colors"
                                         >
