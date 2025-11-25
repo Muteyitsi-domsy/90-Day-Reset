@@ -439,14 +439,15 @@ const App: React.FC = () => {
             summaryData: summaryData,
         };
 
-        console.log('Generated report for week', weekToSummarize, 'with data:', summaryData);
         setJournalEntries(prev => prev.map(entry => entry.id === summaryEntryId ? summaryEntry : entry));
+        alert(`✅ Week ${weekToSummarize} report generated! Check the Reports section.`);
         if (!isRegeneration) {
             setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
         }
 
     } catch (error) {
         console.error("Error generating weekly summary:", error);
+        alert(`❌ Error generating report: ${error instanceof Error ? error.message : 'Unknown error'}`);
         // Remove placeholder on error to allow retry next load or avoid corrupt state
          setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
         if (!isRegeneration) {
@@ -711,22 +712,11 @@ const App: React.FC = () => {
       // Let's simply alert the user if they are not in the journal view, or just do nothing as the menu close reveals the app.
   };
   
-  const reports = journalEntries.filter(e => {
-    const isReportType = e.type === 'weekly_summary_report' || e.type === 'monthly_summary_report';
-    const hasData = e.summaryData && typeof e.summaryData === 'object';
-    const isNotLoading = hasData && !(e.summaryData as any).status;
-    const passes = isReportType && hasData && isNotLoading;
-    if (isReportType) {
-      console.log('Report entry:', {
-        week: e.week,
-        hasData,
-        isNotLoading,
-        passes,
-        summaryDataKeys: e.summaryData ? Object.keys(e.summaryData) : 'no data'
-      });
-    }
-    return passes;
-  });
+  // Include all report type entries that have summaryData (including loading states for now)
+  const reports = journalEntries.filter(e =>
+    (e.type === 'weekly_summary_report' || e.type === 'monthly_summary_report') &&
+    e.summaryData
+  );
   const hasUnreadReports = userProfile?.lastViewedReportDate 
       ? reports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
       : reports.length > 0;
