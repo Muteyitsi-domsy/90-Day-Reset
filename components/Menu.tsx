@@ -213,8 +213,15 @@ const Menu: React.FC<MenuProps> = ({
 
     if (!isOpen) return null;
 
-    // Sort reports by day (newest first) to maintain consistent ordering
-    const sortedReports = [...reports].sort((a, b) => b.day - a.day);
+    // Sort reports by week number (ascending: Week 1, 2, 3...)
+    const sortedReports = [...reports].sort((a, b) => {
+        // For weekly reports, sort by week number ascending
+        if (a.type === 'weekly_summary_report' && b.type === 'weekly_summary_report') {
+            return a.week - b.week;
+        }
+        // For monthly reports or mixed, sort by day ascending
+        return a.day - b.day;
+    });
     const hasUnread = userProfile?.lastViewedReportDate 
         ? sortedReports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
         : sortedReports.length > 0;
@@ -414,7 +421,9 @@ const Menu: React.FC<MenuProps> = ({
                                         >
                                             <div>
                                                 <p className="font-medium text-sm text-[var(--text-secondary)]">
-                                                    {report.type === 'monthly_summary_report' ? '📅 Monthly Report' : '🌿 Weekly Report'}
+                                                    {report.type === 'monthly_summary_report'
+                                                        ? `📅 Monthly Report ${report.summaryData?.period || ''}`
+                                                        : `🌿 Week ${report.week} Report`}
                                                 </p>
                                                 <p className="text-xs text-gray-500">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
                                             </div>
