@@ -406,6 +406,7 @@ const App: React.FC = () => {
         type: 'weekly_summary_report',
         prompt: `🌿 Reflection on Week ${weekToSummarize}`,
         rawText: '{"status": "loading"}',
+        summaryData: { status: 'loading' } as any,
     };
     setJournalEntries(prev => [...prev, summaryPlaceholder]);
 
@@ -473,6 +474,7 @@ const App: React.FC = () => {
         type: 'monthly_summary_report',
         prompt: `📅 Monthly Insight: Month ${monthToSummarize}`,
         rawText: '{"status": "loading"}',
+        summaryData: { status: 'loading' } as any,
     };
     setJournalEntries(prev => [...prev, summaryPlaceholder]);
 
