@@ -270,6 +270,261 @@ ${hunchEntriesText}
     }
 }
 
+// Helper functions for date ranges
+function getWeekDateRange(startDate: string, weekNumber: number): string {
+    const start = new Date(startDate);
+    const weekStart = new Date(start);
+    weekStart.setDate(start.getDate() + (weekNumber - 1) * 7);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+}
+
+function getMonthDateRange(startDate: string, monthNumber: number): string {
+    const start = new Date(startDate);
+    const monthStart = new Date(start);
+    monthStart.setDate(start.getDate() + (monthNumber - 1) * 30);
+
+    const monthEnd = new Date(monthStart);
+    monthEnd.setDate(monthStart.getDate() + 29);
+
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    return `${formatDate(monthStart)} - ${formatDate(monthEnd)}`;
+}
+
+export async function generateWeeklySummary(userProfile: UserProfile, week: number, entries: JournalEntry[]): Promise<any> {
+    // Check if AI client is available
+    if (!ai) {
+        throw new Error("Gemini API key not configured. Weekly summary generation is unavailable.");
+    }
+
+    const checkinCount = entries.filter(e => e.type === 'daily' && e.eveningCheckin).length;
+    const dailyEntryCount = entries.filter(e => e.type === 'daily').length;
+    const completionRate = dailyEntryCount > 0 ? checkinCount / dailyEntryCount : 0;
+
+    const dateRange = getWeekDateRange(userProfile.startDate, week);
+    const periodLabel = `Week ${week}`;
+
+    // System instruction (same as server-side)
+    const systemInstruction = `You are a reflective mirror for personal journal entries. Your role is to observe and reflect patterns back to the user WITHOUT judgment, diagnosis, advice, or encouragement. You do not coach, suggest, or prescribe. You simply reveal what is present in the writing.
+
+CRITICAL RULES:
+- NEVER use diagnostic or clinical language
+- NEVER give advice or action items
+- NEVER use phrases like "you should", "consider", "try to"
+- NEVER judge entries as good/bad, healthy/unhealthy
+- Use neutral, observational language: "appeared", "emerged", "was present"
+- Describe tensions as "a pull between X and Y" not "you struggled with"
+- Let the user's own words carry the weight - quote them directly
+- End with synthesis, not prescription
+
+Your output must be a single, clean JSON object matching the provided schema.`;
+
+    const userPrompt = `
+        Reflect the following journal data for ${userProfile.name}'s weekly summary.
+
+        **Context:**
+        - Arc: ${userProfile.arc}
+        - Ideal Self Manifesto: "${userProfile.idealSelfManifesto}"
+        - Period: ${periodLabel}
+        - Date Range: ${dateRange}
+
+        **Journal Entries:**
+        ${entries.map((e: any, i: number) => `[Day ${e.day || i + 1}, ${e.type.toUpperCase()}]: ${e.rawText}`).join('\n\n')}
+
+        **Instructions:**
+        Analyze these entries and generate a JSON object that mirrors back what appeared, without judgment or advice. Focus on:
+        1. What themes dominated this period
+        2. What patterns repeated or shifted
+        3. What tensions were present (frame neutrally as "a pull between...")
+        4. Direct quotes that reveal the journey
+        5. A poetic synthesis that weaves it together without prescribing next steps
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: "A poetic, evocative title for this period" },
+                        period: { type: Type.NUMBER },
+                        dateRange: { type: Type.STRING },
+                        dominantThemes: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: "3-5 themes that emerged"
+                        },
+                        emotionalTerrain: { type: Type.STRING },
+                        recurringThreads: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        shifts: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        mirrors: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    pattern: { type: Type.STRING },
+                                    excerpt: { type: Type.STRING },
+                                    day: { type: Type.NUMBER }
+                                },
+                                required: ["pattern", "excerpt", "day"]
+                            }
+                        },
+                        tensions: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        synthesis: { type: Type.STRING }
+                    },
+                    required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                }
+            }
+        });
+
+        const summaryJson = JSON.parse(response.text);
+
+        // Add metrics
+        summaryJson.metrics = {
+            entries: entries.length,
+            streak: userProfile.streak,
+            completionRate: `${Math.round(completionRate * 100)}%`
+        };
+
+        return summaryJson;
+    } catch (error) {
+        console.error("Error generating weekly summary:", error);
+        throw new Error(`Failed to generate weekly summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+export async function generateMonthlySummary(userProfile: UserProfile, month: number, entries: JournalEntry[]): Promise<any> {
+    // Check if AI client is available
+    if (!ai) {
+        throw new Error("Gemini API key not configured. Monthly summary generation is unavailable.");
+    }
+
+    const checkinCount = entries.filter(e => e.type === 'daily' && e.eveningCheckin).length;
+    const dailyEntryCount = entries.filter(e => e.type === 'daily').length;
+    const completionRate = dailyEntryCount > 0 ? checkinCount / dailyEntryCount : 0;
+
+    const dateRange = getMonthDateRange(userProfile.startDate, month);
+    const periodLabel = `Month ${month}`;
+
+    // System instruction (same as server-side)
+    const systemInstruction = `You are a reflective mirror for personal journal entries. Your role is to observe and reflect patterns back to the user WITHOUT judgment, diagnosis, advice, or encouragement. You do not coach, suggest, or prescribe. You simply reveal what is present in the writing.
+
+CRITICAL RULES:
+- NEVER use diagnostic or clinical language
+- NEVER give advice or action items
+- NEVER use phrases like "you should", "consider", "try to"
+- NEVER judge entries as good/bad, healthy/unhealthy
+- Use neutral, observational language: "appeared", "emerged", "was present"
+- Describe tensions as "a pull between X and Y" not "you struggled with"
+- Let the user's own words carry the weight - quote them directly
+- End with synthesis, not prescription
+
+Your output must be a single, clean JSON object matching the provided schema.`;
+
+    const userPrompt = `
+        Reflect the following journal data for ${userProfile.name}'s monthly summary.
+
+        **Context:**
+        - Arc: ${userProfile.arc}
+        - Ideal Self Manifesto: "${userProfile.idealSelfManifesto}"
+        - Period: ${periodLabel}
+        - Date Range: ${dateRange}
+
+        **Journal Entries:**
+        ${entries.map((e: any, i: number) => `[Day ${e.day || i + 1}, ${e.type.toUpperCase()}]: ${e.rawText}`).join('\n\n')}
+
+        **Instructions:**
+        Analyze these entries and generate a JSON object that mirrors back what appeared, without judgment or advice. Focus on:
+        1. What themes dominated this period
+        2. What patterns repeated or shifted
+        3. What tensions were present (frame neutrally as "a pull between...")
+        4. Direct quotes that reveal the journey
+        5. A poetic synthesis that weaves it together without prescribing next steps
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING, description: "A poetic, evocative title for this period" },
+                        period: { type: Type.NUMBER },
+                        dateRange: { type: Type.STRING },
+                        dominantThemes: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                            description: "3-5 themes that emerged"
+                        },
+                        emotionalTerrain: { type: Type.STRING },
+                        recurringThreads: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        shifts: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        mirrors: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    pattern: { type: Type.STRING },
+                                    excerpt: { type: Type.STRING },
+                                    day: { type: Type.NUMBER }
+                                },
+                                required: ["pattern", "excerpt", "day"]
+                            }
+                        },
+                        tensions: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING }
+                        },
+                        synthesis: { type: Type.STRING }
+                    },
+                    required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                }
+            }
+        });
+
+        const summaryJson = JSON.parse(response.text);
+
+        // Add metrics
+        summaryJson.metrics = {
+            entries: entries.length,
+            streak: userProfile.streak,
+            completionRate: `${Math.round(completionRate * 100)}%`
+        };
+
+        return summaryJson;
+    } catch (error) {
+        console.error("Error generating monthly summary:", error);
+        throw new Error(`Failed to generate monthly summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
 
 export function getDayAndMonth(startDate: string): { day: number; month: number } {
   const start = new Date(startDate);

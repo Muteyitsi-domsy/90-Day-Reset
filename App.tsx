@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry } from './services/geminiService';
+import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
 import { getDailyPrompt } from './services/promptGenerator';
-import { generateWeeklySummary as fetchWeeklySummary, generateMonthlySummary as fetchMonthlySummary } from './services/geminiProxyClient';
 import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
@@ -413,20 +412,7 @@ const App: React.FC = () => {
     try {
         const weekEntries = journalEntries.filter(entry => entry.week === weekToSummarize && (entry.type === 'daily' || entry.type === 'hunch'));
 
-        const summaryData: SummaryData = await fetchWeeklySummary({
-            userProfile,
-            week: weekToSummarize,
-            entries: weekEntries,
-        });
-
-        if (summaryData.crisisDetected) {
-            setCrisisSeverity(3);
-            setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
-            if (!isRegeneration) {
-                setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
-            }
-            return;
-        }
+        const summaryData: SummaryData = await generateWeeklySummary(userProfile, weekToSummarize, weekEntries);
 
         const summaryEntry: JournalEntry = {
             id: summaryEntryId,
@@ -486,18 +472,7 @@ const App: React.FC = () => {
         const endDay = monthToSummarize * 30;
         const monthEntries = journalEntries.filter(entry => entry.day > startDay && entry.day <= endDay && (entry.type === 'daily' || entry.type === 'hunch'));
 
-        const summaryData: SummaryData = await fetchMonthlySummary({
-            userProfile,
-            month: monthToSummarize,
-            entries: monthEntries,
-        });
-
-        if (summaryData.crisisDetected) {
-             setCrisisSeverity(3);
-             setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
-             setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
-             return;
-        }
+        const summaryData: SummaryData = await generateMonthlySummary(userProfile, monthToSummarize, monthEntries);
 
         const summaryEntry: JournalEntry = {
             id: summaryEntryId,
