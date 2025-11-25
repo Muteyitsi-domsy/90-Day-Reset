@@ -20,6 +20,7 @@ import PausedScreen from './components/PausedScreen';
 import NameCollection from './components/NameCollection';
 import IntentionSetting from './components/IntentionSetting';
 import Menu from './components/Menu';
+import ReportViewer from './components/ReportViewer';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -675,17 +676,14 @@ const App: React.FC = () => {
           // Update last viewed report date
           const reportDate = new Date(report.date);
           const lastViewed = userProfile.lastViewedReportDate ? new Date(userProfile.lastViewedReportDate) : new Date(0);
-          
+
           if (reportDate > lastViewed) {
               setUserProfile(prev => ({...prev!, lastViewedReportDate: report.date}));
           }
       }
-      // In a real app, this might open a dedicated modal. 
-      // For now, we just ensure the user knows it's available in the feed or the menu.
-      // Since the report is in the feed, we could scroll to it, but for simplicity in this V1 update, 
-      // we'll just close the menu. The user sees the report in the menu list itself or the feed.
-      // Ideally, we would scroll to the entry in JournalView.
-      // Let's simply alert the user if they are not in the journal view, or just do nothing as the menu close reveals the app.
+      // Open the dedicated report viewer modal
+      setViewedReport(report);
+      setIsMenuOpen(false); // Close the menu
   };
   
   // Include all report type entries that have summaryData (including loading states for now)
@@ -823,11 +821,15 @@ const App: React.FC = () => {
   return (
     <>
       {crisisSeverity >= 2 && (
-        <CrisisModal 
-          severity={crisisSeverity} 
-          onClose={() => setCrisisSeverity(0)} 
+        <CrisisModal
+          severity={crisisSeverity}
+          onClose={() => setCrisisSeverity(0)}
         />
       )}
+      <ReportViewer
+        report={viewedReport}
+        onClose={() => setViewedReport(null)}
+      />
       {renderContent()}
     </>
   );
