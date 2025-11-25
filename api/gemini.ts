@@ -4,7 +4,7 @@
  * on platforms like Vercel or Netlify. The platform will automatically create the `/api/gemini` endpoint.
  */
 import { GoogleGenAI, Type } from "@google/genai";
-import { detectCrisis } from "../utils/crisisDetector"; 
+import { detectCrisis } from "../utils/crisisDetector.js"; 
 
 export default async function handler(req: Request): Promise<Response> {
     // CORS headers
