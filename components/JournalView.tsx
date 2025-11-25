@@ -6,7 +6,6 @@ import EntryAnalysisView from './EntryAnalysisView';
 import FloatingButton from './FloatingButton';
 import JournalInputModal from './JournalInputModal';
 import EveningCheckinModal from './EveningCheckinModal';
-import WeeklySummary from './WeeklySummary';
 
 interface JournalViewProps {
   currentDay: number;
@@ -153,15 +152,19 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
 
   const sortedEntries = useMemo(() => {
+    // Filter out reports (they're accessible via Reports section modal only)
     // Sort by day (descending) first, then by creation timestamp (id) for entries on the same day
     // This ensures entries maintain their original order even after edits
-    return allEntries.slice().sort((a, b) => {
-      if (b.day !== a.day) {
-        return b.day - a.day; // Newer days first
-      }
-      // For same day, sort by creation time (id is ISO timestamp)
-      return new Date(b.id).getTime() - new Date(a.id).getTime();
-    });
+    return allEntries
+      .filter(entry => entry.type !== 'weekly_summary_report' && entry.type !== 'monthly_summary_report')
+      .slice()
+      .sort((a, b) => {
+        if (b.day !== a.day) {
+          return b.day - a.day; // Newer days first
+        }
+        // For same day, sort by creation time (id is ISO timestamp)
+        return new Date(b.id).getTime() - new Date(a.id).getTime();
+      });
   }, [allEntries]);
   
   const mostRecentDailyEntry = useMemo(() => {
@@ -253,18 +256,14 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
 
             <div className="space-y-6">
                 {sortedEntries.map(entry => {
-                    if ((entry.type === 'weekly_summary_report' || entry.type === 'monthly_summary_report') && entry.summaryData) {
-                        // Summaries are now mostly viewed in the menu, but the prompt said "final report however should remain to appear in the main area".
-                        // We will render reports if they are in the stream, which they are by default.
-                        return <WeeklySummary key={entry.id} data={entry.summaryData} />;
-                    }
+                    // Reports are filtered out and accessible only via Reports section modal
                     const isMostRecentDaily = mostRecentDailyEntry ? entry.id === mostRecentDailyEntry.id : false;
                     const isToday = entry.id === todaysEntry?.id;
 
                     return (
-                    <EntryCard 
-                        key={entry.id} 
-                        entry={entry} 
+                    <EntryCard
+                        key={entry.id}
+                        entry={entry}
                         isToday={isToday}
                         isMostRecentDaily={isMostRecentDaily}
                         onEdit={handleEditClick}
