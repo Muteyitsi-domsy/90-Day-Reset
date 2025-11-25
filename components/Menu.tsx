@@ -15,6 +15,7 @@ interface MenuProps {
     onExportData: () => void;
     onDeleteData: () => void;
     onViewReport: (report: JournalEntry) => void;
+    onRegenerateReport?: (weekOrMonth: number, type: 'weekly' | 'monthly') => void;
 }
 
 const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -23,10 +24,10 @@ const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
-const Menu: React.FC<MenuProps> = ({ 
-    isOpen, onClose, userProfile, settings, reports, 
-    onUpdateSettings, onUpdateProfile, onPauseJourney, onResumeJourney, 
-    onExportData, onDeleteData, onViewReport 
+const Menu: React.FC<MenuProps> = ({
+    isOpen, onClose, userProfile, settings, reports,
+    onUpdateSettings, onUpdateProfile, onPauseJourney, onResumeJourney,
+    onExportData, onDeleteData, onViewReport, onRegenerateReport
 }) => {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [pinInput, setPinInput] = useState('');
@@ -40,27 +41,68 @@ const Menu: React.FC<MenuProps> = ({
     const [timerRunning, setTimerRunning] = useState(false);
     const [timerSeconds, setTimerSeconds] = useState(0);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const wakeLockRef = useRef<any>(null);
 
     // Check if ritual was completed today (reset daily)
     const today = new Date().toISOString().split('T')[0];
     const ritualCompletedToday = settings.lastRitualDate === today && settings.ritualCompletedToday;
 
-    // Timer effect
+    // Timer effect - counts DOWN from target to 0
     useEffect(() => {
         if (timerRunning && settings.ritualDuration) {
-            const targetSeconds = settings.ritualDuration * 60;
-            if (timerSeconds < targetSeconds) {
+            if (timerSeconds > 0) {
                 timerRef.current = setTimeout(() => {
-                    setTimerSeconds(prev => prev + 1);
+                    setTimerSeconds(prev => prev - 1);
                 }, 1000);
             } else {
                 setTimerRunning(false);
+                // Play completion sound
+                playCompletionBeep();
+                // Release wake lock when timer completes
+                if (wakeLockRef.current) {
+                    wakeLockRef.current.release();
+                    wakeLockRef.current = null;
+                }
             }
         }
         return () => {
             if (timerRef.current) clearTimeout(timerRef.current);
         };
     }, [timerRunning, timerSeconds, settings.ritualDuration]);
+
+    // Wake lock effect - keeps screen awake during meditation
+    useEffect(() => {
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator && timerRunning) {
+                    wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.log('Wake lock request failed:', err);
+            }
+        };
+
+        const releaseWakeLock = async () => {
+            if (wakeLockRef.current) {
+                try {
+                    await wakeLockRef.current.release();
+                    wakeLockRef.current = null;
+                } catch (err) {
+                    console.log('Wake lock release failed:', err);
+                }
+            }
+        };
+
+        if (timerRunning) {
+            requestWakeLock();
+        } else {
+            releaseWakeLock();
+        }
+
+        return () => {
+            releaseWakeLock();
+        };
+    }, [timerRunning]);
 
     // Reset timer inputs when settings change
     useEffect(() => {
@@ -109,6 +151,10 @@ const Menu: React.FC<MenuProps> = ({
 
     const handleStartTimer = () => {
         if (!timerRunning) {
+            // If starting fresh, initialize to full duration
+            if (timerSeconds === 0 && settings.ritualDuration) {
+                setTimerSeconds(settings.ritualDuration * 60);
+            }
             setTimerRunning(true);
         } else {
             setTimerRunning(false);
@@ -118,12 +164,51 @@ const Menu: React.FC<MenuProps> = ({
     const handleResetTimer = () => {
         setTimerRunning(false);
         setTimerSeconds(0);
+        // Release wake lock on reset
+        if (wakeLockRef.current) {
+            wakeLockRef.current.release();
+            wakeLockRef.current = null;
+        }
     };
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const playCompletionBeep = () => {
+        try {
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+            // Create a pleasant three-tone chime
+            const playTone = (frequency: number, startTime: number, duration: number = 0.3) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+
+                // Smooth fade in and out
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime + startTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + startTime + 0.05);
+                gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + startTime + duration);
+
+                oscillator.start(audioContext.currentTime + startTime);
+                oscillator.stop(audioContext.currentTime + startTime + duration);
+            };
+
+            // Play three gentle tones (C-E-G chord)
+            playTone(523.25, 0);    // C5
+            playTone(659.25, 0.35); // E5
+            playTone(783.99, 0.7);  // G5
+
+        } catch (error) {
+            console.log('Audio notification not available:', error);
+        }
     };
 
     if (!isOpen) return null;
@@ -236,11 +321,11 @@ const Menu: React.FC<MenuProps> = ({
                                             )}
                                         </div>
 
-                                        {/* Timer display */}
+                                        {/* Timer display - countdown mode */}
                                         {settings.ritualDuration && (
                                             <div className="text-center">
                                                 <div className="text-3xl font-mono text-[var(--text-primary)] mb-3">
-                                                    {formatTime(timerSeconds)} / {formatTime(settings.ritualDuration * 60)}
+                                                    {formatTime(timerSeconds === 0 && !timerRunning ? settings.ritualDuration * 60 : timerSeconds)}
                                                 </div>
                                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
                                                     <div
@@ -322,8 +407,8 @@ const Menu: React.FC<MenuProps> = ({
                                     <p className="text-center py-4 text-sm text-gray-500">No reports generated yet.</p>
                                 ) : (
                                     sortedReports.map(report => (
-                                        <button 
-                                            key={report.id} 
+                                        <button
+                                            key={report.id}
                                             onClick={() => { onViewReport(report); onClose(); }}
                                             className="w-full text-left p-3 rounded-md hover:bg-[var(--bg-from)] flex justify-between items-center group"
                                         >
@@ -336,6 +421,20 @@ const Menu: React.FC<MenuProps> = ({
                                             <span className="text-[var(--accent-primary)] opacity-0 group-hover:opacity-100 transition-opacity">View &rarr;</span>
                                         </button>
                                     ))
+                                )}
+                                {onRegenerateReport && userProfile && (
+                                    <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                                        <button
+                                            onClick={() => {
+                                                const currentWeek = userProfile.week_count;
+                                                onRegenerateReport(currentWeek, 'weekly');
+                                                onClose();
+                                            }}
+                                            className="w-full py-2 px-3 text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-from)] rounded-md transition-colors"
+                                        >
+                                            Regenerate Current Week Report
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         )}

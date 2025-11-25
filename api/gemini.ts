@@ -123,7 +123,8 @@ Your output must be a single, clean JSON object matching the provided schema.`;
                                 pattern: { type: Type.STRING, description: "Brief label for what this excerpt reflects" },
                                 excerpt: { type: Type.STRING, description: "Direct quote from their entry" },
                                 day: { type: Type.NUMBER, description: "Which day this came from" }
-                            }
+                            },
+                            required: ["pattern", "excerpt", "day"]
                         },
                         description: "4-5 significant excerpts that reveal the journey. Use their exact words."
                     },
@@ -137,6 +138,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
                         description: "2-3 sentences weaving the period together. End with observation, NOT advice. Do not tell them what to do next."
                     }
                 },
+                required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
             }
         }
     });

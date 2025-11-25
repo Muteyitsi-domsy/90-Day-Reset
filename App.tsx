@@ -379,18 +379,23 @@ const App: React.FC = () => {
     );
   };
 
-  const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number) => {
+  const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {
     if (!userProfile || !userProfile.idealSelfManifesto) return;
 
     if (!settings.weeklyReports) {
         setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
-        return; 
+        return;
     }
 
     setIsLoading(true);
-    
+
     const summaryEntryId = new Date().toISOString();
     const { day } = getDayAndMonth(userProfile.startDate);
+
+    // If regenerating, remove existing report for this week
+    if (isRegeneration) {
+        setJournalEntries(prev => prev.filter(entry => !(entry.week === weekToSummarize && entry.type === 'weekly_summary_report')));
+    }
 
     // Add a placeholder
     const summaryPlaceholder: JournalEntry = {
@@ -400,13 +405,13 @@ const App: React.FC = () => {
         week: weekToSummarize,
         type: 'weekly_summary_report',
         prompt: `🌿 Reflection on Week ${weekToSummarize}`,
-        rawText: '{"status": "loading"}', 
+        rawText: '{"status": "loading"}',
     };
     setJournalEntries(prev => [...prev, summaryPlaceholder]);
 
     try {
         const weekEntries = journalEntries.filter(entry => entry.week === weekToSummarize && (entry.type === 'daily' || entry.type === 'hunch'));
-        
+
         const summaryData: SummaryData = await fetchWeeklySummary({
             userProfile,
             week: weekToSummarize,
@@ -416,10 +421,12 @@ const App: React.FC = () => {
         if (summaryData.crisisDetected) {
             setCrisisSeverity(3);
             setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
-            setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+            if (!isRegeneration) {
+                setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+            }
             return;
         }
-        
+
         const summaryEntry: JournalEntry = {
             id: summaryEntryId,
             date: new Date().toISOString(),
@@ -432,13 +439,17 @@ const App: React.FC = () => {
         };
 
         setJournalEntries(prev => prev.map(entry => entry.id === summaryEntryId ? summaryEntry : entry));
-        setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        if (!isRegeneration) {
+            setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        }
 
     } catch (error) {
         console.error("Error generating weekly summary:", error);
         // Remove placeholder on error to allow retry next load or avoid corrupt state
          setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
-        setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        if (!isRegeneration) {
+            setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        }
     } finally {
         setIsLoading(false);
     }
@@ -798,9 +809,9 @@ const App: React.FC = () => {
               onSaveEveningCheckin={handleSaveEveningCheckin}
               settings={settings}
             />
-             <Menu 
-                isOpen={isMenuOpen} 
-                onClose={() => setIsMenuOpen(false)} 
+             <Menu
+                isOpen={isMenuOpen}
+                onClose={() => setIsMenuOpen(false)}
                 userProfile={userProfile}
                 settings={settings}
                 reports={reports}
@@ -811,6 +822,11 @@ const App: React.FC = () => {
                 onExportData={exportData}
                 onDeleteData={deleteData}
                 onViewReport={handleViewReport}
+                onRegenerateReport={(weekOrMonth, type) => {
+                    if (type === 'weekly') {
+                        handleGenerateWeeklySummary(weekOrMonth, weekOrMonth, true);
+                    }
+                }}
             />
           </div>
         );
