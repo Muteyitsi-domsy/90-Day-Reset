@@ -566,9 +566,10 @@ const App: React.FC = () => {
             }
 
             // Handle Weekly Summaries
-            const expectedWeek = Math.floor((day - 1) / 7) + 1;
-            if (userProfile.week_count < expectedWeek) {
-                for (let week = userProfile.week_count; week < expectedWeek; week++) {
+            // Only generate reports for COMPLETE weeks (7 full days)
+            const completedWeeks = Math.floor((day - 1) / 7);
+            if (userProfile.week_count <= completedWeeks) {
+                for (let week = userProfile.week_count; week <= completedWeeks; week++) {
                     await handleGenerateWeeklySummary(week, week + 1);
                 }
             }

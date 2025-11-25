@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, UserProfile, JournalEntry, HunchType } from '../types';
+import { getDayAndMonth } from '../services/geminiService';
 
 interface MenuProps {
     isOpen: boolean;
@@ -213,14 +214,14 @@ const Menu: React.FC<MenuProps> = ({
 
     if (!isOpen) return null;
 
-    // Sort reports by week number (ascending: Week 1, 2, 3...)
+    // Sort reports by recency (latest first)
     const sortedReports = [...reports].sort((a, b) => {
-        // For weekly reports, sort by week number ascending
+        // For weekly reports, sort by week number descending (latest first)
         if (a.type === 'weekly_summary_report' && b.type === 'weekly_summary_report') {
-            return a.week - b.week;
+            return b.week - a.week;
         }
-        // For monthly reports or mixed, sort by day ascending
-        return a.day - b.day;
+        // For monthly reports or mixed, sort by day descending (latest first)
+        return b.day - a.day;
     });
     const hasUnread = userProfile?.lastViewedReportDate 
         ? sortedReports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
@@ -431,19 +432,26 @@ const Menu: React.FC<MenuProps> = ({
                                         </button>
                                     ))
                                 )}
-                                {onRegenerateReport && userProfile && (
-                                    <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                                        <button
-                                            onClick={() => {
-                                                const currentWeek = userProfile.week_count;
-                                                onRegenerateReport(currentWeek, 'weekly');
-                                            }}
-                                            className="w-full py-2 px-3 text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-from)] rounded-md transition-colors"
-                                        >
-                                            Regenerate Current Week Report
-                                        </button>
-                                    </div>
-                                )}
+                                {onRegenerateReport && userProfile && (() => {
+                                    const { day } = getDayAndMonth(userProfile.startDate);
+                                    const lastCompleteWeek = Math.floor((day - 1) / 7);
+                                    // Only show button if there's at least one complete week
+                                    if (lastCompleteWeek >= 1) {
+                                        return (
+                                            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                                                <button
+                                                    onClick={() => {
+                                                        onRegenerateReport(lastCompleteWeek, 'weekly');
+                                                    }}
+                                                    className="w-full py-2 px-3 text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-from)] rounded-md transition-colors"
+                                                >
+                                                    Regenerate Last Week's Report
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
                         )}
                     </div>
