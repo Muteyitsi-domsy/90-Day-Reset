@@ -252,18 +252,17 @@ const Menu: React.FC<MenuProps> = ({
 
     if (!isOpen) return null;
 
-    // Sort reports by recency (latest first)
-    const sortedReports = [...reports].sort((a, b) => {
-        // For weekly reports, sort by week number descending (latest first)
-        if (a.type === 'weekly_summary_report' && b.type === 'weekly_summary_report') {
-            return b.week - a.week;
-        }
-        // For monthly reports or mixed, sort by day descending (latest first)
-        return b.day - a.day;
+    // Separate weekly and monthly reports
+    const weeklyReports = reports.filter(r => r.type === 'weekly_summary_report').sort((a, b) => b.week - a.week);
+    const monthlyReports = reports.filter(r => r.type === 'monthly_summary_report').sort((a, b) => {
+        const monthA = a.summaryData?.period || 0;
+        const monthB = b.summaryData?.period || 0;
+        return monthB - monthA;
     });
-    const hasUnread = userProfile?.lastViewedReportDate 
-        ? sortedReports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
-        : sortedReports.length > 0;
+
+    const hasUnread = userProfile?.lastViewedReportDate
+        ? reports.some(r => new Date(r.date) > new Date(userProfile.lastViewedReportDate!))
+        : reports.length > 0;
 
     return (
         <div className="fixed inset-0 z-50 flex justify-start">
@@ -472,48 +471,79 @@ const Menu: React.FC<MenuProps> = ({
                             <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'reports' ? 'rotate-180' : ''}`} />
                         </button>
                         {openSection === 'reports' && (
-                            <div className="p-2 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700 space-y-2">
-                                {sortedReports.length === 0 ? (
-                                    <p className="text-center py-4 text-sm text-gray-500">No reports generated yet.</p>
-                                ) : (
-                                    sortedReports.map(report => (
-                                        <button
-                                            key={report.id}
-                                            onClick={() => { onViewReport(report); onClose(); }}
-                                            className="w-full text-left p-3 rounded-md hover:bg-[var(--bg-from)] flex justify-between items-center group"
-                                        >
-                                            <div>
-                                                <p className="font-medium text-sm text-[var(--text-secondary)]">
-                                                    {report.type === 'monthly_summary_report'
-                                                        ? `📅 Monthly Report ${report.summaryData?.period || ''}`
-                                                        : `🌿 Week ${report.week} Report`}
-                                                </p>
-                                                <p className="text-xs text-gray-500">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
-                                            </div>
-                                            <span className="text-[var(--accent-primary)] opacity-0 group-hover:opacity-100 transition-opacity">View &rarr;</span>
-                                        </button>
-                                    ))
-                                )}
-                                {onRegenerateReport && userProfile && (() => {
-                                    const { day } = getDayAndMonth(userProfile.startDate);
-                                    const lastCompleteWeek = Math.floor((day - 1) / 7);
-                                    // Only show button if there's at least one complete week
-                                    if (lastCompleteWeek >= 1) {
-                                        return (
-                                            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <div className="p-2 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700 space-y-3">
+                                {/* Monthly Reports Subsection */}
+                                {settings.monthlyReports && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-semibold text-[var(--text-secondary)] px-3 pt-2 uppercase tracking-wide">Monthly Reports</h4>
+                                        {monthlyReports.length === 0 ? (
+                                            <p className="text-center py-2 text-xs text-gray-500">No monthly reports yet</p>
+                                        ) : (
+                                            monthlyReports.map(report => (
                                                 <button
-                                                    onClick={() => {
-                                                        onRegenerateReport(lastCompleteWeek, 'weekly');
-                                                    }}
-                                                    className="w-full py-2 px-3 text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-from)] rounded-md transition-colors"
+                                                    key={report.id}
+                                                    onClick={() => { onViewReport(report); onClose(); }}
+                                                    className="w-full text-left p-3 rounded-md hover:bg-[var(--bg-from)] flex justify-between items-center group"
                                                 >
-                                                    Regenerate Last Week's Report
+                                                    <div>
+                                                        <p className="font-medium text-sm text-[var(--text-secondary)]">
+                                                            📅 Month {report.summaryData?.period || ''}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
+                                                    </div>
+                                                    <span className="text-[var(--accent-primary)] opacity-0 group-hover:opacity-100 transition-opacity">View &rarr;</span>
                                                 </button>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                })()}
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Weekly Reports Subsection */}
+                                {settings.weeklyReports && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-semibold text-[var(--text-secondary)] px-3 pt-2 uppercase tracking-wide">Weekly Reports</h4>
+                                        {weeklyReports.length === 0 ? (
+                                            <p className="text-center py-2 text-xs text-gray-500">No weekly reports yet</p>
+                                        ) : (
+                                            weeklyReports.map(report => (
+                                                <button
+                                                    key={report.id}
+                                                    onClick={() => { onViewReport(report); onClose(); }}
+                                                    className="w-full text-left p-3 rounded-md hover:bg-[var(--bg-from)] flex justify-between items-center group"
+                                                >
+                                                    <div>
+                                                        <p className="font-medium text-sm text-[var(--text-secondary)]">
+                                                            🌿 Week {report.week}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
+                                                    </div>
+                                                    <span className="text-[var(--accent-primary)] opacity-0 group-hover:opacity-100 transition-opacity">View &rarr;</span>
+                                                </button>
+                                            ))
+                                        )}
+                                        {onRegenerateReport && userProfile && (() => {
+                                            const { day } = getDayAndMonth(userProfile.startDate);
+                                            const lastCompleteWeek = Math.floor((day - 1) / 7);
+                                            if (lastCompleteWeek >= 1) {
+                                                return (
+                                                    <div className="pt-2">
+                                                        <button
+                                                            onClick={() => { onRegenerateReport(lastCompleteWeek, 'weekly'); }}
+                                                            className="w-full py-2 px-3 text-xs text-[var(--accent-primary)] hover:bg-[var(--bg-from)] rounded-md transition-colors"
+                                                        >
+                                                            🔄 Regenerate Last Week's Report
+                                                        </button>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
+                                )}
+
+                                {!settings.weeklyReports && !settings.monthlyReports && (
+                                    <p className="text-center py-4 text-sm text-gray-500">Reports are disabled in settings</p>
+                                )}
                             </div>
                         )}
                     </div>

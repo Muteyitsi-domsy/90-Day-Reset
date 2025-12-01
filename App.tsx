@@ -636,13 +636,19 @@ const App: React.FC = () => {
             }
 
             // Handle Monthly Summaries
-            const expectedMonth = Math.ceil(day / 30);
-            // We generate summary AFTER month completes (e.g. day 31 generates month 1)
-            // So if day is 31 (expMonth 2), we see if we've done month 1.
-            // Logic: if day > 30 and month_count is 1, generate 1.
-            const completedMonths = Math.floor((day - 1) / 30);
+            // Generate on day 30, 60, 90 (when month completes)
+            // Day 30: completedMonths = 1, Day 60: completedMonths = 2, Day 90: completedMonths = 3
+            const completedMonths = Math.floor(day / 30);
+            console.log('📅 Monthly Report Check:', {
+                currentDay: day,
+                completedMonths,
+                userMonthCount: userProfile.month_count,
+                shouldGenerate: userProfile.month_count <= completedMonths,
+                monthlyReportsEnabled: settings.monthlyReports
+            });
             if (userProfile.month_count <= completedMonths) {
                  for (let month = userProfile.month_count; month <= completedMonths; month++) {
+                    console.log(`📅 Generating monthly report for Month ${month}`);
                     await handleGenerateMonthlySummary(month, month + 1);
                  }
             }
