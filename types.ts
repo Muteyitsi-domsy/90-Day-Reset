@@ -21,6 +21,13 @@ export interface UserProfile {
   lastViewedReportDate?: string; // To track the "red dot" notification
 }
 
+export interface DailyCompletion {
+  date: string; // ISO date string (YYYY-MM-DD)
+  ritualCompleted: boolean;
+  morningEntryCompleted: boolean;
+  eveningCheckinCompleted: boolean;
+}
+
 export interface Settings {
   theme: 'default' | 'ocean' | 'sunset' | 'forest';
   themeMode: 'light' | 'dark' | 'system';
@@ -39,6 +46,9 @@ export interface Settings {
   ritualDuration?: number; // in minutes
   ritualCompletedToday?: boolean;
   lastRitualDate?: string; // ISO date to reset completion daily
+
+  // Daily completion tracking (for completion circle feature)
+  dailyCompletions?: DailyCompletion[];
 }
 
 export interface OnboardingAnalysis {

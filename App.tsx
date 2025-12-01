@@ -21,6 +21,7 @@ import NameCollection from './components/NameCollection';
 import IntentionSetting from './components/IntentionSetting';
 import Menu from './components/Menu';
 import ReportViewer from './components/ReportViewer';
+import CalendarView from './components/CalendarView';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -30,9 +31,9 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [appState, setAppState] = useState<AppState>('welcome');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [settings, setSettings] = useState<Settings>({ 
-      theme: 'default', 
-      themeMode: 'system', 
+  const [settings, setSettings] = useState<Settings>({
+      theme: 'default',
+      themeMode: 'system',
       dailyAnalysis: true,
       weeklyReports: true,
       monthlyReports: true,
@@ -40,12 +41,14 @@ const App: React.FC = () => {
   });
   const [isLocked, setIsLocked] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isJourneyOver, setIsJourneyOver] = useState(false);
   const [finalSummaryText, setFinalSummaryText] = useState('');
   const [dailyPrompt, setDailyPrompt] = useState<{ text: string, isMilestone: boolean } | null>(null);
   const [crisisSeverity, setCrisisSeverity] = useState<CrisisSeverity>(0);
   const [userName, setUserName] = useState('');
   const [viewedReport, setViewedReport] = useState<JournalEntry | null>(null);
+  const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
 
 
   // On app load, schedule the next daily reminder if permission is granted.
@@ -100,6 +103,7 @@ const App: React.FC = () => {
             }
             
             setSettings({ ...defaultSettings, ...parsed });
+            setHasLoadedSettings(true);
 
             if (parsed.pin) {
                 setIsLocked(true);
@@ -108,6 +112,7 @@ const App: React.FC = () => {
             }
         } else {
             setSettings(defaultSettings);
+            setHasLoadedSettings(true);
             setIsLocked(false);
         }
 
@@ -163,7 +168,15 @@ const App: React.FC = () => {
 
   // Save/apply settings on change
   useEffect(() => {
+    // Don't save on initial render - wait until we've loaded from localStorage first
+    if (!hasLoadedSettings) {
+      console.log('⏭️ Skipping settings save - not loaded yet');
+      return;
+    }
+
+    console.log('💾 Saving settings to localStorage:', settings);
     localStorage.setItem('settings', JSON.stringify(settings));
+    console.log('✅ Settings saved. PIN in storage:', JSON.parse(localStorage.getItem('settings') || '{}').pin);
 
     // Apply theme
     document.documentElement.className = ''; // Clear all classes first
@@ -171,7 +184,7 @@ const App: React.FC = () => {
     if (settings.themeMode === 'dark' || (settings.themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
     }
-  }, [settings]);
+  }, [settings, hasLoadedSettings]);
 
   // Save user profile to local storage on change
   useEffect(() => {
@@ -193,6 +206,72 @@ const App: React.FC = () => {
     }
   }, [journalEntries, isLoading]);
 
+  // Helper function to get today's completion state
+  const getTodayCompletion = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { day } = userProfile ? getDayAndMonth(userProfile.startDate) : { day: 0 };
+
+    // Check if today's entry exists
+    const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
+    const morningEntryCompleted = !!todaysEntry;
+    const eveningCheckinCompleted = !!todaysEntry?.eveningCheckin;
+
+    // Check if today's ritual is complete
+    const ritualCompleted = settings.lastRitualDate === today && settings.ritualCompletedToday === true;
+
+    return { ritualCompleted, morningEntryCompleted, eveningCheckinCompleted };
+  };
+
+  // Helper function to update daily completion tracking
+  const updateDailyCompletion = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const completion = getTodayCompletion();
+
+    // Update or create today's completion record
+    const existingCompletions = settings.dailyCompletions || [];
+    const todayCompletionIndex = existingCompletions.findIndex(c => c.date === today);
+
+    const newCompletion = {
+      date: today,
+      ...completion
+    };
+
+    // Check if this completes the day (all three tasks done)
+    const wasCompleted = todayCompletionIndex >= 0 ?
+      existingCompletions[todayCompletionIndex].ritualCompleted &&
+      existingCompletions[todayCompletionIndex].morningEntryCompleted &&
+      existingCompletions[todayCompletionIndex].eveningCheckinCompleted : false;
+
+    const isNowCompleted = completion.ritualCompleted &&
+                          completion.morningEntryCompleted &&
+                          completion.eveningCheckinCompleted;
+
+    let updatedCompletions;
+    if (todayCompletionIndex >= 0) {
+      // Update existing completion
+      updatedCompletions = [...existingCompletions];
+      updatedCompletions[todayCompletionIndex] = newCompletion;
+    } else {
+      // Add new completion (keep last 90 days only)
+      updatedCompletions = [...existingCompletions, newCompletion].slice(-90);
+    }
+
+    setSettings(prev => ({
+      ...prev,
+      dailyCompletions: updatedCompletions
+    }));
+
+    // Send notification if day just completed
+    if (!wasCompleted && isNowCompleted) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Perfect Day Complete! 🎉', {
+          body: 'You\'ve completed your daily ritual, morning entry, and evening check-in. Amazing consistency!',
+          icon: '/favicon.ico',
+          badge: '/favicon.ico'
+        });
+      }
+    }
+  };
 
   const handleSaveEntry = async (text: string) => {
     if (isLoading || !text.trim() || !userProfile || !dailyPrompt) return;
@@ -282,6 +361,8 @@ const App: React.FC = () => {
           setJournalEntries(prev => prev.map(entry => entry.id === entryWithError.id ? entryWithError : entry));
         } finally {
           setIsLoading(false);
+          // Update daily completion tracking after entry is saved
+          setTimeout(() => updateDailyCompletion(), 100);
         }
     } else {
         // If not daily insights, just finalize the save.
@@ -291,6 +372,8 @@ const App: React.FC = () => {
           setUserProfile(prev => ({ ...prev!, lastMilestoneDayCompleted: milestoneDay }));
         }
         setIsLoading(false);
+        // Update daily completion tracking after entry is saved
+        setTimeout(() => updateDailyCompletion(), 100);
     }
   };
 
@@ -377,6 +460,8 @@ const App: React.FC = () => {
           : entry
       )
     );
+    // Update daily completion tracking after evening check-in is saved
+    setTimeout(() => updateDailyCompletion(), 100);
   };
 
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {
@@ -706,7 +791,17 @@ const App: React.FC = () => {
     }
     
     if (isLocked && settings.pin) {
-        return <PinLockScreen correctPin={settings.pin!} onUnlock={() => setIsLocked(false)} />;
+        return (
+            <PinLockScreen
+                correctPin={settings.pin!}
+                userEmail={userProfile?.email}
+                onUnlock={() => setIsLocked(false)}
+                onPinReset={(newPin) => {
+                    setSettings({ ...settings, pin: newPin });
+                    setIsLocked(false);
+                }}
+            />
+        );
     }
 
     if (isJourneyOver && finalSummaryText && userProfile) {
@@ -734,7 +829,9 @@ const App: React.FC = () => {
         if (userProfile) {
           const { day } = getDayAndMonth(userProfile.startDate);
           const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
-          return <ReturnUserWelcomeScreen userProfile={userProfile} todaysEntry={todaysEntry} onContinue={() => setAppState('journal')} />;
+          const today = new Date().toISOString().split('T')[0];
+          const ritualCompleted = settings.lastRitualDate === today && settings.ritualCompletedToday === true;
+          return <ReturnUserWelcomeScreen userProfile={userProfile} todaysEntry={todaysEntry} onContinue={() => setAppState('journal')} ritualCompleted={ritualCompleted} />;
         }
         return null;
       case 'onboarding':
@@ -750,16 +847,23 @@ const App: React.FC = () => {
         return <OnboardingCompletion onComplete={handleOnboardingCompletion} />;
       case 'journal': {
         const { day } = userProfile ? getDayAndMonth(userProfile.startDate) : { day: 1 };
+        const todayCompletion = getTodayCompletion();
         const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
         
         if (userProfile?.isPaused) {
             return (
                 <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
-                    <Header streak={userProfile?.streak} onOpenMenu={() => setIsMenuOpen(true)} />
+                    <Header
+                        streak={userProfile?.streak}
+                        onOpenMenu={() => setIsMenuOpen(true)}
+                        ritualCompleted={todayCompletion.ritualCompleted}
+                        morningEntryCompleted={todayCompletion.morningEntryCompleted}
+                        eveningCheckinCompleted={todayCompletion.eveningCheckinCompleted}
+                    />
                     <PausedScreen onResume={handleResumeJourney} />
-                     <Menu 
-                        isOpen={isMenuOpen} 
-                        onClose={() => setIsMenuOpen(false)} 
+                     <Menu
+                        isOpen={isMenuOpen}
+                        onClose={() => setIsMenuOpen(false)}
                         userProfile={userProfile}
                         settings={settings}
                         reports={reports}
@@ -770,6 +874,9 @@ const App: React.FC = () => {
                         onExportData={exportData}
                         onDeleteData={deleteData}
                         onViewReport={handleViewReport}
+                        onLockApp={() => setIsLocked(true)}
+                        onRitualComplete={updateDailyCompletion}
+                        onOpenCalendar={() => setIsCalendarOpen(true)}
                     />
                 </div>
             );
@@ -777,7 +884,14 @@ const App: React.FC = () => {
 
         return (
           <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
-            <Header streak={userProfile?.streak} onOpenMenu={() => setIsMenuOpen(true)} hasUnreadReports={hasUnreadReports} />
+            <Header
+                streak={userProfile?.streak}
+                onOpenMenu={() => setIsMenuOpen(true)}
+                hasUnreadReports={hasUnreadReports}
+                ritualCompleted={todayCompletion.ritualCompleted}
+                morningEntryCompleted={todayCompletion.morningEntryCompleted}
+                eveningCheckinCompleted={todayCompletion.eveningCheckinCompleted}
+            />
             <JournalView 
               currentDay={day}
               dailyPrompt={dailyPrompt?.text}
@@ -809,6 +923,9 @@ const App: React.FC = () => {
                         handleGenerateWeeklySummary(weekOrMonth, weekOrMonth, true);
                     }
                 }}
+                onLockApp={() => setIsLocked(true)}
+                onRitualComplete={updateDailyCompletion}
+                onOpenCalendar={() => setIsCalendarOpen(true)}
             />
           </div>
         );
@@ -829,6 +946,12 @@ const App: React.FC = () => {
       <ReportViewer
         report={viewedReport}
         onClose={() => setViewedReport(null)}
+      />
+      <CalendarView
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        settings={settings}
+        userProfile={userProfile}
       />
       {renderContent()}
     </>

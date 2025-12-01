@@ -8,6 +8,7 @@ interface SettingsModalProps {
     userProfile: UserProfile | null;
     onClose: () => void;
     onSave: (newSettings: Settings) => void;
+    onUpdateProfile: (profile: UserProfile) => void;
     onPauseJourney: () => void;
     onResumeJourney: () => void;
 }
@@ -18,8 +19,9 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, onClose, onSave, onPauseJourney, onResumeJourney }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, onClose, onSave, onUpdateProfile, onPauseJourney, onResumeJourney }) => {
     const [pinInput, setPinInput] = useState('');
+    const [emailInput, setEmailInput] = useState(userProfile?.email || '');
     const [pinError, setPinError] = useState('');
 
     const handleThemeModeChange = (themeMode: 'light' | 'dark' | 'system') => {
@@ -47,13 +49,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
     };
 
     const handlePinSave = () => {
-        if (/^[a-zA-Z]{4}$/.test(pinInput)) {
-            onSave({ ...settings, pin: pinInput.toLowerCase() });
-            setPinInput('');
-            setPinError('');
-        } else {
+        if (!/^[a-zA-Z]{4}$/.test(pinInput)) {
             setPinError('PIN must be exactly 4 letters.');
+            return;
         }
+        if (!emailInput || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) {
+            setPinError('Please provide a valid email for PIN recovery.');
+            return;
+        }
+
+        onSave({ ...settings, pin: pinInput.toLowerCase() });
+        if (userProfile) {
+            onUpdateProfile({ ...userProfile, email: emailInput.toLowerCase() });
+        }
+        setPinInput('');
+        setPinError('');
     };
 
     const handlePinRemove = () => {
@@ -196,30 +206,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
                     {/* Security Settings */}
                     <div>
                         <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Security</h3>
-                        <div className="space-y-2">
-                             <label className="text-sm text-gray-600 dark:text-gray-400">Set a 4-letter PIN to lock your journal.</label>
-                            <div className="flex gap-2">
+                        <div className="space-y-3">
+                             <div>
+                                <label className="text-sm text-gray-600 dark:text-gray-400">Email for PIN recovery</label>
                                 <input
-                                    type="text"
-                                    value={pinInput}
+                                    type="email"
+                                    value={emailInput}
                                     onChange={(e) => {
-                                        setPinInput(e.target.value);
+                                        setEmailInput(e.target.value);
                                         if (pinError) setPinError('');
                                     }}
-                                    placeholder={settings.pin ? 'Enter new PIN' : 'Enter 4 letters'}
-                                    maxLength={4}
-                                    className="flex-grow w-full bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
+                                    placeholder="your@email.com"
+                                    className="w-full mt-1 bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
                                 />
-                                <button
-                                    onClick={handlePinSave}
-                                    className="px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-sm hover:bg-[var(--accent-primary-hover)] transition-colors"
-                                >
-                                    Save
-                                </button>
+                            </div>
+                             <div>
+                                <label className="text-sm text-gray-600 dark:text-gray-400">Set a 4-letter PIN to lock your journal</label>
+                                <div className="flex gap-2 mt-1">
+                                    <input
+                                        type="text"
+                                        value={pinInput}
+                                        onChange={(e) => {
+                                            setPinInput(e.target.value);
+                                            if (pinError) setPinError('');
+                                        }}
+                                        placeholder={settings.pin ? 'Enter new PIN' : 'Enter 4 letters'}
+                                        maxLength={4}
+                                        className="flex-grow w-full bg-white/50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
+                                    />
+                                    <button
+                                        onClick={handlePinSave}
+                                        className="px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-sm hover:bg-[var(--accent-primary-hover)] transition-colors"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
                             </div>
                             {pinError && <p className="text-red-500 text-xs mt-1">{pinError}</p>}
                              {settings.pin && (
-                                <button 
+                                <button
                                     onClick={handlePinRemove}
                                     className="w-full text-center text-sm text-red-600 dark:text-red-400 hover:underline mt-2"
                                 >

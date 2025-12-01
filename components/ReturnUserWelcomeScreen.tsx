@@ -1,16 +1,19 @@
 import React from 'react';
 import { JournalEntry, UserProfile } from '../types';
+import DailyCompletionCircle from './DailyCompletionCircle';
 
 interface ReturnUserWelcomeScreenProps {
   onContinue: () => void;
   userProfile: UserProfile;
   todaysEntry: JournalEntry | undefined;
+  ritualCompleted?: boolean;
 }
 
 const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
   onContinue,
   userProfile,
   todaysEntry,
+  ritualCompleted = false,
 }) => {
 
   const hour = new Date().getHours();
@@ -49,9 +52,20 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
     <div className="min-h-screen flex items-center justify-center p-6 font-sans">
       <div className="max-w-lg w-full bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] text-center animate-fade-in">
         <h1 className="text-4xl font-light text-[var(--text-secondary)] mb-4">{title}</h1>
-        <p className="text-lg text-[var(--text-primary)] mb-8 leading-relaxed">
+        <p className="text-lg text-[var(--text-primary)] mb-6 leading-relaxed">
           {subtitle}
         </p>
+
+        {/* Daily Completion Circle */}
+        <div className="flex justify-center mb-8">
+          <DailyCompletionCircle
+            ritualCompleted={ritualCompleted}
+            morningEntryCompleted={hasDoneMorning}
+            eveningCheckinCompleted={hasDoneEvening}
+            size="large"
+            showLabel={true}
+          />
+        </div>
 
         <div className="flex justify-center">
           <button

@@ -17,6 +17,9 @@ interface MenuProps {
     onDeleteData: () => void;
     onViewReport: (report: JournalEntry) => void;
     onRegenerateReport?: (weekOrMonth: number, type: 'weekly' | 'monthly') => void;
+    onLockApp?: () => void;
+    onRitualComplete?: () => void;
+    onOpenCalendar?: () => void;
 }
 
 const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -28,10 +31,12 @@ const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
 const Menu: React.FC<MenuProps> = ({
     isOpen, onClose, userProfile, settings, reports,
     onUpdateSettings, onUpdateProfile, onPauseJourney, onResumeJourney,
-    onExportData, onDeleteData, onViewReport, onRegenerateReport
+    onExportData, onDeleteData, onViewReport, onRegenerateReport, onLockApp,
+    onRitualComplete, onOpenCalendar
 }) => {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [pinInput, setPinInput] = useState('');
+    const [emailInput, setEmailInput] = useState(userProfile?.email || '');
     const [pinError, setPinError] = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -116,12 +121,41 @@ const Menu: React.FC<MenuProps> = ({
     };
 
     const handlePinSave = () => {
-        if (/^[a-zA-Z]{4}$/.test(pinInput)) {
-            onUpdateSettings({ ...settings, pin: pinInput.toLowerCase() });
-            setPinInput('');
-            setPinError('');
-        } else {
+        console.log('🔍 handlePinSave called');
+        console.log('PIN input:', pinInput);
+        console.log('Email input:', emailInput);
+        console.log('Current settings:', settings);
+
+        if (!/^[a-zA-Z]{4}$/.test(pinInput)) {
             setPinError('PIN must be exactly 4 letters.');
+            console.log('❌ PIN validation failed');
+            return;
+        }
+        if (!emailInput || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) {
+            setPinError('Please provide a valid email for PIN recovery.');
+            console.log('❌ Email validation failed');
+            return;
+        }
+
+        const wasFirstTimeSettingPin = !settings.pin;
+        const newSettings = { ...settings, pin: pinInput.toLowerCase() };
+        console.log('✅ Calling onUpdateSettings with:', newSettings);
+        onUpdateSettings(newSettings);
+
+        if (userProfile) {
+            console.log('✅ Updating profile with email:', emailInput.toLowerCase());
+            onUpdateProfile({ ...userProfile, email: emailInput.toLowerCase() });
+        }
+        setPinInput('');
+        setPinError('');
+
+        // Lock app immediately when PIN is first set
+        if (wasFirstTimeSettingPin && onLockApp) {
+            console.log('🔒 First time setting PIN, will lock app');
+            setTimeout(() => {
+                onClose();
+                onLockApp();
+            }, 500); // Small delay to show save feedback
         }
     };
 
@@ -148,6 +182,10 @@ const Menu: React.FC<MenuProps> = ({
         });
         setTimerRunning(false);
         setTimerSeconds(0);
+        // Notify parent to update daily completion tracking
+        if (onRitualComplete) {
+            setTimeout(() => onRitualComplete(), 100);
+        }
     };
 
     const handleStartTimer = () => {
@@ -239,7 +277,31 @@ const Menu: React.FC<MenuProps> = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    
+
+                    {/* Quick Access: Calendar */}
+                    {onOpenCalendar && (
+                        <button
+                            onClick={() => {
+                                onOpenCalendar();
+                                onClose();
+                            }}
+                            className="w-full p-4 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-primary-hover)] text-white rounded-lg flex items-center justify-between hover:shadow-lg transition-all transform hover:scale-[1.02]"
+                        >
+                            <div className="flex items-center gap-3">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <div className="text-left">
+                                    <div className="font-semibold">90-Day Journey Calendar</div>
+                                    <div className="text-xs opacity-90">View your completion progress</div>
+                                </div>
+                            </div>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    )}
+
                     {/* (a) Intention */}
                     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                         <button onClick={() => toggleSection('intention')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -539,22 +601,43 @@ const Menu: React.FC<MenuProps> = ({
 
                                 {/* Security / PIN */}
                                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">Security (PIN)</h4>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={pinInput}
-                                            onChange={(e) => { setPinInput(e.target.value); setPinError(''); }}
-                                            placeholder={settings.pin ? "New PIN" : "Set 4 letters"}
-                                            maxLength={4}
-                                            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-transparent text-[var(--text-primary)]"
-                                        />
-                                        <button onClick={handlePinSave} className="px-4 py-2 bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] rounded-md text-sm font-medium">Save</button>
+                                    <h4 className="text-sm font-medium text-[var(--text-primary)] mb-3">Security (PIN)</h4>
+                                    <div className="space-y-2">
+                                        <div>
+                                            <label className="text-xs text-gray-600 dark:text-gray-400">Email for PIN recovery</label>
+                                            <input
+                                                type="email"
+                                                value={emailInput}
+                                                onChange={(e) => { setEmailInput(e.target.value); setPinError(''); }}
+                                                placeholder="your@email.com"
+                                                className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-transparent text-[var(--text-primary)]"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={pinInput}
+                                                onChange={(e) => { setPinInput(e.target.value); setPinError(''); }}
+                                                placeholder={settings.pin ? "New PIN" : "Set 4 letters"}
+                                                maxLength={4}
+                                                className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-transparent text-[var(--text-primary)]"
+                                            />
+                                            <button
+                                                onClick={(e) => {
+                                                    console.log('🖱️ SAVE BUTTON CLICKED!');
+                                                    e.preventDefault();
+                                                    handlePinSave();
+                                                }}
+                                                className="px-4 py-2 bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] rounded-md text-sm font-medium"
+                                            >
+                                                Save
+                                            </button>
+                                        </div>
+                                        {pinError && <p className="text-xs text-red-500 mt-1">{pinError}</p>}
+                                        {settings.pin && (
+                                            <button onClick={() => onUpdateSettings({ ...settings, pin: undefined })} className="text-xs text-red-500 mt-2 hover:underline">Remove PIN protection</button>
+                                        )}
                                     </div>
-                                    {pinError && <p className="text-xs text-red-500 mt-1">{pinError}</p>}
-                                    {settings.pin && (
-                                        <button onClick={() => onUpdateSettings({ ...settings, pin: undefined })} className="text-xs text-red-500 mt-2 hover:underline">Remove PIN protection</button>
-                                    )}
                                 </div>
                                 
                                 {/* Pause Journey */}
