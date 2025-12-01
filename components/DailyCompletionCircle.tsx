@@ -126,21 +126,21 @@ const DailyCompletionCircle: React.FC<DailyCompletionCircleProps> = ({
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: ritualCompleted ? colors.ritual : colors.inactive }}
               />
-              <span>Ritual</span>
+              <span>Daily Ritual</span>
             </div>
             <div className="flex items-center gap-1 justify-center">
               <div
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: morningEntryCompleted ? colors.morning : colors.inactive }}
               />
-              <span>Morning</span>
+              <span>Morning Entry</span>
             </div>
             <div className="flex items-center gap-1 justify-center">
               <div
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: eveningCheckinCompleted ? colors.evening : colors.inactive }}
               />
-              <span>Evening</span>
+              <span>Evening Check-in</span>
             </div>
           </div>
         </div>
