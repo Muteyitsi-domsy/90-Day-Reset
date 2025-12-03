@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DailyCompletion, Settings, UserProfile } from '../types';
 import DailyCompletionCircle from './DailyCompletionCircle';
 import { getDayAndMonth } from '../services/geminiService';
+
+// Helper function to get local date string in YYYY-MM-DD format (not UTC)
+const getLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 interface CalendarViewProps {
   isOpen: boolean;
@@ -18,17 +26,33 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
 
 const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, settings, userProfile }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'weeks'>('weeks');
+  const currentWeekRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen || !userProfile) return null;
 
   const { day: currentDay } = getDayAndMonth(userProfile.startDate);
   const startDate = new Date(userProfile.startDate);
 
+  // Calculate which week contains the current day
+  const currentWeekIndex = Math.floor((currentDay - 1) / 7);
+
+  // Auto-scroll to current week when calendar opens
+  useEffect(() => {
+    if (isOpen && currentWeekRef.current && viewMode === 'weeks') {
+      setTimeout(() => {
+        currentWeekRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }, 100);
+    }
+  }, [isOpen, viewMode]);
+
   // Get completion for a specific journey day
   const getCompletionForDay = (day: number): DailyCompletion | undefined => {
     const date = new Date(startDate);
     date.setDate(date.getDate() + day - 1);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date);
     return settings.dailyCompletions?.find(c => c.date === dateStr);
   };
 
@@ -68,7 +92,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, settings, 
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-[var(--card-bg)] rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-auto border border-[var(--card-border)]">
         {/* Header */}
-        <div className="sticky top-0 bg-[var(--card-bg)] border-b border-[var(--card-border)] p-6">
+        <div className="sticky top-0 bg-[var(--card-bg-opaque)] border-b border-[var(--card-border)] p-6 z-10 shadow-md">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
@@ -135,8 +159,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, settings, 
             <div className="space-y-6">
               {weeks.map((weekDays, weekIndex) => {
                 const weekNumber = weekIndex + 1;
+                const isCurrentWeek = weekIndex === currentWeekIndex;
                 return (
-                  <div key={weekIndex} className="bg-[var(--card-bg-secondary)] rounded-lg p-4">
+                  <div
+                    key={weekIndex}
+                    ref={isCurrentWeek ? currentWeekRef : null}
+                    className="bg-[var(--card-bg-secondary)] rounded-lg p-4"
+                  >
                     <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
                       Week {weekNumber}
                     </h3>
@@ -250,7 +279,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, settings, 
         </div>
 
         {/* Legend */}
-        <div className="sticky bottom-0 bg-[var(--card-bg)] px-6 pb-6 pt-4 border-t border-[var(--card-border)]">
+        <div className="sticky bottom-0 bg-[var(--card-bg-opaque)] px-6 pb-6 pt-4 border-t border-[var(--card-border)] z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           <h4 className="text-sm font-medium text-[var(--text-primary)] mb-3">Legend:</h4>
           <div className="flex flex-wrap gap-4 text-xs text-[var(--text-secondary)]">
             <div className="flex items-center gap-2">

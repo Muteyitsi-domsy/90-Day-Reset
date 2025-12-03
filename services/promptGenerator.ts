@@ -47,7 +47,7 @@ const addToPromptsHistory = (prompt: string) => {
 // EXPANDED PROMPT POOL - At least 35 prompts per arc per month = 105 per arc
 // This ensures we have enough unique prompts for 90 days plus buffer
 const PROMPTS: Record<Arc, Record<number, Prompt[]>> = {
-    healing: {
+    release: {
         1: [ // Month 1: Awareness & Gentleness (35+ prompts)
             { text: "Looking back on yesterday, what emotion showed up unexpectedly? Let it be here without judgment.", category: 'reflection' },
             { text: "What is one old pattern you're ready to observe with kindness today?", category: 'intention' },
@@ -160,7 +160,7 @@ const PROMPTS: Record<Arc, Record<number, Prompt[]>> = {
             { text: "How will you integrate all you've learned as this journey ends?", category: 'reflection' },
         ],
     },
-    unstuck: {
+    reaffirm: {
         1: [ // Month 1: Clarity & Micro-Actions (35+ prompts)
             { text: "What is the smallest possible action you can take today that moves you 1% closer to your ideal self?", category: 'intention' },
             { text: "Reflecting on yesterday, where did you feel the most momentum? How can you build on that?", category: 'reflection' },
@@ -273,7 +273,7 @@ const PROMPTS: Record<Arc, Record<number, Prompt[]>> = {
             { text: "What does your unstuck self want to create next?", category: 'reflection' },
         ],
     },
-    healed: {
+    reignition: {
         1: [ // Month 1: Consolidation & Gratitude (35+ prompts)
             { text: "Describe a moment from yesterday where you felt completely like 'yourself'. What did that feel like?", category: 'reflection' },
             { text: "What quality of your ideal self do you want to embody and celebrate today?", category: 'intention' },
@@ -504,7 +504,7 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
 
     // If all prompts in current arc are used, try other arcs
     if (!selectedPrompt) {
-        const otherArcs: Arc[] = (['healing', 'unstuck', 'healed'] as Arc[]).filter(a => a !== arc);
+        const otherArcs: Arc[] = (['release', 'reaffirm', 'reignition'] as Arc[]).filter(a => a !== arc);
         for (const otherArc of otherArcs) {
             for (const m of [1, 2, 3]) {
                 const otherPrompts = shuffle(PROMPTS[otherArc][m]);

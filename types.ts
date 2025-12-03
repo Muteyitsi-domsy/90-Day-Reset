@@ -1,5 +1,5 @@
 
-export type Arc = 'healing' | 'unstuck' | 'healed';
+export type Arc = 'release' | 'reaffirm' | 'reignition';
 
 export type HunchType = 'insight' | 'dream' | 'hunch';
 

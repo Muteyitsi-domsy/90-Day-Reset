@@ -53,13 +53,13 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
            - "${answers.idealSelf}"
 
         Based on these answers, classify their arc into one of three categories using the readiness scale (question 4) as a primary guide, but also considering the nuance of their written answers:
-        - healing (Readiness score 0-5): The user needs to work on resolving past emotional patterns. They may express feelings of being stuck, confused, or mention past unresolved issues.
-        - unstuck (Readiness score 6-7): The user feels emotionally stable but needs guidance and structure to break current patterns. They have some clarity but are unsure of the next steps.
-        - healed (Readiness score 8-10): The user is ready for growth, embodiment, and actively creating their future self. They express excitement, readiness, and a clear vision.
+        - release (Readiness score 0-5): The user is in the process of letting go of past hurt that no longer serves them. They may express feelings of being stuck, confused, or mention past unresolved issues that need releasing.
+        - reaffirm (Readiness score 6-7): The user is solidifying what they know is the true nature that was masked by past hurts. They have some clarity and are ready to reaffirm their authentic self with guidance and structure.
+        - reignition (Readiness score 8-10): The user is moving assuredly in their inner power, unhindered. They express excitement, readiness, a clear vision, and are actively creating their future self.
 
         Your response MUST be a JSON object with the following structure:
         {
-          "phase": "healing" | "unstuck" | "healed",
+          "phase": "release" | "reaffirm" | "reignition",
           "summary": "A short, empathetic paragraph summarizing where the user is, based on their answers.",
           "encouragement": "A single, gentle sentence of encouragement."
         }
@@ -74,7 +74,7 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        phase: { type: Type.STRING, enum: ['healing', 'unstuck', 'healed'] },
+                        phase: { type: Type.STRING, enum: ['release', 'reaffirm', 'reignition'] },
                         summary: { type: Type.STRING },
                         encouragement: { type: Type.STRING }
                     },
@@ -205,9 +205,9 @@ ${hunchEntriesText}
 
     // Arc-specific reflection guidance
     const arcReflection = {
-        healing: "What was recognized, what was released, what softened over these 90 days",
-        unstuck: "What beliefs shifted, what momentum built, what was shed over these 90 days",
-        healed: "What was embodied, what became natural, what expanded over these 90 days"
+        release: "What was recognized, what was released, what softened over these 90 days",
+        reaffirm: "What beliefs shifted, what was reaffirmed, what emerged over these 90 days",
+        reignition: "What was embodied, what became natural, what ignited over these 90 days"
     };
 
     const prompt = `

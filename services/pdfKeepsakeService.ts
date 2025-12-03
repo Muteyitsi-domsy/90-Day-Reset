@@ -112,9 +112,9 @@ export async function generateJourneyKeepsake(data: KeepsakeData): Promise<void>
     addSpacer(20);
 
     const arcLabels = {
-        healing: 'The Healing Arc',
-        unstuck: 'The Unstuck Arc',
-        healed: 'The Healed Arc'
+        release: 'The Release Arc',
+        reaffirm: 'The Reaffirm Arc',
+        reignition: 'The Reignition Arc'
     };
     addText(arcLabels[userProfile.arc], 14, colors.accent, { align: 'center', fontStyle: 'italic' });
 

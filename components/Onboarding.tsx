@@ -48,9 +48,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     } catch (error) {
       console.error("Error analyzing onboarding answers:", error);
       // Use readiness scale to determine fallback arc
-      let fallbackArc: 'healing' | 'unstuck' | 'healed' = 'unstuck';
-      if (answers.readinessScale <= 5) fallbackArc = 'healing';
-      else if (answers.readinessScale >= 8) fallbackArc = 'healed';
+      let fallbackArc: 'release' | 'reaffirm' | 'reignition' = 'reaffirm';
+      if (answers.readinessScale <= 5) fallbackArc = 'release';
+      else if (answers.readinessScale >= 8) fallbackArc = 'reignition';
 
       setAnalysisResult({
           phase: fallbackArc,

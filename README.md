@@ -164,7 +164,7 @@ Create a post-receive hook that automatically pushes studio changes to origin.
 Daily prompts are managed in `services/promptGenerator.ts`. The system includes:
 - **Anti-repetition logic**: Tracks last 5 prompts to avoid duplicates
 - **Persistent rotation**: Uses localStorage to maintain state across sessions
-- **Arc-based prompts**: Different prompt sets for healing, unstuck, and healed arcs
+- **Arc-based prompts**: Different prompt sets for release, reaffirm, and reignition arcs
 - **Month-based progression**: Prompts evolve as users progress through their 90-day journey
 
 To modify prompts, edit the `PROMPTS` object in `promptGenerator.ts`.

@@ -26,6 +26,14 @@ import CalendarView from './components/CalendarView';
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
 
+// Helper function to get local date string in YYYY-MM-DD format (not UTC)
+const getLocalDateString = (date: Date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const App: React.FC = () => {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -122,9 +130,9 @@ const App: React.FC = () => {
              // Migration from 'stage' to 'arc'
             if ((profile as any).stage) {
                 const oldStage = (profile as any).stage;
-                if (oldStage === 'reconstruction') profile.arc = 'unstuck';
-                else if (oldStage === 'expansion') profile.arc = 'healed';
-                else profile.arc = 'healing';
+                if (oldStage === 'reconstruction') profile.arc = 'reaffirm';
+                else if (oldStage === 'expansion') profile.arc = 'reignition';
+                else profile.arc = 'release';
                 delete (profile as any).stage;
             }
             // Initialize month_count if missing
@@ -208,7 +216,7 @@ const App: React.FC = () => {
 
   // Helper function to get today's completion state
   const getTodayCompletion = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const { day } = userProfile ? getDayAndMonth(userProfile.startDate) : { day: 0 };
 
     // Check if today's entry exists
@@ -224,7 +232,7 @@ const App: React.FC = () => {
 
   // Helper function to update daily completion tracking
   const updateDailyCompletion = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const completion = getTodayCompletion();
 
     // Update or create today's completion record
@@ -835,7 +843,7 @@ const App: React.FC = () => {
         if (userProfile) {
           const { day } = getDayAndMonth(userProfile.startDate);
           const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
-          const today = new Date().toISOString().split('T')[0];
+          const today = getLocalDateString();
           const ritualCompleted = settings.lastRitualDate === today && settings.ritualCompletedToday === true;
           return <ReturnUserWelcomeScreen userProfile={userProfile} todaysEntry={todaysEntry} onContinue={() => setAppState('journal')} ritualCompleted={ritualCompleted} />;
         }
