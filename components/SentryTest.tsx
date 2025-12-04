@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
 
 /**
@@ -15,7 +15,14 @@ import * as Sentry from '@sentry/react';
  * 5. Remove this component before production launch
  */
 
+// Component that throws an error during render
+const CrashComponent: React.FC = () => {
+  throw new Error('Test crash from ErrorBoundary - this error was thrown during render');
+};
+
 const SentryTest: React.FC = () => {
+  const [shouldCrash, setShouldCrash] = useState(false);
+
   const handleTestError = () => {
     // Test a caught error
     try {
@@ -32,8 +39,8 @@ const SentryTest: React.FC = () => {
   };
 
   const handleTestCrash = () => {
-    // Test an uncaught error (will be caught by ErrorBoundary)
-    throw new Error('Test crash from Sentry - ErrorBoundary should catch this');
+    // Trigger a render error that ErrorBoundary will catch
+    setShouldCrash(true);
   };
 
   const handleTestMessage = () => {
@@ -47,6 +54,11 @@ const SentryTest: React.FC = () => {
     });
     alert('Test message sent to Sentry! Check your Sentry dashboard.');
   };
+
+  // If crash is triggered, render the crash component
+  if (shouldCrash) {
+    return <CrashComponent />;
+  }
 
   return (
     <div className="fixed bottom-4 right-4 bg-yellow-500 text-black p-4 rounded-lg shadow-lg max-w-sm z-50">
