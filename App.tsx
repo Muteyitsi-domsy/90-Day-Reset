@@ -399,7 +399,7 @@ const App: React.FC = () => {
         } finally {
           setIsLoading(false);
           // Update daily completion tracking after entry is saved
-          setTimeout(() => updateDailyCompletion(), 100);
+          updateDailyCompletion();
         }
     } else {
         // If not daily insights, just finalize the save.
@@ -410,7 +410,7 @@ const App: React.FC = () => {
         }
         setIsLoading(false);
         // Update daily completion tracking after entry is saved
-        setTimeout(() => updateDailyCompletion(), 100);
+        updateDailyCompletion();
     }
   };
 
@@ -498,7 +498,7 @@ const App: React.FC = () => {
       )
     );
     // Update daily completion tracking after evening check-in is saved
-    setTimeout(() => updateDailyCompletion(), 100);
+    updateDailyCompletion();
   };
 
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {

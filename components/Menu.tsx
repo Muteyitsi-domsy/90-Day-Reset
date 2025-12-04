@@ -184,7 +184,7 @@ const Menu: React.FC<MenuProps> = ({
         setTimerSeconds(0);
         // Notify parent to update daily completion tracking
         if (onRitualComplete) {
-            setTimeout(() => onRitualComplete(), 100);
+            onRitualComplete();
         }
     };
 
