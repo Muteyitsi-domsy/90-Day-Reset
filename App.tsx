@@ -58,6 +58,18 @@ const App: React.FC = () => {
   const [viewedReport, setViewedReport] = useState<JournalEntry | null>(null);
   const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
 
+  // Ref to track latest journalEntries for completion tracking
+  const journalEntriesRef = React.useRef(journalEntries);
+  const userProfileRef = React.useRef(userProfile);
+
+  // Update refs when state changes
+  useEffect(() => {
+    journalEntriesRef.current = journalEntries;
+  }, [journalEntries]);
+
+  useEffect(() => {
+    userProfileRef.current = userProfile;
+  }, [userProfile]);
 
   // On app load, schedule the next daily reminder if permission is granted.
   useEffect(() => {
@@ -236,54 +248,66 @@ const App: React.FC = () => {
   };
 
   // Helper function to update daily completion tracking
+  // Fixed: Use callback form and refs to access latest state and avoid stale closures
   const updateDailyCompletion = () => {
     const today = getLocalDateString();
-    const completion = getTodayCompletion();
 
-    // Update or create today's completion record
-    const existingCompletions = settings.dailyCompletions || [];
-    const todayCompletionIndex = existingCompletions.findIndex(c => c.date === today);
+    setSettings(prev => {
+      // Recalculate completion status with fresh state using refs
+      const { day } = userProfileRef.current ? getDayAndMonth(userProfileRef.current.startDate) : { day: 0 };
+      const todaysEntry = journalEntriesRef.current.find(entry => entry.day === day && entry.type === 'daily');
 
-    const newCompletion = {
-      date: today,
-      ...completion
-    };
+      const completion = {
+        ritualCompleted: prev.lastRitualDate === today && prev.ritualCompletedToday === true,
+        morningEntryCompleted: !!todaysEntry,
+        eveningCheckinCompleted: !!todaysEntry?.eveningCheckin
+      };
 
-    // Check if this completes the day (all three tasks done)
-    const wasCompleted = todayCompletionIndex >= 0 ?
-      existingCompletions[todayCompletionIndex].ritualCompleted &&
-      existingCompletions[todayCompletionIndex].morningEntryCompleted &&
-      existingCompletions[todayCompletionIndex].eveningCheckinCompleted : false;
+      // Update or create today's completion record
+      const existingCompletions = prev.dailyCompletions || [];
+      const todayCompletionIndex = existingCompletions.findIndex(c => c.date === today);
 
-    const isNowCompleted = completion.ritualCompleted &&
-                          completion.morningEntryCompleted &&
-                          completion.eveningCheckinCompleted;
+      const newCompletion = {
+        date: today,
+        ...completion
+      };
 
-    let updatedCompletions;
-    if (todayCompletionIndex >= 0) {
-      // Update existing completion
-      updatedCompletions = [...existingCompletions];
-      updatedCompletions[todayCompletionIndex] = newCompletion;
-    } else {
-      // Add new completion (keep last 90 days only)
-      updatedCompletions = [...existingCompletions, newCompletion].slice(-90);
-    }
+      // Check if this completes the day (all three tasks done)
+      const wasCompleted = todayCompletionIndex >= 0 ?
+        existingCompletions[todayCompletionIndex].ritualCompleted &&
+        existingCompletions[todayCompletionIndex].morningEntryCompleted &&
+        existingCompletions[todayCompletionIndex].eveningCheckinCompleted : false;
 
-    setSettings(prev => ({
-      ...prev,
-      dailyCompletions: updatedCompletions
-    }));
+      const isNowCompleted = completion.ritualCompleted &&
+                            completion.morningEntryCompleted &&
+                            completion.eveningCheckinCompleted;
 
-    // Send notification if day just completed
-    if (!wasCompleted && isNowCompleted) {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Perfect Day Complete! 🎉', {
-          body: 'You\'ve completed your daily ritual, morning entry, and evening check-in. Amazing consistency!',
-          icon: '/favicon.ico',
-          badge: '/favicon.ico'
-        });
+      let updatedCompletions;
+      if (todayCompletionIndex >= 0) {
+        // Update existing completion
+        updatedCompletions = [...existingCompletions];
+        updatedCompletions[todayCompletionIndex] = newCompletion;
+      } else {
+        // Add new completion (keep last 90 days only)
+        updatedCompletions = [...existingCompletions, newCompletion].slice(-90);
       }
-    }
+
+      // Send notification if day just completed
+      if (!wasCompleted && isNowCompleted) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Perfect Day Complete! 🎉', {
+            body: 'You\'ve completed your daily ritual, morning entry, and evening check-in. Amazing consistency!',
+            icon: '/favicon.ico',
+            badge: '/favicon.ico'
+          });
+        }
+      }
+
+      return {
+        ...prev,
+        dailyCompletions: updatedCompletions
+      };
+    });
   };
 
   const handleSaveEntry = async (text: string) => {
