@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import { errorLogger } from '../utils/errorLogger';
 
 interface Props {
@@ -42,7 +43,15 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   logErrorToService(error: Error, errorInfo: ErrorInfo): void {
-    // Log using centralized error logger
+    // Send to Sentry for real-time monitoring
+    Sentry.captureException(error, {
+      extra: {
+        componentStack: errorInfo.componentStack,
+        type: 'ErrorBoundary'
+      }
+    });
+
+    // Also log locally for offline review
     errorLogger.log(error, {
       componentStack: errorInfo.componentStack,
       type: 'ErrorBoundary'
