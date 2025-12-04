@@ -28,14 +28,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, settings, 
   const [viewMode, setViewMode] = useState<'grid' | 'weeks'>('weeks');
   const currentWeekRef = useRef<HTMLDivElement>(null);
 
-  if (!isOpen || !userProfile) return null;
-
-  const { day: currentDay } = getDayAndMonth(userProfile.startDate);
-  const startDate = new Date(userProfile.startDate);
-
-  // Calculate which week contains the current day
-  const currentWeekIndex = Math.floor((currentDay - 1) / 7);
-
   // Auto-scroll to current week when calendar opens
   useEffect(() => {
     if (isOpen && currentWeekRef.current && viewMode === 'weeks') {
@@ -47,6 +39,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, settings, 
       }, 100);
     }
   }, [isOpen, viewMode]);
+
+  // Early return AFTER all hooks
+  if (!isOpen || !userProfile) return null;
+
+  const { day: currentDay } = getDayAndMonth(userProfile.startDate);
+  const startDate = new Date(userProfile.startDate);
+
+  // Calculate which week contains the current day
+  const currentWeekIndex = Math.floor((currentDay - 1) / 7);
 
   // Get completion for a specific journey day
   const getCompletionForDay = (day: number): DailyCompletion | undefined => {
