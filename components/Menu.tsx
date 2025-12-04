@@ -270,7 +270,7 @@ const Menu: React.FC<MenuProps> = ({
             <div className="relative w-full max-w-md bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col animate-slide-in-left">
                 <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
                     <h2 className="text-2xl font-light text-[var(--text-secondary)]">Menu</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-[var(--text-primary)]">
+                    <button onClick={onClose} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -328,7 +328,7 @@ const Menu: React.FC<MenuProps> = ({
                                 {!settings.ritualName && !isEditingRitual ? (
                                     // No ritual set - show setup prompt
                                     <div className="text-center space-y-3">
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Define your daily ritual to anchor your practice.</p>
+                                        <p className="text-sm text-[var(--text-secondary)] opacity-80">Define your daily ritual to anchor your practice.</p>
                                         <button
                                             onClick={() => setIsEditingRitual(true)}
                                             className="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-primary-hover)]"
@@ -386,7 +386,7 @@ const Menu: React.FC<MenuProps> = ({
                                         <div className="text-center">
                                             <h4 className="font-medium text-[var(--text-primary)]">{settings.ritualName}</h4>
                                             {settings.ritualDuration && (
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">{settings.ritualDuration} minutes</p>
+                                                <p className="text-xs text-[var(--text-secondary)] opacity-80">{settings.ritualDuration} minutes</p>
                                             )}
                                         </div>
 
@@ -438,7 +438,7 @@ const Menu: React.FC<MenuProps> = ({
                                         {/* Edit button */}
                                         <button
                                             onClick={() => setIsEditingRitual(true)}
-                                            className="w-full py-2 text-xs text-gray-500 hover:text-[var(--text-primary)]"
+                                            className="w-full py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                         >
                                             Edit Ritual
                                         </button>
@@ -477,7 +477,7 @@ const Menu: React.FC<MenuProps> = ({
                                     <div className="space-y-2">
                                         <h4 className="text-xs font-semibold text-[var(--text-secondary)] px-3 pt-2 uppercase tracking-wide">Monthly Reports</h4>
                                         {monthlyReports.length === 0 ? (
-                                            <p className="text-center py-2 text-xs text-gray-500">No monthly reports yet</p>
+                                            <p className="text-center py-2 text-xs text-[var(--text-secondary)] opacity-70">No monthly reports yet</p>
                                         ) : (
                                             monthlyReports.map(report => (
                                                 <button
@@ -489,7 +489,7 @@ const Menu: React.FC<MenuProps> = ({
                                                         <p className="font-medium text-sm text-[var(--text-secondary)]">
                                                             📅 Month {report.summaryData?.period || ''}
                                                         </p>
-                                                        <p className="text-xs text-gray-500">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
+                                                        <p className="text-xs text-[var(--text-secondary)] opacity-70">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
                                                     </div>
                                                     <span className="text-[var(--accent-primary)] opacity-0 group-hover:opacity-100 transition-opacity">View &rarr;</span>
                                                 </button>
@@ -503,7 +503,7 @@ const Menu: React.FC<MenuProps> = ({
                                     <div className="space-y-2">
                                         <h4 className="text-xs font-semibold text-[var(--text-secondary)] px-3 pt-2 uppercase tracking-wide">Weekly Reports</h4>
                                         {weeklyReports.length === 0 ? (
-                                            <p className="text-center py-2 text-xs text-gray-500">No weekly reports yet</p>
+                                            <p className="text-center py-2 text-xs text-[var(--text-secondary)] opacity-70">No weekly reports yet</p>
                                         ) : (
                                             weeklyReports.map(report => (
                                                 <button
@@ -515,7 +515,7 @@ const Menu: React.FC<MenuProps> = ({
                                                         <p className="font-medium text-sm text-[var(--text-secondary)]">
                                                             🌿 Week {report.week}
                                                         </p>
-                                                        <p className="text-xs text-gray-500">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
+                                                        <p className="text-xs text-[var(--text-secondary)] opacity-70">{report.summaryData?.dateRange || new Date(report.date).toLocaleDateString()}</p>
                                                     </div>
                                                     <span className="text-[var(--accent-primary)] opacity-0 group-hover:opacity-100 transition-opacity">View &rarr;</span>
                                                 </button>

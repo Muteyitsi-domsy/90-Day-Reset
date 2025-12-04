@@ -135,6 +135,11 @@ const App: React.FC = () => {
                 else profile.arc = 'release';
                 delete (profile as any).stage;
             }
+            // Migration from old arc names to new ones (Dec 2025 update)
+            if ((profile as any).arc === 'healing') profile.arc = 'release';
+            if ((profile as any).arc === 'unstuck') profile.arc = 'reaffirm';
+            if ((profile as any).arc === 'healed') profile.arc = 'reignition';
+
             // Initialize month_count if missing
             if (!profile.month_count) profile.month_count = 1;
 
@@ -665,6 +670,9 @@ const App: React.FC = () => {
             if (!todayEntry) {
                  const promptText = getDailyPrompt(userProfile, day, journalEntries);
                  setDailyPrompt({ text: promptText, isMilestone: false });
+            } else {
+                 // Clear dailyPrompt when entry exists for today
+                 setDailyPrompt(null);
             }
             setIsLoading(false);
         }
@@ -673,7 +681,7 @@ const App: React.FC = () => {
     if (appState === 'journal' && userProfile && !userProfile.isPaused) {
         setupJournal();
     }
-  }, [appState, userProfile]);
+  }, [appState, userProfile, journalEntries]);
 
   const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'name' | 'intentions'>) => {
     setUserProfile({ ...profile, name: userName, intentions: '', month_count: 1 });
