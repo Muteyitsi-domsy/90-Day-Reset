@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, UserProfile, JournalEntry, HunchType } from '../types';
 import { getDayAndMonth } from '../services/geminiService';
+import { QuotaStatus } from './QuotaStatus';
+import { ShareButton } from './ShareButton';
 
 interface MenuProps {
     isOpen: boolean;
@@ -736,6 +738,24 @@ const Menu: React.FC<MenuProps> = ({
                              </div>
                         )}
                     </div>
+
+                    {/* Share Feature (only visible when enabled) */}
+                    {settings.shareEnabled && userProfile && (
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+                            <button onClick={() => toggleSection('share')} className="w-full p-4 flex justify-between items-center bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/20 dark:hover:to-purple-900/20 transition-colors">
+                                <span className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">Share Your Journey</span>
+                                <ChevronDownIcon className={`w-5 h-5 text-blue-600 dark:text-blue-400 transition-transform ${openSection === 'share' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {openSection === 'share' && (
+                                <div className="p-4 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700">
+                                    <ShareButton
+                                        userProfile={userProfile}
+                                        onClose={() => setOpenSection(null)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Data Management (GDPR) */}
                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">

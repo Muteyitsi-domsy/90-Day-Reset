@@ -22,6 +22,7 @@ import IntentionSetting from './components/IntentionSetting';
 import Menu from './components/Menu';
 import ReportViewer from './components/ReportViewer';
 import CalendarView from './components/CalendarView';
+import { AdminDashboard } from './components/AdminDashboard';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -48,6 +49,8 @@ const App: React.FC = () => {
       includeHunchesInFinalSummary: false
   });
   const [isLocked, setIsLocked] = useState(true);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [adminKeyPresses, setAdminKeyPresses] = useState<string[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isJourneyOver, setIsJourneyOver] = useState(false);
@@ -210,6 +213,27 @@ const App: React.FC = () => {
         document.documentElement.classList.add('dark');
     }
   }, [settings, hasLoadedSettings]);
+
+  // Admin mode keyboard shortcut: Press Ctrl+Shift+A
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        setShowAdminDashboard(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Check for admin mode in URL (e.g., ?admin=true)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === 'true') {
+      setShowAdminDashboard(true);
+    }
+  }, []);
 
   // Save user profile to local storage on change
   useEffect(() => {
@@ -386,13 +410,25 @@ const App: React.FC = () => {
 
         } catch (error) {
           console.error("Error analyzing entry:", error);
+
+          // Check if it's a quota error
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isQuotaError = errorMessage.toLowerCase().includes('quota') ||
+                               errorMessage.toLowerCase().includes('429');
+
           const entryWithError: JournalEntry = {
               ...newEntry,
               analysis: {
-                  summary: "Could not analyze this entry. Your thoughts are saved, and you can reflect on them yourself.",
-                  insights: [],
-                  tags: ["Error"],
-                  microAction: "Take a deep breath. Technology has its moments."
+                  summary: isQuotaError
+                    ? "Daily analysis quota reached. Your entry is safely saved. You can disable auto-analysis in settings or try again later."
+                    : "Could not analyze this entry. Your thoughts are saved, and you can reflect on them yourself.",
+                  insights: isQuotaError
+                    ? ["Analysis will resume when quota resets", "Your journal entries are always saved regardless of analysis"]
+                    : [],
+                  tags: isQuotaError ? ["Quota Limit"] : ["Error"],
+                  microAction: isQuotaError
+                    ? "Consider turning off automatic analysis in settings to save quota for summaries."
+                    : "Take a deep breath. Technology has its moments."
               }
           }
           setJournalEntries(prev => prev.map(entry => entry.id === entryWithError.id ? entryWithError : entry));
@@ -472,7 +508,7 @@ const App: React.FC = () => {
     }
 
     try {
-      const newAnalysis = await analyzeJournalEntry(newText);
+      const newAnalysis = await analyzeJournalEntry(newText, true); // Force refresh for re-analysis
       setJournalEntries(prev => prev.map(entry =>
         entry.id === entryId
           ? { ...entry, rawText: newText, analysis: newAnalysis, date: new Date().toISOString() }
@@ -480,6 +516,33 @@ const App: React.FC = () => {
       ));
     } catch (error) {
       console.error("Error re-analyzing entry:", error);
+
+      // Check if it's a quota error and provide helpful feedback
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isQuotaError = errorMessage.toLowerCase().includes('quota') ||
+                           errorMessage.toLowerCase().includes('429');
+
+      // Update entry with error information
+      setJournalEntries(prev => prev.map(entry =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              rawText: newText,
+              analysis: {
+                summary: isQuotaError
+                  ? "Re-analysis quota reached. Your updated entry is saved. Try again later or disable auto-analysis in settings."
+                  : "Could not re-analyze this entry. Your updated text is saved.",
+                insights: isQuotaError
+                  ? ["Analysis will resume when quota resets"]
+                  : [],
+                tags: isQuotaError ? ["Quota Limit"] : ["Error"],
+                microAction: isQuotaError
+                  ? "Consider turning off automatic analysis in settings."
+                  : "Your thoughts are preserved."
+              }
+            }
+          : entry
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -998,6 +1061,11 @@ const App: React.FC = () => {
         onClose={() => setIsCalendarOpen(false)}
         settings={settings}
         userProfile={userProfile}
+      />
+      <AdminDashboard
+        isOpen={showAdminDashboard}
+        onClose={() => setShowAdminDashboard(false)}
+        settings={settings}
       />
       {renderContent()}
     </>

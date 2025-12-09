@@ -1,6 +1,8 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, Arc, OnboardingAnalysis, JournalEntry, EntryAnalysis } from "../types";
+import { rateLimiter } from "./rateLimiter";
+import { analysisCache } from "./analysisCache";
 
 // ✅ Environment setup for Vite (browser-safe)
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
@@ -66,27 +68,41 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
     `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        phase: { type: Type.STRING, enum: ['release', 'reaffirm', 'reignition'] },
-                        summary: { type: Type.STRING },
-                        encouragement: { type: Type.STRING }
-                    },
-                    required: ['phase', 'summary', 'encouragement']
+        // Use rate limiter to queue the request
+        const result = await rateLimiter.enqueue(async () => {
+            const response = await ai!.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: prompt,
+                config: {
+                    responseMimeType: 'application/json',
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            phase: { type: Type.STRING, enum: ['release', 'reaffirm', 'reignition'] },
+                            summary: { type: Type.STRING },
+                            encouragement: { type: Type.STRING }
+                        },
+                        required: ['phase', 'summary', 'encouragement']
+                    }
                 }
-            }
-        });
+            });
 
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as OnboardingAnalysis;
+            const jsonText = response.text.trim();
+            return JSON.parse(jsonText) as OnboardingAnalysis;
+        }, 'onboarding_analysis');
+
+        return result;
     } catch (error) {
         console.error("Error analyzing onboarding answers:", error);
+
+        // Provide user-friendly error messages for quota errors
+        if (error && typeof error === 'object' && 'message' in error) {
+            const errorMessage = (error as Error).message.toLowerCase();
+            if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+                throw new Error('Analysis quota exceeded. Please try again in a few minutes.');
+            }
+        }
+
         throw new Error(`Failed to analyze onboarding: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
@@ -111,23 +127,46 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
     `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: prompt,
-        });
+        // Use rate limiter to queue the request
+        const result = await rateLimiter.enqueue(async () => {
+            const response = await ai!.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: prompt,
+            });
 
-        return response.text.trim();
+            return response.text.trim();
+        }, 'ideal_self_manifesto');
+
+        return result;
     } catch (error) {
         console.error("Error generating manifesto:", error);
+
+        // Provide user-friendly error messages for quota errors
+        if (error && typeof error === 'object' && 'message' in error) {
+            const errorMessage = (error as Error).message.toLowerCase();
+            if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+                throw new Error('Manifesto generation quota exceeded. Please try again in a few minutes.');
+            }
+        }
+
         throw new Error(`Failed to generate manifesto: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
 
-export async function analyzeJournalEntry(entryText: string): Promise<EntryAnalysis> {
+export async function analyzeJournalEntry(entryText: string, forceRefresh = false): Promise<EntryAnalysis> {
     // Check if AI client is available
     if (!ai) {
         throw new Error("Gemini API key not configured. Daily insights are unavailable.");
+    }
+
+    // Check cache first (unless forced refresh)
+    if (!forceRefresh) {
+        const cached = analysisCache.get<EntryAnalysis>(entryText, 'journal_entry');
+        if (cached) {
+            console.log('Using cached analysis for journal entry');
+            return cached;
+        }
     }
 
     const prompt = `
@@ -154,39 +193,68 @@ export async function analyzeJournalEntry(entryText: string): Promise<EntryAnaly
     `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        summary: { type: Type.STRING },
-                        insights: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        microAction: { type: Type.STRING }
-                    },
-                    required: ['summary', 'insights', 'tags', 'microAction']
+        // Use rate limiter to queue the request
+        const result = await rateLimiter.enqueue(async () => {
+            const response = await ai!.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: prompt,
+                config: {
+                    responseMimeType: 'application/json',
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            summary: { type: Type.STRING },
+                            insights: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            microAction: { type: Type.STRING }
+                        },
+                        required: ['summary', 'insights', 'tags', 'microAction']
+                    }
                 }
-            }
-        });
+            });
 
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText) as EntryAnalysis;
+            const jsonText = response.text.trim();
+            return JSON.parse(jsonText) as EntryAnalysis;
+        }, `journal_entry_${entryText.substring(0, 50)}`);
+
+        // Cache the result
+        analysisCache.set(entryText, 'journal_entry', result);
+
+        return result;
     } catch (error) {
         console.error("Error in analyzeJournalEntry:", error);
+
+        // Provide user-friendly error messages for quota errors
+        if (error && typeof error === 'object' && 'message' in error) {
+            const errorMessage = (error as Error).message.toLowerCase();
+            if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+                throw new Error('Daily analysis quota exceeded. Please try again later or disable automatic analysis in settings. Your journal entry was still saved.');
+            }
+        }
+
         throw new Error(`Failed to analyze journal entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
-export async function generateFinalSummary(profile: UserProfile, journalHistory: JournalEntry[], hunchHistory: JournalEntry[]): Promise<string> {
+export async function generateFinalSummary(profile: UserProfile, journalHistory: JournalEntry[], hunchHistory: JournalEntry[], forceRefresh = false): Promise<string> {
     // Check if AI client is available
     if (!ai) {
         throw new Error("Gemini API key not configured. Final summary generation is unavailable.");
     }
 
     const historyText = journalHistory.map(entry => `Day ${entry.day}: ${entry.rawText}`).join('\n\n');
+
+    // Generate cache key
+    const cacheContent = `${profile.name}_final_${historyText}_${hunchHistory.map(h => h.rawText).join('|')}`;
+
+    // Check cache first
+    if (!forceRefresh) {
+        const cached = analysisCache.get<string>(cacheContent, 'final_summary');
+        if (cached) {
+            console.log('Using cached final summary');
+            return cached;
+        }
+    }
 
     let hunchTextSection = '';
     if (hunchHistory && hunchHistory.length > 0) {
@@ -258,14 +326,31 @@ ${hunchEntriesText}
     `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash', // Using a powerful model for the final, complex summary
-            contents: prompt,
-        });
+        // Use rate limiter to queue the request
+        const result = await rateLimiter.enqueue(async () => {
+            const response = await ai!.models.generateContent({
+                model: 'gemini-2.0-flash', // Using a powerful model for the final, complex summary
+                contents: prompt,
+            });
 
-        return response.text.trim();
+            return response.text.trim();
+        }, 'final_summary');
+
+        // Cache the result
+        analysisCache.set(cacheContent, 'final_summary', result);
+
+        return result;
     } catch (error) {
         console.error("Error generating final summary:", error);
+
+        // Provide user-friendly error messages for quota errors
+        if (error && typeof error === 'object' && 'message' in error) {
+            const errorMessage = (error as Error).message.toLowerCase();
+            if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+                throw new Error('Final summary quota exceeded. Please try again later. Your journey data has been saved.');
+            }
+        }
+
         throw new Error(`Failed to generate final summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
@@ -295,7 +380,7 @@ function getMonthDateRange(startDate: string, monthNumber: number): string {
     return `${formatDate(monthStart)} - ${formatDate(monthEnd)}`;
 }
 
-export async function generateWeeklySummary(userProfile: UserProfile, week: number, entries: JournalEntry[]): Promise<any> {
+export async function generateWeeklySummary(userProfile: UserProfile, week: number, entries: JournalEntry[], forceRefresh = false): Promise<any> {
     // Check if AI client is available
     if (!ai) {
         throw new Error("Gemini API key not configured. Weekly summary generation is unavailable.");
@@ -307,6 +392,18 @@ export async function generateWeeklySummary(userProfile: UserProfile, week: numb
 
     const dateRange = getWeekDateRange(userProfile.startDate, week);
     const periodLabel = `Week ${week}`;
+
+    // Generate cache key from entries
+    const cacheContent = `${userProfile.name}_week_${week}_${entries.map(e => e.rawText).join('|')}`;
+
+    // Check cache first
+    if (!forceRefresh) {
+        const cached = analysisCache.get<any>(cacheContent, 'weekly_summary');
+        if (cached) {
+            console.log(`Using cached weekly summary for week ${week}`);
+            return cached;
+        }
+    }
 
     // System instruction (same as server-side)
     const systemInstruction = `You are a reflective mirror for personal journal entries. Your role is to observe and reflect patterns back to the user WITHOUT judgment, diagnosis, advice, or encouragement. You do not coach, suggest, or prescribe. You simply reveal what is present in the writing.
@@ -345,72 +442,89 @@ Your output must be a single, clean JSON object matching the provided schema.`;
     `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING, description: "A poetic, evocative title for this period" },
-                        period: { type: Type.NUMBER },
-                        dateRange: { type: Type.STRING },
-                        dominantThemes: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING },
-                            description: "3-5 themes that emerged"
+        // Use rate limiter to queue the request
+        const result = await rateLimiter.enqueue(async () => {
+            const response = await ai!.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                config: {
+                    systemInstruction,
+                    responseMimeType: 'application/json',
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING, description: "A poetic, evocative title for this period" },
+                            period: { type: Type.NUMBER },
+                            dateRange: { type: Type.STRING },
+                            dominantThemes: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING },
+                                description: "3-5 themes that emerged"
+                            },
+                            emotionalTerrain: { type: Type.STRING },
+                            recurringThreads: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            },
+                            shifts: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            },
+                            mirrors: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        pattern: { type: Type.STRING },
+                                        excerpt: { type: Type.STRING },
+                                        day: { type: Type.NUMBER }
+                                    },
+                                    required: ["pattern", "excerpt", "day"]
+                                }
+                            },
+                            tensions: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            },
+                            synthesis: { type: Type.STRING }
                         },
-                        emotionalTerrain: { type: Type.STRING },
-                        recurringThreads: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        },
-                        shifts: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        },
-                        mirrors: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    pattern: { type: Type.STRING },
-                                    excerpt: { type: Type.STRING },
-                                    day: { type: Type.NUMBER }
-                                },
-                                required: ["pattern", "excerpt", "day"]
-                            }
-                        },
-                        tensions: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        },
-                        synthesis: { type: Type.STRING }
-                    },
-                    required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                        required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                    }
                 }
-            }
-        });
+            });
 
-        const summaryJson = JSON.parse(response.text);
+            const summaryJson = JSON.parse(response.text);
 
-        // Add metrics
-        summaryJson.metrics = {
-            entries: entries.length,
-            streak: userProfile.streak,
-            completionRate: `${Math.round(completionRate * 100)}%`
-        };
+            // Add metrics
+            summaryJson.metrics = {
+                entries: entries.length,
+                streak: userProfile.streak,
+                completionRate: `${Math.round(completionRate * 100)}%`
+            };
 
-        return summaryJson;
+            return summaryJson;
+        }, `weekly_summary_${week}`);
+
+        // Cache the result
+        analysisCache.set(cacheContent, 'weekly_summary', result);
+
+        return result;
     } catch (error) {
         console.error("Error generating weekly summary:", error);
+
+        // Provide user-friendly error messages for quota errors
+        if (error && typeof error === 'object' && 'message' in error) {
+            const errorMessage = (error as Error).message.toLowerCase();
+            if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+                throw new Error('Weekly summary quota exceeded. Please try again later. Your progress has been saved.');
+            }
+        }
+
         throw new Error(`Failed to generate weekly summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
-export async function generateMonthlySummary(userProfile: UserProfile, month: number, entries: JournalEntry[]): Promise<any> {
+export async function generateMonthlySummary(userProfile: UserProfile, month: number, entries: JournalEntry[], forceRefresh = false): Promise<any> {
     // Check if AI client is available
     if (!ai) {
         throw new Error("Gemini API key not configured. Monthly summary generation is unavailable.");
@@ -422,6 +536,18 @@ export async function generateMonthlySummary(userProfile: UserProfile, month: nu
 
     const dateRange = getMonthDateRange(userProfile.startDate, month);
     const periodLabel = `Month ${month}`;
+
+    // Generate cache key from entries
+    const cacheContent = `${userProfile.name}_month_${month}_${entries.map(e => e.rawText).join('|')}`;
+
+    // Check cache first
+    if (!forceRefresh) {
+        const cached = analysisCache.get<any>(cacheContent, 'monthly_summary');
+        if (cached) {
+            console.log(`Using cached monthly summary for month ${month}`);
+            return cached;
+        }
+    }
 
     // System instruction (same as server-side)
     const systemInstruction = `You are a reflective mirror for personal journal entries. Your role is to observe and reflect patterns back to the user WITHOUT judgment, diagnosis, advice, or encouragement. You do not coach, suggest, or prescribe. You simply reveal what is present in the writing.
@@ -460,67 +586,84 @@ Your output must be a single, clean JSON object matching the provided schema.`;
     `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-            config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING, description: "A poetic, evocative title for this period" },
-                        period: { type: Type.NUMBER },
-                        dateRange: { type: Type.STRING },
-                        dominantThemes: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING },
-                            description: "3-5 themes that emerged"
+        // Use rate limiter to queue the request
+        const result = await rateLimiter.enqueue(async () => {
+            const response = await ai!.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                config: {
+                    systemInstruction,
+                    responseMimeType: 'application/json',
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING, description: "A poetic, evocative title for this period" },
+                            period: { type: Type.NUMBER },
+                            dateRange: { type: Type.STRING },
+                            dominantThemes: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING },
+                                description: "3-5 themes that emerged"
+                            },
+                            emotionalTerrain: { type: Type.STRING },
+                            recurringThreads: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            },
+                            shifts: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            },
+                            mirrors: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        pattern: { type: Type.STRING },
+                                        excerpt: { type: Type.STRING },
+                                        day: { type: Type.NUMBER }
+                                    },
+                                    required: ["pattern", "excerpt", "day"]
+                                }
+                            },
+                            tensions: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            },
+                            synthesis: { type: Type.STRING }
                         },
-                        emotionalTerrain: { type: Type.STRING },
-                        recurringThreads: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        },
-                        shifts: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        },
-                        mirrors: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    pattern: { type: Type.STRING },
-                                    excerpt: { type: Type.STRING },
-                                    day: { type: Type.NUMBER }
-                                },
-                                required: ["pattern", "excerpt", "day"]
-                            }
-                        },
-                        tensions: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        },
-                        synthesis: { type: Type.STRING }
-                    },
-                    required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                        required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                    }
                 }
-            }
-        });
+            });
 
-        const summaryJson = JSON.parse(response.text);
+            const summaryJson = JSON.parse(response.text);
 
-        // Add metrics
-        summaryJson.metrics = {
-            entries: entries.length,
-            streak: userProfile.streak,
-            completionRate: `${Math.round(completionRate * 100)}%`
-        };
+            // Add metrics
+            summaryJson.metrics = {
+                entries: entries.length,
+                streak: userProfile.streak,
+                completionRate: `${Math.round(completionRate * 100)}%`
+            };
 
-        return summaryJson;
+            return summaryJson;
+        }, `monthly_summary_${month}`);
+
+        // Cache the result
+        analysisCache.set(cacheContent, 'monthly_summary', result);
+
+        return result;
     } catch (error) {
         console.error("Error generating monthly summary:", error);
+
+        // Provide user-friendly error messages for quota errors
+        if (error && typeof error === 'object' && 'message' in error) {
+            const errorMessage = (error as Error).message.toLowerCase();
+            if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+                throw new Error('Monthly summary quota exceeded. Please try again later. Your progress has been saved.');
+            }
+        }
+
         throw new Error(`Failed to generate monthly summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }

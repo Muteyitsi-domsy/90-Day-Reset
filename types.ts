@@ -49,6 +49,9 @@ export interface Settings {
 
   // Daily completion tracking (for completion circle feature)
   dailyCompletions?: DailyCompletion[];
+
+  // Share feature (disabled until launch)
+  shareEnabled?: boolean; // Default: false
 }
 
 export interface OnboardingAnalysis {
