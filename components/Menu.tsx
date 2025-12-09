@@ -739,19 +739,51 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
 
-                    {/* Share Feature (only visible when enabled) */}
-                    {settings.shareEnabled && userProfile && (
-                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
-                            <button onClick={() => toggleSection('share')} className="w-full p-4 flex justify-between items-center bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/20 dark:hover:to-purple-900/20 transition-colors">
-                                <span className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">Share Your Journey</span>
-                                <ChevronDownIcon className={`w-5 h-5 text-blue-600 dark:text-blue-400 transition-transform ${openSection === 'share' ? 'rotate-180' : ''}`} />
+                    {/* Share Feature (visible always, disabled until enabled) */}
+                    {userProfile && (
+                        <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4 ${!settings.shareEnabled ? 'opacity-60' : ''}`}>
+                            <button
+                                onClick={() => settings.shareEnabled && toggleSection('share')}
+                                disabled={!settings.shareEnabled}
+                                className={`w-full p-4 flex justify-between items-center transition-colors ${
+                                    settings.shareEnabled
+                                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/20 dark:hover:to-purple-900/20 cursor-pointer'
+                                        : 'bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className={`font-medium ${
+                                        settings.shareEnabled
+                                            ? 'text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400'
+                                            : 'text-gray-400 dark:text-gray-600'
+                                    }`}>
+                                        Share Your Journey
+                                    </span>
+                                    {!settings.shareEnabled && (
+                                        <span className="text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
+                                            Coming Soon
+                                        </span>
+                                    )}
+                                </div>
+                                <ChevronDownIcon className={`w-5 h-5 transition-transform ${
+                                    settings.shareEnabled
+                                        ? 'text-blue-600 dark:text-blue-400'
+                                        : 'text-gray-400 dark:text-gray-600'
+                                } ${openSection === 'share' ? 'rotate-180' : ''}`} />
                             </button>
-                            {openSection === 'share' && (
+                            {settings.shareEnabled && openSection === 'share' && (
                                 <div className="p-4 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700">
                                     <ShareButton
                                         userProfile={userProfile}
                                         onClose={() => setOpenSection(null)}
                                     />
+                                </div>
+                            )}
+                            {!settings.shareEnabled && (
+                                <div className="p-4 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                                        Share feature will be available when the app launches. Get ready to inspire others with your journey! ✨
+                                    </p>
                                 </div>
                             )}
                         </div>
