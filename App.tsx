@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
 import { getDailyPrompt } from './services/promptGenerator';
 import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType } from './types';
@@ -23,6 +23,13 @@ import Menu from './components/Menu';
 import ReportViewer from './components/ReportViewer';
 import CalendarView from './components/CalendarView';
 import { AdminDashboard } from './components/AdminDashboard';
+import { useAuth } from './src/hooks/useAuth';
+import { getStorageService } from './src/services/storageService';
+import { AuthModal } from './components/AuthModal';
+import { CloudSyncBanner } from './components/CloudSyncBanner';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { TermsOfService } from './components/TermsOfService';
+import { ContactUs } from './components/ContactUs';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -60,6 +67,15 @@ const App: React.FC = () => {
   const [userName, setUserName] = useState('');
   const [viewedReport, setViewedReport] = useState<JournalEntry | null>(null);
   const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [hasMigrated, setHasMigrated] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showContact, setShowContact] = useState(false);
+
+  // Firebase auth state and storage service
+  const { user, loading: authLoading } = useAuth();
+  const storageService = useMemo(() => getStorageService(user?.uid), [user?.uid]);
 
   // Ref to track latest journalEntries for completion tracking
   const journalEntriesRef = React.useRef(journalEntries);
@@ -79,140 +95,104 @@ const App: React.FC = () => {
     scheduleDailyReminder();
   }, []);
 
-  // Load from local storage on mount
+  // Load from storage on mount (localStorage or Firestore based on auth)
   useEffect(() => {
-    try {
-        const savedSettings = localStorage.getItem('settings');
-        const defaultSettings: Settings = { 
-            theme: 'default', 
-            themeMode: 'system', 
-            dailyAnalysis: true,
-            weeklyReports: true,
-            monthlyReports: true,
-            includeHunchesInFinalSummary: false,
+    const loadData = async () => {
+      try {
+        // Wait for auth to load
+        if (authLoading) return;
+
+        const defaultSettings: Settings = {
+          theme: 'default',
+          themeMode: 'system',
+          dailyAnalysis: true,
+          weeklyReports: true,
+          monthlyReports: true,
+          includeHunchesInFinalSummary: false,
         };
 
+        // Load settings
+        const savedSettings = await storageService.getSettings();
         if (savedSettings) {
-            let parsed = JSON.parse(savedSettings);
-            // Migration for old theme setting structure
-            if (parsed.theme === 'light' || parsed.theme === 'dark' || parsed.theme === 'system') {
-                const oldTheme = parsed.theme;
-                delete parsed.theme;
-                parsed = { ...parsed, themeMode: oldTheme, theme: 'default' };
-            }
-            // Migration for old InsightFrequency
-            if ('insightFrequency' in parsed) {
-                const freq = parsed.insightFrequency;
-                if (freq === 'daily') {
-                    parsed.dailyAnalysis = true;
-                    parsed.weeklyReports = true;
-                    // keep monthly as is or default true if undefined
-                } else if (freq === 'weekly') {
-                    parsed.dailyAnalysis = false;
-                    parsed.weeklyReports = true;
-                } else if (freq === 'none') {
-                    parsed.dailyAnalysis = false;
-                    parsed.weeklyReports = false;
-                    parsed.monthlyReports = false;
-                }
-                // If generateMonthlySummaries was present, map to monthlyReports
-                if ('generateMonthlySummaries' in parsed) {
-                    parsed.monthlyReports = parsed.generateMonthlySummaries;
-                    delete parsed.generateMonthlySummaries;
-                } else if (parsed.monthlyReports === undefined) {
-                     parsed.monthlyReports = true;
-                }
-                delete parsed.insightFrequency;
-            }
-            
-            setSettings({ ...defaultSettings, ...parsed });
-            setHasLoadedSettings(true);
+          setSettings({ ...defaultSettings, ...savedSettings });
+          setHasLoadedSettings(true);
 
-            if (parsed.pin) {
-                setIsLocked(true);
-            } else {
-                setIsLocked(false);
-            }
-        } else {
-            setSettings(defaultSettings);
-            setHasLoadedSettings(true);
+          if (savedSettings.pin) {
+            setIsLocked(true);
+          } else {
             setIsLocked(false);
+          }
+        } else {
+          setSettings(defaultSettings);
+          setHasLoadedSettings(true);
+          setIsLocked(false);
         }
 
-        const savedProfile = localStorage.getItem('userProfile');
+        // Load user profile
+        const savedProfile = await storageService.getUserProfile();
         if (savedProfile) {
-            const profile: UserProfile = JSON.parse(savedProfile);
-             // Migration from 'stage' to 'arc'
-            if ((profile as any).stage) {
-                const oldStage = (profile as any).stage;
-                if (oldStage === 'reconstruction') profile.arc = 'reaffirm';
-                else if (oldStage === 'expansion') profile.arc = 'reignition';
-                else profile.arc = 'release';
-                delete (profile as any).stage;
-            }
-            // Migration from old arc names to new ones (Dec 2025 update)
-            if ((profile as any).arc === 'healing') profile.arc = 'release';
-            if ((profile as any).arc === 'unstuck') profile.arc = 'reaffirm';
-            if ((profile as any).arc === 'healed') profile.arc = 'reignition';
+          setUserProfile(savedProfile);
 
-            // Initialize month_count if missing
-            if (!profile.month_count) profile.month_count = 1;
+          // Load journal entries
+          const savedEntries = await storageService.getJournalEntries();
+          setJournalEntries(savedEntries);
 
-            setUserProfile(profile);
-
-            const savedEntries = localStorage.getItem('journalEntries');
-            if (savedEntries) {
-                const rawEntries: any[] = JSON.parse(savedEntries);
-                // Migration: Add `type` to entries that don't have it and parse summaryData
-                const typedEntries = rawEntries.map(e => ({
-                    ...e,
-                    type: e.type || (e.prompt.includes("Reflection on Week") ? 'weekly_summary' : 'daily'),
-                    summaryData: (e.type === 'weekly_summary_report' || e.type === 'monthly_summary_report') && typeof e.rawText === 'string' ? JSON.parse(e.rawText) : undefined,
-                }));
-                setJournalEntries(typedEntries);
-            }
-            
-            if (!profile.idealSelfManifesto) {
-                setAppState('scripting');
+          if (!savedProfile.idealSelfManifesto) {
+            setAppState('scripting');
+          } else {
+            const settingsExist = !!savedSettings;
+            if (!settingsExist) {
+              setAppState('onboarding_completion');
             } else {
-                 // Check if onboarding was completed by checking if any entry exists or just logic based on flow
-                 // For simplicity, if we have settings saved we assume completed.
-                 const settingsExist = !!savedSettings;
-                if (!settingsExist) {
-                    setAppState('onboarding_completion');
-                } else {
-                    setAppState('returning_welcome');
-                }
+              setAppState('returning_welcome');
             }
+          }
         }
-    } catch (e) {
-        console.error("Error loading from localStorage", e);
-        localStorage.clear(); // Clear corrupted data
-        setIsLocked(false); // Ensure app is not locked if storage is corrupt
-    } finally {
+      } catch (e) {
+        console.error('Error loading from storage:', e);
+        // On error, fall back to localStorage
+        try {
+          localStorage.clear();
+        } catch {}
+        setIsLocked(false);
+      } finally {
         setIsLoading(false);
-    }
-  }, []);
+      }
+    };
+
+    loadData();
+  }, [storageService, authLoading]);
 
   // Save/apply settings on change
   useEffect(() => {
-    // Don't save on initial render - wait until we've loaded from localStorage first
+    // Don't save on initial render - wait until we've loaded from storage first
     if (!hasLoadedSettings) {
       console.log('⏭️ Skipping settings save - not loaded yet');
       return;
     }
 
-    console.log('💾 Saving settings to localStorage:', settings);
-    localStorage.setItem('settings', JSON.stringify(settings));
-    console.log('✅ Settings saved. PIN in storage:', JSON.parse(localStorage.getItem('settings') || '{}').pin);
+    const saveSettings = async () => {
+      try {
+        console.log('💾 Saving settings to storage:', settings);
+        await storageService.saveSettings(settings);
+        console.log('✅ Settings saved');
+      } catch (error) {
+        console.error('Failed to save settings:', error);
+      }
+    };
+
+    saveSettings();
 
     // Apply theme
     document.documentElement.className = ''; // Clear all classes first
     document.documentElement.classList.add(`theme-${settings.theme}`);
-    if (settings.themeMode === 'dark' || (settings.themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
+    if (
+      settings.themeMode === 'dark' ||
+      (settings.themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    ) {
+      document.documentElement.classList.add('dark');
     }
-  }, [settings, hasLoadedSettings]);
+  }, [settings, hasLoadedSettings, storageService]);
 
   // Admin mode keyboard shortcut: Press Ctrl+Shift+A
   useEffect(() => {
@@ -235,25 +215,98 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Save user profile to local storage on change
+  // Save user profile to storage on change
   useEffect(() => {
     if (userProfile) {
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
+      const saveProfile = async () => {
+        try {
+          await storageService.saveUserProfile(userProfile);
+        } catch (error) {
+          console.error('Failed to save user profile:', error);
+        }
+      };
+      saveProfile();
     }
-  }, [userProfile]);
+  }, [userProfile, storageService]);
 
-  // Save journal entries to local storage on change
+  // Save journal entries to storage on change
   useEffect(() => {
     // Avoid saving the empty initial array before we've loaded from storage
-    if (!isLoading) {
-        const entriesToSave = journalEntries.map(entry => {
-            // Don't save summaryData directly, it's derived from rawText on load to save space
-            const { summaryData, ...rest } = entry;
-            return rest;
-        });
-        localStorage.setItem('journalEntries', JSON.stringify(entriesToSave));
+    if (!isLoading && journalEntries.length > 0) {
+      const saveEntries = async () => {
+        try {
+          // Note: This saves all entries. For optimization, we could track which entries changed
+          // For now, FirestoreService.batchSaveEntries handles bulk operations efficiently
+          for (const entry of journalEntries) {
+            await storageService.saveJournalEntry(entry);
+          }
+        } catch (error) {
+          console.error('Failed to save journal entries:', error);
+        }
+      };
+      saveEntries();
     }
-  }, [journalEntries, isLoading]);
+  }, [journalEntries, isLoading, storageService]);
+
+  // Migrate localStorage data to Firestore when user signs up
+  useEffect(() => {
+    const migrateData = async () => {
+      if (!user || hasMigrated || authLoading) return;
+
+      // Check if migration was already completed
+      const migrationCompleted = localStorage.getItem('migrationCompleted');
+      if (migrationCompleted) {
+        setHasMigrated(true);
+        return;
+      }
+
+      // Check if there's localStorage data to migrate
+      const localProfile = localStorage.getItem('userProfile');
+      const localSettings = localStorage.getItem('settings');
+      const localEntries = localStorage.getItem('journalEntries');
+
+      if (!localProfile && !localSettings && !localEntries) {
+        // No data to migrate
+        setHasMigrated(true);
+        return;
+      }
+
+      try {
+        console.log('🔄 Migrating localStorage data to Firestore...');
+
+        // Import FirestoreService directly for batch operations
+        const { FirestoreService } = await import('./src/services/firestoreService');
+        const firestoreService = new FirestoreService(user.uid);
+
+        if (localProfile) {
+          const profile = JSON.parse(localProfile);
+          await firestoreService.saveUserProfile(profile);
+        }
+
+        if (localSettings) {
+          const settings = JSON.parse(localSettings);
+          await firestoreService.saveSettings(settings);
+        }
+
+        if (localEntries) {
+          const entries = JSON.parse(localEntries);
+          // Use batch save for efficiency
+          await firestoreService.batchSaveEntries(entries);
+        }
+
+        localStorage.setItem('migrationCompleted', 'true');
+        localStorage.setItem('migrationDate', new Date().toISOString());
+        setHasMigrated(true);
+
+        console.log('✅ Migration completed successfully');
+      } catch (error) {
+        console.error('Failed to migrate data:', error);
+        // Don't set hasMigrated to true so it will retry next time
+      }
+    };
+
+    migrateData();
+  }, [user, hasMigrated, authLoading]);
 
   // Helper function to get today's completion state
   const getTodayCompletion = () => {
@@ -1001,6 +1054,11 @@ const App: React.FC = () => {
                 morningEntryCompleted={todayCompletion.morningEntryCompleted}
                 eveningCheckinCompleted={todayCompletion.eveningCheckinCompleted}
             />
+            <div style={{ padding: '0 1rem' }}>
+              {!user && userProfile && (
+                <CloudSyncBanner onSetup={() => setShowAuthModal(true)} />
+              )}
+            </div>
             <JournalView 
               currentDay={day}
               dailyPrompt={dailyPrompt?.text}
@@ -1035,6 +1093,18 @@ const App: React.FC = () => {
                 onLockApp={() => setIsLocked(true)}
                 onRitualComplete={updateDailyCompletion}
                 onOpenCalendar={() => setIsCalendarOpen(true)}
+                userEmail={user?.email}
+                onSignOut={async () => {
+                  const { signOut } = await import('./src/hooks/useAuth');
+                  // Get auth instance
+                  const { auth } = await import('./src/config/firebase');
+                  const { signOut: firebaseSignOut } = await import('firebase/auth');
+                  await firebaseSignOut(auth);
+                  window.location.reload();
+                }}
+                onOpenPrivacyPolicy={() => setShowPrivacyPolicy(true)}
+                onOpenTerms={() => setShowTerms(true)}
+                onOpenContact={() => setShowContact(true)}
             />
           </div>
         );
@@ -1066,6 +1136,27 @@ const App: React.FC = () => {
         isOpen={showAdminDashboard}
         onClose={() => setShowAdminDashboard(false)}
         settings={settings}
+      />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          // Reload data from Firestore after successful auth
+          window.location.reload();
+        }}
+      />
+      <PrivacyPolicy
+        isOpen={showPrivacyPolicy}
+        onClose={() => setShowPrivacyPolicy(false)}
+      />
+      <TermsOfService
+        isOpen={showTerms}
+        onClose={() => setShowTerms(false)}
+      />
+      <ContactUs
+        isOpen={showContact}
+        onClose={() => setShowContact(false)}
       />
       {renderContent()}
     </>

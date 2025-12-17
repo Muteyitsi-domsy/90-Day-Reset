@@ -22,6 +22,11 @@ interface MenuProps {
     onLockApp?: () => void;
     onRitualComplete?: () => void;
     onOpenCalendar?: () => void;
+    userEmail?: string | null;
+    onSignOut?: () => void;
+    onOpenPrivacyPolicy?: () => void;
+    onOpenTerms?: () => void;
+    onOpenContact?: () => void;
 }
 
 const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -34,7 +39,8 @@ const Menu: React.FC<MenuProps> = ({
     isOpen, onClose, userProfile, settings, reports,
     onUpdateSettings, onUpdateProfile, onPauseJourney, onResumeJourney,
     onExportData, onDeleteData, onViewReport, onRegenerateReport, onLockApp,
-    onRitualComplete, onOpenCalendar
+    onRitualComplete, onOpenCalendar, userEmail, onSignOut,
+    onOpenPrivacyPolicy, onOpenTerms, onOpenContact
 }) => {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [pinInput, setPinInput] = useState('');
@@ -797,6 +803,19 @@ const Menu: React.FC<MenuProps> = ({
                         </button>
                          {openSection === 'data' && (
                             <div className="p-4 bg-[var(--card-bg)] border-t border-red-100 dark:border-red-900/30 space-y-3">
+                                {userEmail && onSignOut && (
+                                    <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                            Signed in as: <span className="font-medium">{userEmail}</span>
+                                        </p>
+                                        <button
+                                            onClick={onSignOut}
+                                            className="w-full py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-sm hover:bg-gray-300 dark:hover:bg-gray-600"
+                                        >
+                                            Sign Out
+                                        </button>
+                                    </div>
+                                )}
                                 <button onClick={onExportData} className="w-full py-2 border border-[var(--text-primary)] text-[var(--text-primary)] rounded-md text-sm">
                                     Download All Data (JSON)
                                 </button>
@@ -819,9 +838,37 @@ const Menu: React.FC<MenuProps> = ({
                      </div>
 
                 </div>
-                
-                 <div className="p-4 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-gray-800">
-                    90-Day Identity Reset V1.2
+
+                 <div className="border-t border-gray-200 dark:border-gray-800">
+                    <div className="p-4 flex flex-wrap justify-center gap-4 text-xs">
+                        {onOpenPrivacyPolicy && (
+                            <button
+                                onClick={onOpenPrivacyPolicy}
+                                className="text-gray-500 dark:text-gray-400 hover:text-accent-color dark:hover:text-accent-color underline"
+                            >
+                                Privacy Policy
+                            </button>
+                        )}
+                        {onOpenTerms && (
+                            <button
+                                onClick={onOpenTerms}
+                                className="text-gray-500 dark:text-gray-400 hover:text-accent-color dark:hover:text-accent-color underline"
+                            >
+                                Terms of Service
+                            </button>
+                        )}
+                        {onOpenContact && (
+                            <button
+                                onClick={onOpenContact}
+                                className="text-gray-500 dark:text-gray-400 hover:text-accent-color dark:hover:text-accent-color underline"
+                            >
+                                Contact Us
+                            </button>
+                        )}
+                    </div>
+                    <div className="px-4 pb-4 text-center text-xs text-gray-400">
+                        90-Day Identity Reset V1.2
+                    </div>
                 </div>
             </div>
             <style>{`
