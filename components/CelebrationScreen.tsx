@@ -53,6 +53,16 @@ const CelebrationScreen: React.FC<CelebrationScreenProps> = ({
           <p className="text-[var(--text-primary)] whitespace-pre-line font-light leading-relaxed">{summaryContent}</p>
         </div>
 
+        {/* Daily Journal Message */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-lg border border-indigo-200 dark:border-indigo-800 max-w-2xl">
+          <p className="text-sm text-[var(--text-primary)] mb-2">
+            <strong className="text-indigo-600 dark:text-indigo-400">✨ Continue Your Growth</strong>
+          </p>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Keep journaling with our flexible <strong>Daily Journal</strong> feature. Journal based on your mood and life context whenever you need, or start a new 90-day journey when you're ready.
+          </p>
+        </div>
+
         <div className="mt-8 flex flex-col gap-4 items-center">
           <button
             onClick={handleGenerateKeepsake}

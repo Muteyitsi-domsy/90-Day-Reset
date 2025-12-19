@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
 import { getDailyPrompt } from './services/promptGenerator';
-import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType } from './types';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
@@ -30,6 +30,9 @@ import { CloudSyncBanner } from './components/CloudSyncBanner';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { ContactUs } from './components/ContactUs';
+import MoodInputModal from './components/MoodInputModal';
+import MoodJournalView from './components/MoodJournalView';
+import MoodCalendarView from './components/MoodCalendarView';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -53,7 +56,9 @@ const App: React.FC = () => {
       dailyAnalysis: true,
       weeklyReports: true,
       monthlyReports: true,
-      includeHunchesInFinalSummary: false
+      includeHunchesInFinalSummary: false,
+      moodStreakEnabled: true,
+      customEmotions: []
   });
   const [isLocked, setIsLocked] = useState(true);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
@@ -72,6 +77,13 @@ const App: React.FC = () => {
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showContact, setShowContact] = useState(false);
+
+  // Mood journaling state
+  const [moodEntries, setMoodEntries] = useState<MoodJournalEntry[]>([]);
+  const [showMoodInputModal, setShowMoodInputModal] = useState(false);
+  const [isSavingMoodEntry, setIsSavingMoodEntry] = useState(false);
+  const [activeView, setActiveView] = useState<'journey' | 'mood'>('journey'); // Toggle between 90-day journey and mood journal
+  const [calendarView, setCalendarView] = useState<'journey' | 'mood'>('journey'); // Calendar toggle
 
   // Firebase auth state and storage service
   const { user, loading: authLoading } = useAuth();
@@ -136,6 +148,15 @@ const App: React.FC = () => {
           // Load journal entries
           const savedEntries = await storageService.getJournalEntries();
           setJournalEntries(savedEntries);
+
+          // Load mood entries
+          const savedMoodEntries = await storageService.getMoodEntries();
+          setMoodEntries(savedMoodEntries);
+
+          // Set active view based on journey completion
+          if (savedProfile.journeyCompleted) {
+            setActiveView('mood'); // After journey completion, default to mood journal
+          }
 
           if (!savedProfile.idealSelfManifesto) {
             setAppState('scripting');
@@ -617,6 +638,123 @@ const App: React.FC = () => {
     updateDailyCompletion();
   };
 
+  // Mood journal handlers
+  const handleSaveMoodEntry = async (entryData: {
+    emotion: string;
+    intensity: 'low' | 'medium' | 'high';
+    context: string;
+    prompt: string;
+    journalText: string;
+    isCustomEmotion: boolean;
+    customEmotionEmoji?: string;
+  }) => {
+    try {
+      setIsSavingMoodEntry(true);
+
+      const newEntry: MoodJournalEntry = {
+        id: `mood-${Date.now()}`,
+        date: getLocalDateString(),
+        timestamp: new Date().toISOString(),
+        emotion: entryData.emotion,
+        intensity: entryData.intensity,
+        context: entryData.context as any,
+        prompt: entryData.prompt,
+        journalText: entryData.journalText,
+        isCustomEmotion: entryData.isCustomEmotion,
+        customEmotionEmoji: entryData.customEmotionEmoji,
+      };
+
+      // Save to storage
+      await storageService.saveMoodEntry(newEntry);
+
+      // Update state
+      setMoodEntries(prev => [newEntry, ...prev]);
+
+      // Update streak
+      updateMoodStreak(newEntry.date);
+
+      // Close modal
+      setShowMoodInputModal(false);
+    } catch (error) {
+      console.error('Error saving mood entry:', error);
+      alert('Failed to save mood entry. Please try again.');
+    } finally {
+      setIsSavingMoodEntry(false);
+    }
+  };
+
+  const handleDeleteMoodEntry = async (entryId: string) => {
+    try {
+      await storageService.deleteMoodEntry(entryId);
+      setMoodEntries(prev => prev.filter(entry => entry.id !== entryId));
+
+      // Recalculate streak after deletion
+      const updatedEntries = moodEntries.filter(entry => entry.id !== entryId);
+      if (updatedEntries.length > 0) {
+        const mostRecentDate = updatedEntries[0].date;
+        updateMoodStreak(mostRecentDate);
+      } else {
+        // No entries left, reset streak
+        setUserProfile(prev => prev ? { ...prev, moodStreak: 0, lastMoodEntryDate: '' } : null);
+      }
+    } catch (error) {
+      console.error('Error deleting mood entry:', error);
+      alert('Failed to delete mood entry. Please try again.');
+    }
+  };
+
+  const handleAddCustomEmotion = (name: string, emoji: string) => {
+    const newEmotion: CustomEmotion = {
+      id: `custom-${Date.now()}`,
+      name,
+      emoji,
+    };
+    setSettings(prev => ({
+      ...prev,
+      customEmotions: [...(prev.customEmotions || []), newEmotion],
+    }));
+  };
+
+  const updateMoodStreak = (entryDate: string) => {
+    if (!userProfile) return;
+
+    const today = getLocalDateString();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+
+    // Sort entries by date (most recent first)
+    const sortedEntries = [...moodEntries].sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    // Calculate streak
+    let streak = 0;
+    let checkDate = new Date();
+
+    // Include the new entry in the calculation
+    const allDates = [entryDate, ...sortedEntries.map(e => e.date)];
+    const uniqueDates = [...new Set(allDates)].sort((a, b) =>
+      new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    for (const date of uniqueDates) {
+      const checkDateStr = getLocalDateString(checkDate);
+      if (date === checkDateStr) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    setUserProfile(prev => prev ? {
+      ...prev,
+      moodStreak: streak,
+      lastMoodEntryDate: entryDate,
+    } : null);
+  };
+
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {
     if (!userProfile || !userProfile.idealSelfManifesto) return;
 
@@ -1022,7 +1160,9 @@ const App: React.FC = () => {
                         morningEntryCompleted={todayCompletion.morningEntryCompleted}
                         eveningCheckinCompleted={todayCompletion.eveningCheckinCompleted}
                     />
-                    <PausedScreen onResume={handleResumeJourney} />
+                    <PausedScreen onResume={handleResumeJourney} onOpenMoodJournal={() => {
+                      setActiveView('mood');
+                    }} />
                      <Menu
                         isOpen={isMenuOpen}
                         onClose={() => setIsMenuOpen(false)}
@@ -1039,6 +1179,17 @@ const App: React.FC = () => {
                         onLockApp={() => setIsLocked(true)}
                         onRitualComplete={updateDailyCompletion}
                         onOpenCalendar={() => setIsCalendarOpen(true)}
+                        activeView={activeView}
+                        onToggleView={(view) => {
+                          setActiveView(view);
+                          setIsMenuOpen(false);
+                        }}
+                        calendarView={calendarView}
+                        onToggleCalendarView={setCalendarView}
+                        onOpenMoodJournal={() => {
+                          setActiveView('mood');
+                          setIsMenuOpen(false);
+                        }}
                     />
                 </div>
             );
@@ -1059,19 +1210,30 @@ const App: React.FC = () => {
                 <CloudSyncBanner onSetup={() => setShowAuthModal(true)} />
               )}
             </div>
-            <JournalView 
-              currentDay={day}
-              dailyPrompt={dailyPrompt?.text}
-              todaysEntry={todaysEntry}
-              allEntries={journalEntries}
-              isLoading={isLoading}
-              onSaveDaily={handleSaveEntry}
-              onSaveHunch={handleSaveHunch}
-              onUpdate={handleUpdateEntry}
-              onDelete={handleDeleteEntry}
-              onSaveEveningCheckin={handleSaveEveningCheckin}
-              settings={settings}
-            />
+            {activeView === 'journey' ? (
+              <JournalView
+                currentDay={day}
+                dailyPrompt={dailyPrompt?.text}
+                todaysEntry={todaysEntry}
+                allEntries={journalEntries}
+                isLoading={isLoading}
+                onSaveDaily={handleSaveEntry}
+                onSaveHunch={handleSaveHunch}
+                onUpdate={handleUpdateEntry}
+                onDelete={handleDeleteEntry}
+                onSaveEveningCheckin={handleSaveEveningCheckin}
+                settings={settings}
+              />
+            ) : (
+              <MoodJournalView
+                moodEntries={moodEntries}
+                customEmotions={settings.customEmotions || []}
+                settings={settings}
+                onNewEntry={() => setShowMoodInputModal(true)}
+                onDeleteEntry={handleDeleteMoodEntry}
+                currentStreak={userProfile.moodStreak || 0}
+              />
+            )}
              <Menu
                 isOpen={isMenuOpen}
                 onClose={() => setIsMenuOpen(false)}
@@ -1105,6 +1267,17 @@ const App: React.FC = () => {
                 onOpenPrivacyPolicy={() => setShowPrivacyPolicy(true)}
                 onOpenTerms={() => setShowTerms(true)}
                 onOpenContact={() => setShowContact(true)}
+                activeView={activeView}
+                onToggleView={(view) => {
+                  setActiveView(view);
+                  setIsMenuOpen(false);
+                }}
+                calendarView={calendarView}
+                onToggleCalendarView={setCalendarView}
+                onOpenMoodJournal={() => {
+                  setActiveView('mood');
+                  setIsMenuOpen(false);
+                }}
             />
           </div>
         );
@@ -1126,12 +1299,46 @@ const App: React.FC = () => {
         report={viewedReport}
         onClose={() => setViewedReport(null)}
       />
-      <CalendarView
-        isOpen={isCalendarOpen}
-        onClose={() => setIsCalendarOpen(false)}
-        settings={settings}
-        userProfile={userProfile}
-      />
+      {isCalendarOpen && calendarView === 'journey' && (
+        <CalendarView
+          isOpen={isCalendarOpen}
+          onClose={() => setIsCalendarOpen(false)}
+          settings={settings}
+          userProfile={userProfile}
+        />
+      )}
+      {isCalendarOpen && calendarView === 'mood' && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsCalendarOpen(false)}
+        >
+          <div
+            className="bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-[var(--card-border)]">
+              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Mood Calendar</h2>
+              <button
+                onClick={() => setIsCalendarOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Close calendar"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+              <MoodCalendarView
+                moodEntries={moodEntries}
+                customEmotions={settings.customEmotions || []}
+                currentStreak={userProfile?.moodStreak || 0}
+                streakEnabled={settings.moodStreakEnabled !== false}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <AdminDashboard
         isOpen={showAdminDashboard}
         onClose={() => setShowAdminDashboard(false)}
@@ -1146,6 +1353,16 @@ const App: React.FC = () => {
           window.location.reload();
         }}
       />
+      {showMoodInputModal && (
+        <MoodInputModal
+          onSave={handleSaveMoodEntry}
+          onClose={() => setShowMoodInputModal(false)}
+          isSaving={isSavingMoodEntry}
+          customEmotions={settings.customEmotions || []}
+          onAddCustomEmotion={handleAddCustomEmotion}
+          previousPrompts={moodEntries.slice(0, 10).map(e => e.prompt)}
+        />
+      )}
       <PrivacyPolicy
         isOpen={showPrivacyPolicy}
         onClose={() => setShowPrivacyPolicy(false)}

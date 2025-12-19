@@ -1,4 +1,4 @@
-import { UserProfile, Settings, JournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry } from '../types';
 import { StorageService } from './storageService';
 
 /**
@@ -10,6 +10,7 @@ export class LocalStorageService implements StorageService {
     USER_PROFILE: 'userProfile',
     SETTINGS: 'settings',
     JOURNAL_ENTRIES: 'journalEntries',
+    MOOD_ENTRIES: 'moodEntries',
   };
 
   // User Profile operations
@@ -169,15 +170,65 @@ export class LocalStorageService implements StorageService {
     }
   }
 
+  // Mood Journal Entry operations
+  async saveMoodEntry(entry: MoodJournalEntry): Promise<void> {
+    try {
+      const entries = await this.getMoodEntries();
+      const existingIndex = entries.findIndex(e => e.id === entry.id);
+
+      if (existingIndex >= 0) {
+        entries[existingIndex] = entry;
+      } else {
+        entries.push(entry);
+      }
+
+      await this._saveAllMoodEntries(entries);
+    } catch (error) {
+      console.error('Error saving mood entry to localStorage:', error);
+      throw new Error('Failed to save mood entry');
+    }
+  }
+
+  async updateMoodEntry(entry: MoodJournalEntry): Promise<void> {
+    // Same as saveMoodEntry for localStorage
+    await this.saveMoodEntry(entry);
+  }
+
+  async deleteMoodEntry(entryId: string): Promise<void> {
+    try {
+      const entries = await this.getMoodEntries();
+      const filteredEntries = entries.filter(e => e.id !== entryId);
+      await this._saveAllMoodEntries(filteredEntries);
+    } catch (error) {
+      console.error('Error deleting mood entry from localStorage:', error);
+      throw new Error('Failed to delete mood entry');
+    }
+  }
+
+  async getMoodEntries(): Promise<MoodJournalEntry[]> {
+    try {
+      const savedEntries = localStorage.getItem(this.KEYS.MOOD_ENTRIES);
+      if (!savedEntries) return [];
+
+      const entries: MoodJournalEntry[] = JSON.parse(savedEntries);
+      return entries;
+    } catch (error) {
+      console.error('Error loading mood entries from localStorage:', error);
+      return [];
+    }
+  }
+
   async getAllData(): Promise<{
     profile: UserProfile | null;
     settings: Settings | null;
     entries: JournalEntry[];
+    moodEntries: MoodJournalEntry[];
   }> {
     return {
       profile: await this.getUserProfile(),
       settings: await this.getSettings(),
       entries: await this.getJournalEntries(),
+      moodEntries: await this.getMoodEntries(),
     };
   }
 
@@ -186,6 +237,7 @@ export class LocalStorageService implements StorageService {
       localStorage.removeItem(this.KEYS.USER_PROFILE);
       localStorage.removeItem(this.KEYS.SETTINGS);
       localStorage.removeItem(this.KEYS.JOURNAL_ENTRIES);
+      localStorage.removeItem(this.KEYS.MOOD_ENTRIES);
     } catch (error) {
       console.error('Error clearing localStorage:', error);
       throw new Error('Failed to clear storage');
@@ -205,6 +257,16 @@ export class LocalStorageService implements StorageService {
     } catch (error) {
       console.error('Error saving journal entries to localStorage:', error);
       throw new Error('Failed to save journal entries');
+    }
+  }
+
+  // Private helper to save all mood entries
+  private async _saveAllMoodEntries(entries: MoodJournalEntry[]): Promise<void> {
+    try {
+      localStorage.setItem(this.KEYS.MOOD_ENTRIES, JSON.stringify(entries));
+    } catch (error) {
+      console.error('Error saving mood entries to localStorage:', error);
+      throw new Error('Failed to save mood entries');
     }
   }
 }

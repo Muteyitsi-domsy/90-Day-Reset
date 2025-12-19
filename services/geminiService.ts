@@ -4,17 +4,60 @@ import { UserProfile, Arc, OnboardingAnalysis, JournalEntry, EntryAnalysis } fro
 import { rateLimiter } from "./rateLimiter";
 import { analysisCache } from "./analysisCache";
 
+// ✅ Feature flag to switch between Gemini API and Vertex AI
+const USE_VERTEX_AI = import.meta.env.VITE_USE_VERTEX_AI === 'true';
+const VERTEX_API_URL = import.meta.env.VITE_VERTEX_API_URL || '/api/vertex-ai';
+
 // ✅ Environment setup for Vite (browser-safe)
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
-if (!GEMINI_KEY) {
+if (!GEMINI_KEY && !USE_VERTEX_AI) {
   console.warn("VITE_GEMINI_API_KEY is not set — Gemini features will run in preview mode.");
 }
 
-// Initialize Gemini AI client only if a key is available
-export const ai = GEMINI_KEY
+// Initialize Gemini AI client only if a key is available and not using Vertex AI
+export const ai = GEMINI_KEY && !USE_VERTEX_AI
   ? new GoogleGenAI({ apiKey: GEMINI_KEY })
   : null;
+
+// ✅ Vertex AI API caller
+async function callVertexAI(
+  prompt: string,
+  requestType: 'onboarding' | 'analysis' | 'summary' | 'hunch' = 'analysis',
+  config?: { temperature?: number; maxOutputTokens?: number }
+): Promise<string> {
+  const userId = localStorage.getItem('userId') || 'anonymous';
+
+  const response = await fetch(VERTEX_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      userId,
+      requestType,
+      config
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+    if (response.status === 429) {
+      throw new Error('Daily AI request limit reached. Please try again tomorrow or upgrade to premium.');
+    }
+
+    if (response.status === 503 && error.code === 'BUDGET_EXCEEDED') {
+      throw new Error('AI service temporarily unavailable. Please try again later.');
+    }
+
+    throw new Error(error.error || `API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.text;
+}
 
 
 export interface OnboardingAnswers {
@@ -34,11 +77,6 @@ export interface IdealSelfAnswers {
 }
 
 export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Promise<OnboardingAnalysis> {
-    // Check if AI client is available
-    if (!ai) {
-        throw new Error("Gemini API key not configured. Please ensure VITE_GEMINI_API_KEY is set in your environment.");
-    }
-
     const prompt = `
         You are an empathetic, mindful identity coach. Analyze the user's answers to the onboarding questions to determine their current arc in their personal transformation journey.
 
@@ -68,6 +106,22 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
     `;
 
     try {
+        // ✅ Use Vertex AI if enabled
+        if (USE_VERTEX_AI) {
+            const resultText = await callVertexAI(prompt, 'onboarding');
+            // Parse JSON from response
+            const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('Invalid JSON response from AI');
+            }
+            return JSON.parse(jsonMatch[0]) as OnboardingAnalysis;
+        }
+
+        // ✅ Fallback to original Gemini API
+        if (!ai) {
+            throw new Error("AI not configured. Please enable Vertex AI or set VITE_GEMINI_API_KEY.");
+        }
+
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
@@ -108,11 +162,6 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
 }
 
 export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Promise<string> {
-    // Check if AI client is available
-    if (!ai) {
-        throw new Error("Gemini API key not configured. Please ensure VITE_GEMINI_API_KEY is set in your environment.");
-    }
-
     const prompt = `
         You are a poetic, emotionally intelligent writer. Based on the user's answers about their Ideal Self, compile them into a beautiful, first-person paragraph that reads like a "Manifesto."
 
@@ -127,6 +176,17 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
     `;
 
     try {
+        // ✅ Use Vertex AI if enabled
+        if (USE_VERTEX_AI) {
+            const resultText = await callVertexAI(prompt, 'onboarding', { temperature: 0.9 });
+            return resultText.trim();
+        }
+
+        // ✅ Fallback to original Gemini API
+        if (!ai) {
+            throw new Error("AI not configured. Please enable Vertex AI or set VITE_GEMINI_API_KEY.");
+        }
+
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
@@ -155,11 +215,6 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
 
 
 export async function analyzeJournalEntry(entryText: string, forceRefresh = false): Promise<EntryAnalysis> {
-    // Check if AI client is available
-    if (!ai) {
-        throw new Error("Gemini API key not configured. Daily insights are unavailable.");
-    }
-
     // Check cache first (unless forced refresh)
     if (!forceRefresh) {
         const cached = analysisCache.get<EntryAnalysis>(entryText, 'journal_entry');
@@ -193,6 +248,25 @@ export async function analyzeJournalEntry(entryText: string, forceRefresh = fals
     `;
 
     try {
+        // ✅ Use Vertex AI if enabled
+        if (USE_VERTEX_AI) {
+            const resultText = await callVertexAI(prompt, 'analysis');
+            // Parse JSON from response
+            const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('Invalid JSON response from AI');
+            }
+            const result = JSON.parse(jsonMatch[0]) as EntryAnalysis;
+            // Cache the result
+            analysisCache.set(entryText, 'journal_entry', result);
+            return result;
+        }
+
+        // ✅ Fallback to original Gemini API
+        if (!ai) {
+            throw new Error("AI not configured. Please enable Vertex AI or set VITE_GEMINI_API_KEY.");
+        }
+
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
@@ -237,11 +311,6 @@ export async function analyzeJournalEntry(entryText: string, forceRefresh = fals
 }
 
 export async function generateFinalSummary(profile: UserProfile, journalHistory: JournalEntry[], hunchHistory: JournalEntry[], forceRefresh = false): Promise<string> {
-    // Check if AI client is available
-    if (!ai) {
-        throw new Error("Gemini API key not configured. Final summary generation is unavailable.");
-    }
-
     const historyText = journalHistory.map(entry => `Day ${entry.day}: ${entry.rawText}`).join('\n\n');
 
     // Generate cache key
@@ -326,6 +395,20 @@ ${hunchEntriesText}
     `;
 
     try {
+        // ✅ Use Vertex AI if enabled
+        if (USE_VERTEX_AI) {
+            const resultText = await callVertexAI(prompt, 'summary', { temperature: 0.8, maxOutputTokens: 4096 });
+            const result = resultText.trim();
+            // Cache the result
+            analysisCache.set(cacheContent, 'final_summary', result);
+            return result;
+        }
+
+        // ✅ Fallback to original Gemini API
+        if (!ai) {
+            throw new Error("AI not configured. Please enable Vertex AI or set VITE_GEMINI_API_KEY.");
+        }
+
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
@@ -381,11 +464,6 @@ function getMonthDateRange(startDate: string, monthNumber: number): string {
 }
 
 export async function generateWeeklySummary(userProfile: UserProfile, week: number, entries: JournalEntry[], forceRefresh = false): Promise<any> {
-    // Check if AI client is available
-    if (!ai) {
-        throw new Error("Gemini API key not configured. Weekly summary generation is unavailable.");
-    }
-
     const checkinCount = entries.filter(e => e.type === 'daily' && e.eveningCheckin).length;
     const dailyEntryCount = entries.filter(e => e.type === 'daily').length;
     const completionRate = dailyEntryCount > 0 ? checkinCount / dailyEntryCount : 0;
@@ -442,6 +520,36 @@ Your output must be a single, clean JSON object matching the provided schema.`;
     `;
 
     try {
+        // ✅ Use Vertex AI if enabled
+        if (USE_VERTEX_AI) {
+            // Combine system instruction with user prompt for Vertex AI
+            const fullPrompt = `${systemInstruction}\n\n${userPrompt}`;
+            const resultText = await callVertexAI(fullPrompt, 'summary', { temperature: 0.7, maxOutputTokens: 2048 });
+
+            // Parse JSON from response
+            const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('Invalid JSON response from AI');
+            }
+            const summaryJson = JSON.parse(jsonMatch[0]);
+
+            // Add metrics
+            summaryJson.metrics = {
+                entries: entries.length,
+                streak: userProfile.streak,
+                completionRate: `${Math.round(completionRate * 100)}%`
+            };
+
+            // Cache the result
+            analysisCache.set(cacheContent, 'weekly_summary', summaryJson);
+            return summaryJson;
+        }
+
+        // ✅ Fallback to original Gemini API
+        if (!ai) {
+            throw new Error("AI not configured. Please enable Vertex AI or set VITE_GEMINI_API_KEY.");
+        }
+
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
@@ -525,11 +633,6 @@ Your output must be a single, clean JSON object matching the provided schema.`;
 }
 
 export async function generateMonthlySummary(userProfile: UserProfile, month: number, entries: JournalEntry[], forceRefresh = false): Promise<any> {
-    // Check if AI client is available
-    if (!ai) {
-        throw new Error("Gemini API key not configured. Monthly summary generation is unavailable.");
-    }
-
     const checkinCount = entries.filter(e => e.type === 'daily' && e.eveningCheckin).length;
     const dailyEntryCount = entries.filter(e => e.type === 'daily').length;
     const completionRate = dailyEntryCount > 0 ? checkinCount / dailyEntryCount : 0;
@@ -586,6 +689,36 @@ Your output must be a single, clean JSON object matching the provided schema.`;
     `;
 
     try {
+        // ✅ Use Vertex AI if enabled
+        if (USE_VERTEX_AI) {
+            // Combine system instruction with user prompt for Vertex AI
+            const fullPrompt = `${systemInstruction}\n\n${userPrompt}`;
+            const resultText = await callVertexAI(fullPrompt, 'summary', { temperature: 0.7, maxOutputTokens: 2048 });
+
+            // Parse JSON from response
+            const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('Invalid JSON response from AI');
+            }
+            const summaryJson = JSON.parse(jsonMatch[0]);
+
+            // Add metrics
+            summaryJson.metrics = {
+                entries: entries.length,
+                streak: userProfile.streak,
+                completionRate: `${Math.round(completionRate * 100)}%`
+            };
+
+            // Cache the result
+            analysisCache.set(cacheContent, 'monthly_summary', summaryJson);
+            return summaryJson;
+        }
+
+        // ✅ Fallback to original Gemini API
+        if (!ai) {
+            throw new Error("AI not configured. Please enable Vertex AI or set VITE_GEMINI_API_KEY.");
+        }
+
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({

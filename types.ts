@@ -3,6 +3,53 @@ export type Arc = 'release' | 'reaffirm' | 'reignition';
 
 export type HunchType = 'insight' | 'dream' | 'hunch';
 
+// Mood Journaling Types
+export type MoodIntensity = 'low' | 'medium' | 'high';
+
+export type MoodContext =
+  | 'career'
+  | 'family'
+  | 'romantic'
+  | 'friendships'
+  | 'physical_health'
+  | 'mental_health'
+  | 'spirituality';
+
+export type DefaultEmotion =
+  | 'joyful'
+  | 'calm'
+  | 'energized'
+  | 'anxious'
+  | 'sad'
+  | 'angry'
+  | 'overwhelmed'
+  | 'grateful';
+
+export interface CustomEmotion {
+  id: string; // Unique identifier
+  name: string; // e.g., "Nostalgic"
+  emoji: string; // e.g., "🥺"
+}
+
+export interface MoodJournalEntry {
+  id: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  timestamp: string; // Full ISO timestamp for precise ordering
+
+  // Mood data
+  emotion: DefaultEmotion | string; // Can be default or custom emotion name
+  intensity: MoodIntensity;
+  context: MoodContext;
+
+  // Journal content
+  prompt: string;
+  journalText: string;
+
+  // Metadata
+  isCustomEmotion: boolean; // True if using custom emotion
+  customEmotionEmoji?: string; // Emoji if custom emotion
+}
+
 export interface UserProfile {
   name: string;
   email?: string; // Added for PIN recovery simulation
@@ -19,6 +66,10 @@ export interface UserProfile {
   isPaused?: boolean;
   pausedDate?: string;
   lastViewedReportDate?: string; // To track the "red dot" notification
+
+  // Mood journaling tracking
+  moodStreak?: number; // Separate streak for mood journaling
+  lastMoodEntryDate?: string; // Last date user made a mood journal entry
 }
 
 export interface DailyCompletion {
@@ -52,6 +103,10 @@ export interface Settings {
 
   // Share feature (disabled until launch)
   shareEnabled?: boolean; // Default: false
+
+  // Mood journaling settings
+  moodStreakEnabled?: boolean; // Default: true - toggle for mood journal streak tracking
+  customEmotions?: CustomEmotion[]; // User's custom emotions
 }
 
 export interface OnboardingAnalysis {

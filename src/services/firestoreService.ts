@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { UserProfile, Settings, JournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry } from '../types';
 import { StorageService } from './storageService';
 
 /**
@@ -168,15 +168,86 @@ export class FirestoreService implements StorageService {
     }
   }
 
+  // Mood Journal Entry operations
+  async saveMoodEntry(entry: MoodJournalEntry): Promise<void> {
+    try {
+      const entryDocRef = doc(db, 'users', this.userId, 'moodEntries', entry.id);
+
+      // Add timestamps for tracking
+      const entryWithTimestamp = {
+        ...entry,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(entryDocRef, entryWithTimestamp);
+    } catch (error) {
+      console.error('Error saving mood entry to Firestore:', error);
+      throw new Error('Failed to save mood entry to cloud');
+    }
+  }
+
+  async updateMoodEntry(entry: MoodJournalEntry): Promise<void> {
+    try {
+      const entryDocRef = doc(db, 'users', this.userId, 'moodEntries', entry.id);
+
+      // Update with new timestamp
+      const entryWithTimestamp = {
+        ...entry,
+        updatedAt: serverTimestamp(),
+      };
+
+      await updateDoc(entryDocRef, entryWithTimestamp as any);
+    } catch (error) {
+      console.error('Error updating mood entry in Firestore:', error);
+      throw new Error('Failed to update mood entry in cloud');
+    }
+  }
+
+  async deleteMoodEntry(entryId: string): Promise<void> {
+    try {
+      const entryDocRef = doc(db, 'users', this.userId, 'moodEntries', entryId);
+      await deleteDoc(entryDocRef);
+    } catch (error) {
+      console.error('Error deleting mood entry from Firestore:', error);
+      throw new Error('Failed to delete mood entry from cloud');
+    }
+  }
+
+  async getMoodEntries(): Promise<MoodJournalEntry[]> {
+    try {
+      const entriesCollectionRef = collection(db, 'users', this.userId, 'moodEntries');
+      const querySnapshot = await getDocs(entriesCollectionRef);
+
+      const entries: MoodJournalEntry[] = [];
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        // Remove Firestore-specific fields (createdAt, updatedAt)
+        const { createdAt, updatedAt, ...entry } = data;
+        entries.push(entry as MoodJournalEntry);
+      });
+
+      // Sort by date (most recent first)
+      entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      return entries;
+    } catch (error) {
+      console.error('Error loading mood entries from Firestore:', error);
+      throw new Error('Failed to load mood entries from cloud');
+    }
+  }
+
   async getAllData(): Promise<{
     profile: UserProfile | null;
     settings: Settings | null;
     entries: JournalEntry[];
+    moodEntries: MoodJournalEntry[];
   }> {
     return {
       profile: await this.getUserProfile(),
       settings: await this.getSettings(),
       entries: await this.getJournalEntries(),
+      moodEntries: await this.getMoodEntries(),
     };
   }
 
@@ -190,8 +261,15 @@ export class FirestoreService implements StorageService {
 
       // Delete all journal entries
       const entriesCollectionRef = collection(db, 'users', this.userId, 'journalEntries');
-      const querySnapshot = await getDocs(entriesCollectionRef);
-      querySnapshot.forEach(doc => {
+      const entriesSnapshot = await getDocs(entriesCollectionRef);
+      entriesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // Delete all mood entries
+      const moodEntriesCollectionRef = collection(db, 'users', this.userId, 'moodEntries');
+      const moodEntriesSnapshot = await getDocs(moodEntriesCollectionRef);
+      moodEntriesSnapshot.forEach(doc => {
         batch.delete(doc.ref);
       });
 
