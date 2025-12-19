@@ -45,6 +45,44 @@ const getLocalDateString = (date: Date = new Date()): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Helper function to remove duplicate weekly/monthly reports
+// Keeps only the most recent report for each week/month
+const removeDuplicateReports = (entries: JournalEntry[]): JournalEntry[] => {
+  const reportsByKey = new Map<string, JournalEntry[]>();
+  const nonReports: JournalEntry[] = [];
+
+  // Separate reports from other entries
+  for (const entry of entries) {
+    if (entry.type === 'weekly_summary_report' || entry.type === 'monthly_summary_report') {
+      const key = `${entry.type}-${entry.week || 0}`;
+      if (!reportsByKey.has(key)) {
+        reportsByKey.set(key, []);
+      }
+      reportsByKey.get(key)!.push(entry);
+    } else {
+      nonReports.push(entry);
+    }
+  }
+
+  // For each group of duplicate reports, keep only the most recent one
+  const uniqueReports: JournalEntry[] = [];
+  for (const [key, reports] of reportsByKey) {
+    // Sort by date (most recent first) and keep the first one
+    const sorted = reports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Keep the most recent report that's not a loading placeholder
+    const validReport = sorted.find(r => r.rawText !== '{"status": "loading"}');
+    if (validReport) {
+      uniqueReports.push(validReport);
+    } else if (sorted.length > 0) {
+      // If all are loading placeholders, keep the most recent one
+      uniqueReports.push(sorted[0]);
+    }
+  }
+
+  // Combine non-reports with unique reports
+  return [...nonReports, ...uniqueReports];
+};
+
 const App: React.FC = () => {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -147,7 +185,24 @@ const App: React.FC = () => {
 
           // Load journal entries
           const savedEntries = await storageService.getJournalEntries();
-          setJournalEntries(savedEntries);
+
+          // 🧹 CLEANUP: Remove duplicate weekly/monthly reports (bug fix for infinite loop issue)
+          const cleanedEntries = removeDuplicateReports(savedEntries);
+          if (cleanedEntries.length < savedEntries.length) {
+            console.log(`🧹 Cleaned up ${savedEntries.length - cleanedEntries.length} duplicate reports`);
+            // Save cleaned entries back to storage
+            for (const entry of cleanedEntries) {
+              await storageService.saveJournalEntry(entry);
+            }
+            // Remove duplicates from storage
+            for (const entry of savedEntries) {
+              if (!cleanedEntries.find(e => e.id === entry.id)) {
+                await storageService.deleteJournalEntry(entry.id);
+              }
+            }
+          }
+
+          setJournalEntries(cleanedEntries);
 
           // Load mood entries
           const savedMoodEntries = await storageService.getMoodEntries();
@@ -959,7 +1014,7 @@ const App: React.FC = () => {
     if (appState === 'journal' && userProfile && !userProfile.isPaused) {
         setupJournal();
     }
-  }, [appState, userProfile, journalEntries]);
+  }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
 
   const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'name' | 'intentions'>) => {
     setUserProfile({ ...profile, name: userName, intentions: '', month_count: 1 });
