@@ -258,28 +258,30 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
               </div>
             </div>
 
-            {/* Prompt card when no entry for today */}
-            {!hasWrittenToday && dailyPrompt && (
+            {/* Prompt card when no entry for today - ALWAYS show when no entry exists */}
+            {!hasWrittenToday && (
               <div className="mb-6 animate-fade-in bg-gradient-to-br from-[var(--accent-primary)]/10 to-[var(--accent-secondary)]/10 dark:from-[var(--accent-primary)]/20 dark:to-[var(--accent-secondary)]/20 rounded-2xl p-6 border-2 border-[var(--accent-primary)]/30 dark:border-[var(--accent-secondary)]/30 shadow-lg">
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 text-4xl">✍️</div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-lg font-semibold text-[var(--text-primary)]">
-                        Today's Reflection
+                        Ready to Journal for Day {currentDay}?
                       </h3>
-                      <button
-                        onClick={() => setShowPromptOptions(!showPromptOptions)}
-                        className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                        {showPromptOptions ? 'Hide' : 'Customize'}
-                      </button>
+                      {dailyPrompt && (
+                        <button
+                          onClick={() => setShowPromptOptions(!showPromptOptions)}
+                          className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                          </svg>
+                          {showPromptOptions ? 'Hide' : 'Customize'}
+                        </button>
+                      )}
                     </div>
 
-                    {showPromptOptions && (
+                    {dailyPrompt && showPromptOptions && (
                       <div className="mb-4 p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--card-border)] space-y-3">
                         <p className="text-sm text-[var(--text-secondary)]">
                           Want to write about something specific? Enter your own prompt:
@@ -294,6 +296,7 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
                         <button
                           onClick={() => {
                             setShowPromptOptions(false);
+                            setCustomPrompt('');
                           }}
                           className="text-sm text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] font-medium"
                         >
@@ -302,14 +305,26 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
                       </div>
                     )}
 
-                    <p className="text-[var(--text-secondary)] mb-4 leading-relaxed">
-                      {customPrompt || dailyPrompt}
-                    </p>
+                    {dailyPrompt && (
+                      <p className="text-[var(--text-secondary)] mb-4 leading-relaxed font-medium">
+                        {customPrompt || dailyPrompt}
+                      </p>
+                    )}
+
+                    {!dailyPrompt && !customPrompt && (
+                      <p className="text-[var(--text-secondary)] mb-4 leading-relaxed">
+                        Reflect on your day and document your journey.
+                      </p>
+                    )}
+
                     <button
                       onClick={() => setIsDailyModalOpen(true)}
-                      className="w-full py-3 px-6 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] text-white font-medium transition-colors duration-300 shadow-md hover:shadow-lg"
+                      className="w-full py-3 px-6 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] text-white font-medium transition-colors duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                     >
-                      Start Writing
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Start Writing Today's Entry
                     </button>
                   </div>
                 </div>

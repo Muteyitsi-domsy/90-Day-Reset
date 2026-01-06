@@ -480,6 +480,7 @@ const App: React.FC = () => {
 
     const startDate = new Date(userProfileRef.current.startDate);
     const entries = journalEntriesRef.current;
+    const today = getLocalDateString();
 
     setSettings(prev => {
       const existingCompletions = prev.dailyCompletions || [];
@@ -491,21 +492,20 @@ const App: React.FC = () => {
         dayDate.setDate(dayDate.getDate() + journeyDay - 1);
         const dateStr = getLocalDateString(dayDate);
 
-        // Skip if we already have a completion record for this date
-        if (completionsMap.has(dateStr)) {
-          continue;
-        }
-
         // Find the daily entry for this journey day
         const dayEntry = entries.find(entry => entry.day === journeyDay && entry.type === 'daily');
 
         if (dayEntry) {
-          // Create completion record based on what was completed
+          // For today, use the current ritual status
+          // For past days, assume ritual was completed if entry exists (we can't know for sure)
+          const isToday = dateStr === today;
+          const ritualCompleted = isToday
+            ? (prev.lastRitualDate === dateStr && prev.ritualCompletedToday === true)
+            : true; // Assume completed for past days with entries
+
           const completion = {
             date: dateStr,
-            // We can't know if ritual was completed on old days, so default to false
-            // Unless the entry date matches a ritual completion date
-            ritualCompleted: prev.lastRitualDate === dateStr && prev.ritualCompletedToday === true,
+            ritualCompleted,
             morningEntryCompleted: true, // Entry exists
             eveningCheckinCompleted: !!dayEntry.eveningCheckin
           };
