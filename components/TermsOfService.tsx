@@ -7,15 +7,55 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px' }}>
-        <button className="modal-close" onClick={onClose}>
-          ×
-        </button>
+    <>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.3s ease-out;
+        }
+      `}</style>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+        <div className="relative w-full max-w-4xl max-h-[90vh] mx-4 bg-[var(--card-bg)] rounded-2xl shadow-2xl overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
+          {/* Header with Close Button */}
+          <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-light text-[var(--text-primary)]">Terms of Service</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: December 2024</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+              aria-label="Close"
+            >
+              <svg
+                className="w-6 h-6 text-gray-500 group-hover:text-[var(--text-primary)]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-        <div className="terms-content">
-          <h1 className="modal-title">Terms of Service</h1>
-          <p className="text-sm text-gray-500 mb-6">Last Updated: December 2024</p>
+          {/* Content - Scrollable */}
+          <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6 terms-content">
 
           <div className="terms-section">
             <h2>1. Acceptance of Terms</h2>
@@ -190,61 +230,56 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
             </p>
           </div>
         </div>
-
-        <style>{`
-          .terms-content {
-            max-height: 70vh;
-            overflow-y: auto;
-            padding: 1rem;
-          }
-
-          .terms-section {
-            margin-bottom: 2rem;
-          }
-
-          .terms-section h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--accent-color);
-          }
-
-          .terms-section h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 1rem 0 0.5rem 0;
-          }
-
-          .terms-section p {
-            color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 0.75rem;
-          }
-
-          .terms-section ul {
-            list-style: disc;
-            margin-left: 1.5rem;
-            color: var(--text-muted);
-            line-height: 1.8;
-          }
-
-          .terms-section ul li {
-            margin-bottom: 0.5rem;
-          }
-
-          .terms-section .warning {
-            background: rgba(239, 68, 68, 0.1);
-            border-left: 4px solid #ef4444;
-            padding: 0.75rem;
-            margin: 1rem 0;
-            border-radius: 4px;
-            font-weight: 500;
-          }
-        `}</style>
       </div>
     </div>
+
+    <style>{`
+      .terms-section {
+        margin-bottom: 2rem;
+      }
+
+      .terms-section h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--accent-color);
+      }
+
+      .terms-section h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 1rem 0 0.5rem 0;
+      }
+
+      .terms-section p {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 0.75rem;
+      }
+
+      .terms-section ul {
+        list-style: disc;
+        margin-left: 1.5rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+      }
+
+      .terms-section ul li {
+        margin-bottom: 0.5rem;
+      }
+
+      .terms-section .warning {
+        background: rgba(239, 68, 68, 0.1);
+        border-left: 4px solid #ef4444;
+        padding: 0.75rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+        font-weight: 500;
+      }
+    `}</style>
+  </>
   );
 }

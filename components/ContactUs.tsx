@@ -7,14 +7,55 @@ export function ContactUs({ isOpen, onClose }: ContactUsProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-        <button className="modal-close" onClick={onClose}>
-          ×
-        </button>
+    <>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.3s ease-out;
+        }
+      `}</style>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+        <div className="relative w-full max-w-3xl max-h-[90vh] mx-4 bg-[var(--card-bg)] rounded-2xl shadow-2xl overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
+          {/* Header with Close Button */}
+          <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-light text-[var(--text-primary)]">Contact Us</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">We're here to help</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+              aria-label="Close"
+            >
+              <svg
+                className="w-6 h-6 text-gray-500 group-hover:text-[var(--text-primary)]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-        <div className="contact-content">
-          <h1 className="modal-title">Contact Us</h1>
+          {/* Content - Scrollable */}
+          <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6 contact-content">
 
           <div className="contact-intro">
             <p>
@@ -83,142 +124,139 @@ export function ContactUs({ isOpen, onClose }: ContactUsProps) {
             </p>
           </div>
         </div>
-
-        <style>{`
-          .contact-content {
-            padding: 1rem;
-          }
-
-          .contact-intro {
-            color: var(--text-muted);
-            margin-bottom: 2rem;
-            text-align: center;
-            font-size: 1rem;
-            line-height: 1.6;
-          }
-
-          .contact-methods {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-          }
-
-          .contact-method {
-            padding: 1.5rem;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            text-align: center;
-          }
-
-          .contact-method .icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-          }
-
-          .contact-method h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-          }
-
-          .method-description {
-            color: var(--text-muted);
-            margin-bottom: 1rem;
-            font-size: 0.95rem;
-          }
-
-          .contact-link {
-            display: inline-block;
-            color: var(--accent-color);
-            text-decoration: none;
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            background: rgba(99, 102, 241, 0.1);
-            border-radius: 8px;
-            margin: 0.5rem 0;
-            transition: all 0.2s;
-          }
-
-          .contact-link:hover {
-            background: rgba(99, 102, 241, 0.2);
-            transform: translateY(-1px);
-          }
-
-          .response-time {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-            font-style: italic;
-          }
-
-          .method-info {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-          }
-
-          .bug-info {
-            list-style: disc;
-            text-align: left;
-            margin-left: 2rem;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            line-height: 1.6;
-          }
-
-          .bug-info li {
-            margin-bottom: 0.25rem;
-          }
-
-          .contact-note {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-top: 2rem;
-          }
-
-          .contact-note h3 {
-            color: #ef4444;
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-          }
-
-          .contact-note p {
-            color: var(--text-muted);
-            margin-bottom: 0.75rem;
-            font-size: 0.95rem;
-          }
-
-          .contact-note ul {
-            list-style: disc;
-            margin-left: 1.5rem;
-            color: var(--text-muted);
-            line-height: 1.8;
-            font-size: 0.9rem;
-          }
-
-          .contact-note ul li {
-            margin-bottom: 0.5rem;
-          }
-
-          .contact-note a {
-            color: var(--accent-color);
-            text-decoration: underline;
-          }
-
-          .warning-text {
-            font-weight: 600;
-            color: #ef4444;
-            margin-top: 1rem;
-          }
-        `}</style>
       </div>
     </div>
+
+    <style>{`
+      .contact-intro {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        text-align: center;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      .contact-methods {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .contact-method {
+        padding: 1.5rem;
+        background: var(--card-bg-secondary);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        text-align: center;
+      }
+
+      .contact-method .icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .contact-method h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+      }
+
+      .method-description {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        font-size: 0.95rem;
+      }
+
+      .contact-link {
+        display: inline-block;
+        color: var(--accent-primary);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        transition: all 0.2s;
+      }
+
+      .contact-link:hover {
+        background: rgba(99, 102, 241, 0.2);
+        transform: translateY(-1px);
+      }
+
+      .response-time {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+        font-style: italic;
+      }
+
+      .method-info {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .bug-info {
+        list-style: disc;
+        text-align: left;
+        margin-left: 2rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+
+      .bug-info li {
+        margin-bottom: 0.25rem;
+      }
+
+      .contact-note {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+      }
+
+      .contact-note h3 {
+        color: #ef4444;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+      }
+
+      .contact-note p {
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+        font-size: 0.95rem;
+      }
+
+      .contact-note ul {
+        list-style: disc;
+        margin-left: 1.5rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+        font-size: 0.9rem;
+      }
+
+      .contact-note ul li {
+        margin-bottom: 0.5rem;
+      }
+
+      .contact-note a {
+        color: var(--accent-primary);
+        text-decoration: underline;
+      }
+
+      .warning-text {
+        font-weight: 600;
+        color: #ef4444;
+        margin-top: 1rem;
+      }
+    `}</style>
+  </>
   );
 }

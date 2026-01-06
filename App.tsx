@@ -239,6 +239,16 @@ const App: React.FC = () => {
     loadData();
   }, [storageService, authLoading]);
 
+  // Backfill completion data after journal entries are loaded
+  useEffect(() => {
+    // Only run after data is loaded and we have both journal entries and a user profile
+    if (journalEntries.length > 0 && userProfile && hasLoadedSettings) {
+      console.log('🔄 Backfilling historical completion data...');
+      backfillCompletions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journalEntries, userProfile, hasLoadedSettings]);
+
   // Save/apply settings on change
   useEffect(() => {
     // Don't save on initial render - wait until we've loaded from storage first
@@ -455,6 +465,59 @@ const App: React.FC = () => {
           });
         }
       }
+
+      return {
+        ...prev,
+        dailyCompletions: updatedCompletions
+      };
+    });
+  };
+
+  // Backfill historical completion data from journal entries
+  // This fixes the calendar to show all past completions, not just today's
+  const backfillCompletions = () => {
+    if (!userProfileRef.current) return;
+
+    const startDate = new Date(userProfileRef.current.startDate);
+    const entries = journalEntriesRef.current;
+
+    setSettings(prev => {
+      const existingCompletions = prev.dailyCompletions || [];
+      const completionsMap = new Map(existingCompletions.map(c => [c.date, c]));
+
+      // Build completion records for each day from journal entries
+      for (let journeyDay = 1; journeyDay <= 90; journeyDay++) {
+        const dayDate = new Date(startDate);
+        dayDate.setDate(dayDate.getDate() + journeyDay - 1);
+        const dateStr = getLocalDateString(dayDate);
+
+        // Skip if we already have a completion record for this date
+        if (completionsMap.has(dateStr)) {
+          continue;
+        }
+
+        // Find the daily entry for this journey day
+        const dayEntry = entries.find(entry => entry.day === journeyDay && entry.type === 'daily');
+
+        if (dayEntry) {
+          // Create completion record based on what was completed
+          const completion = {
+            date: dateStr,
+            // We can't know if ritual was completed on old days, so default to false
+            // Unless the entry date matches a ritual completion date
+            ritualCompleted: prev.lastRitualDate === dateStr && prev.ritualCompletedToday === true,
+            morningEntryCompleted: true, // Entry exists
+            eveningCheckinCompleted: !!dayEntry.eveningCheckin
+          };
+
+          completionsMap.set(dateStr, completion);
+        }
+      }
+
+      // Convert map back to array and keep only last 90 days
+      const updatedCompletions = Array.from(completionsMap.values())
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(-90);
 
       return {
         ...prev,
@@ -1014,7 +1077,7 @@ const App: React.FC = () => {
     if (appState === 'journal' && userProfile && !userProfile.isPaused) {
         setupJournal();
     }
-  }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
+  }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted, journalEntries]);
 
   const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'name' | 'intentions'>) => {
     setUserProfile({ ...profile, name: userName, intentions: '', month_count: 1 });
@@ -1234,6 +1297,7 @@ const App: React.FC = () => {
                         onLockApp={() => setIsLocked(true)}
                         onRitualComplete={updateDailyCompletion}
                         onOpenCalendar={() => setIsCalendarOpen(true)}
+                        onSetupCloudBackup={() => setShowAuthModal(true)}
                         activeView={activeView}
                         onToggleView={(view) => {
                           setActiveView(view);
@@ -1310,6 +1374,7 @@ const App: React.FC = () => {
                 onLockApp={() => setIsLocked(true)}
                 onRitualComplete={updateDailyCompletion}
                 onOpenCalendar={() => setIsCalendarOpen(true)}
+                onSetupCloudBackup={() => setShowAuthModal(true)}
                 userEmail={user?.email}
                 onSignOut={async () => {
                   const { signOut } = await import('./src/hooks/useAuth');

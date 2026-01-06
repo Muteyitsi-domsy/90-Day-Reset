@@ -33,14 +33,15 @@ export function CloudSyncBanner({ onSetup }: CloudSyncBannerProps) {
         <div className="banner-icon">☁️</div>
         <div className="banner-text">
           <h3>Enable Cloud Backup</h3>
-          <p>Protect your 90-day journey and access from any device</p>
+          <p>All your entries, progress, and settings will be backed up and synced across devices</p>
+          <p className="backup-note">✨ Your entire journey history will be automatically backed up when you sign up</p>
         </div>
         <div className="banner-actions">
           <button className="setup-button" onClick={handleSetup}>
-            Set Up
+            Set Up Now
           </button>
           <button className="dismiss-button" onClick={handleDismiss}>
-            Dismiss
+            Maybe Later
           </button>
         </div>
       </div>
@@ -94,6 +95,13 @@ export function CloudSyncBanner({ onSetup }: CloudSyncBannerProps) {
           font-size: 0.9rem;
           opacity: 0.9;
           color: white;
+        }
+
+        .banner-text .backup-note {
+          margin-top: 0.5rem;
+          font-size: 0.85rem;
+          font-weight: 500;
+          opacity: 1;
         }
 
         .banner-actions {

@@ -150,6 +150,8 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
   const [entryToEdit, setEntryToEdit] = useState<JournalEntry | null>(null);
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState<string>('');
+  const [showPromptOptions, setShowPromptOptions] = useState(false);
 
   const sortedEntries = useMemo(() => {
     // Filter out reports (they're accessible via Reports section modal only)
@@ -196,6 +198,8 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
     setIsDailyModalOpen(false);
     setIsHunchModalOpen(false);
     setEntryToEdit(null);
+    setCustomPrompt('');
+    setShowPromptOptions(false);
   };
 
   const handleSaveFromDailyModal = (text: string, reanalyze: boolean) => {
@@ -254,6 +258,64 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
               </div>
             </div>
 
+            {/* Prompt card when no entry for today */}
+            {!hasWrittenToday && dailyPrompt && (
+              <div className="mb-6 animate-fade-in bg-gradient-to-br from-[var(--accent-primary)]/10 to-[var(--accent-secondary)]/10 dark:from-[var(--accent-primary)]/20 dark:to-[var(--accent-secondary)]/20 rounded-2xl p-6 border-2 border-[var(--accent-primary)]/30 dark:border-[var(--accent-secondary)]/30 shadow-lg">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 text-4xl">✍️</div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                        Today's Reflection
+                      </h3>
+                      <button
+                        onClick={() => setShowPromptOptions(!showPromptOptions)}
+                        className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        {showPromptOptions ? 'Hide' : 'Customize'}
+                      </button>
+                    </div>
+
+                    {showPromptOptions && (
+                      <div className="mb-4 p-4 bg-[var(--card-bg)] rounded-lg border border-[var(--card-border)] space-y-3">
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          Want to write about something specific? Enter your own prompt:
+                        </p>
+                        <textarea
+                          value={customPrompt}
+                          onChange={(e) => setCustomPrompt(e.target.value)}
+                          placeholder="e.g., What am I grateful for today?"
+                          className="w-full px-4 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--text-primary)] placeholder-[var(--text-secondary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none"
+                          rows={2}
+                        />
+                        <button
+                          onClick={() => {
+                            setShowPromptOptions(false);
+                          }}
+                          className="text-sm text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] font-medium"
+                        >
+                          Use suggested prompt instead
+                        </button>
+                      </div>
+                    )}
+
+                    <p className="text-[var(--text-secondary)] mb-4 leading-relaxed">
+                      {customPrompt || dailyPrompt}
+                    </p>
+                    <button
+                      onClick={() => setIsDailyModalOpen(true)}
+                      className="w-full py-3 px-6 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] text-white font-medium transition-colors duration-300 shadow-md hover:shadow-lg"
+                    >
+                      Start Writing
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-6">
                 {sortedEntries.map(entry => {
                     // Reports are filtered out and accessible only via Reports section modal
@@ -289,8 +351,8 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
       )}
       
       {isDailyModalOpen && (
-        <JournalInputModal 
-          prompt={entryToEdit ? entryToEdit.prompt : dailyPrompt}
+        <JournalInputModal
+          prompt={entryToEdit ? entryToEdit.prompt : (customPrompt || dailyPrompt)}
           initialText={entryToEdit?.rawText}
           onSave={handleSaveFromDailyModal}
           onClose={handleCloseModal}

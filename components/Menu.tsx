@@ -27,6 +27,7 @@ interface MenuProps {
     onOpenPrivacyPolicy?: () => void;
     onOpenTerms?: () => void;
     onOpenContact?: () => void;
+    onSetupCloudBackup?: () => void;
     // Mood journaling
     activeView?: 'journey' | 'mood';
     onToggleView?: (view: 'journey' | 'mood') => void;
@@ -46,7 +47,7 @@ const Menu: React.FC<MenuProps> = ({
     onUpdateSettings, onUpdateProfile, onPauseJourney, onResumeJourney,
     onExportData, onDeleteData, onViewReport, onRegenerateReport, onLockApp,
     onRitualComplete, onOpenCalendar, userEmail, onSignOut,
-    onOpenPrivacyPolicy, onOpenTerms, onOpenContact,
+    onOpenPrivacyPolicy, onOpenTerms, onOpenContact, onSetupCloudBackup,
     activeView, onToggleView, calendarView, onToggleCalendarView, onOpenMoodJournal
 }) => {
     const [openSection, setOpenSection] = useState<string | null>(null);
@@ -760,8 +761,36 @@ const Menu: React.FC<MenuProps> = ({
                                 {/* Sync/Backup */}
                                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                                     <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">Backup & Sync</h4>
-                                    <p className="text-xs text-gray-500 mb-3">Since your data is private and stored only on this device, use Export to create a backup file you can save elsewhere.</p>
-                                    <button onClick={handleSyncBackup} className="w-full py-2 bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] rounded-md text-sm">Export Backup JSON</button>
+                                    {userEmail ? (
+                                        <>
+                                            <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-lg">☁️</span>
+                                                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Cloud Backup Active</span>
+                                                </div>
+                                                <p className="text-xs text-green-600 dark:text-green-400">
+                                                    Your data is automatically syncing to {userEmail}
+                                                </p>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mb-3">You can also export a local backup file:</p>
+                                            <button onClick={handleSyncBackup} className="w-full py-2 bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] rounded-md text-sm">Export Backup JSON</button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-xs text-gray-500 mb-3">Your data is currently stored only on this device.</p>
+                                            <div className="space-y-2">
+                                                <button
+                                                    onClick={onSetupCloudBackup}
+                                                    className="w-full py-2 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                                                >
+                                                    <span>☁️</span>
+                                                    <span>Enable Cloud Backup</span>
+                                                </button>
+                                                <p className="text-xs text-gray-400 text-center">All your journey history will be backed up</p>
+                                                <button onClick={handleSyncBackup} className="w-full py-2 bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] rounded-md text-sm">Export Local Backup</button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
