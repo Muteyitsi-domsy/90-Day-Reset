@@ -350,8 +350,9 @@ const App: React.FC = () => {
       const localProfile = localStorage.getItem('userProfile');
       const localSettings = localStorage.getItem('settings');
       const localEntries = localStorage.getItem('journalEntries');
+      const localMoodEntries = localStorage.getItem('moodJournalEntries');
 
-      if (!localProfile && !localSettings && !localEntries) {
+      if (!localProfile && !localSettings && !localEntries && !localMoodEntries) {
         // No data to migrate
         setHasMigrated(true);
         return;
@@ -359,6 +360,10 @@ const App: React.FC = () => {
 
       try {
         console.log('🔄 Migrating localStorage data to Firestore...');
+        console.log('  - Profile:', !!localProfile);
+        console.log('  - Settings:', !!localSettings);
+        console.log('  - Journal Entries:', !!localEntries);
+        console.log('  - Mood Entries:', !!localMoodEntries);
 
         // Import FirestoreService directly for batch operations
         const { FirestoreService } = await import('./src/services/firestoreService');
@@ -366,27 +371,44 @@ const App: React.FC = () => {
 
         if (localProfile) {
           const profile = JSON.parse(localProfile);
+          console.log('  ✓ Migrating profile...');
           await firestoreService.saveUserProfile(profile);
         }
 
         if (localSettings) {
           const settings = JSON.parse(localSettings);
+          console.log('  ✓ Migrating settings...');
           await firestoreService.saveSettings(settings);
         }
 
         if (localEntries) {
           const entries = JSON.parse(localEntries);
+          console.log(`  ✓ Migrating ${entries.length} journal entries...`);
           // Use batch save for efficiency
           await firestoreService.batchSaveEntries(entries);
+        }
+
+        if (localMoodEntries) {
+          const moodEntries = JSON.parse(localMoodEntries);
+          console.log(`  ✓ Migrating ${moodEntries.length} mood entries...`);
+          for (const entry of moodEntries) {
+            await firestoreService.saveMoodEntry(entry);
+          }
         }
 
         localStorage.setItem('migrationCompleted', 'true');
         localStorage.setItem('migrationDate', new Date().toISOString());
         setHasMigrated(true);
 
-        console.log('✅ Migration completed successfully');
+        console.log('✅ Migration completed successfully - reloading to fetch from cloud...');
+
+        // Now reload to fetch data from Firestore
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } catch (error) {
-        console.error('Failed to migrate data:', error);
+        console.error('❌ Failed to migrate data:', error);
+        alert('Failed to migrate your data to cloud. Please try again or contact support. Your local data is still safe.');
         // Don't set hasMigrated to true so it will retry next time
       }
     };
@@ -1467,10 +1489,12 @@ const App: React.FC = () => {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowAuthModal(false);
-          // Reload data from Firestore after successful auth
-          window.location.reload();
+          // Don't reload immediately - let migration happen first
+          // The migration useEffect will run automatically when user state changes
+          // After migration completes, data will load from Firestore
+          console.log('✅ Authentication successful - migration will run automatically');
         }}
       />
       {showMoodInputModal && (

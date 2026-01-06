@@ -252,6 +252,57 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
       </div>
 
       <style>{`
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(4px);
+        }
+
+        .modal-container {
+          position: relative;
+          width: 100%;
+          max-width: 500px;
+          max-height: 90vh;
+          margin: 1rem;
+          background-color: var(--card-bg);
+          border-radius: 1rem;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          overflow-y: auto;
+          padding: 1.5rem;
+        }
+
+        .modal-close {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: none;
+          border: none;
+          font-size: 2rem;
+          line-height: 1;
+          cursor: pointer;
+          color: var(--text-secondary);
+          transition: color 0.2s;
+          padding: 0.25rem;
+          z-index: 10;
+        }
+
+        .modal-close:hover {
+          color: var(--text-primary);
+        }
+
+        .modal-title {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          margin-bottom: 0.5rem;
+          text-align: center;
+        }
+
         .auth-modal {
           padding: 0.5rem 0;
         }
@@ -370,10 +421,47 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
           cursor: not-allowed;
         }
 
+        .primary-button {
+          width: 100%;
+          padding: 0.75rem;
+          background: linear-gradient(135deg, var(--accent-primary, #6366f1) 0%, var(--accent-secondary, #8b5cf6) 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .primary-button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .secondary-button {
+          width: 100%;
+          padding: 0.75rem;
+          background: var(--card-bg-secondary);
+          color: var(--text-primary);
+          border: 1px solid var(--card-border);
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .secondary-button:hover:not(:disabled) {
+          background: var(--card-bg);
+          border-color: var(--accent-primary);
+        }
+
         .primary-button:disabled,
         .secondary-button:disabled {
-          opacity: 0.6;
+          opacity: 0.5;
           cursor: not-allowed;
+          transform: none;
         }
       `}</style>
     </div>
