@@ -453,117 +453,144 @@ const App: React.FC = () => {
   // Helper function to update daily completion tracking
   // Fixed: Use callback form and refs to access latest state and avoid stale closures
   const updateDailyCompletion = () => {
-    const today = getLocalDateString();
+    try {
+      const today = getLocalDateString();
 
-    setSettings(prev => {
-      // Recalculate completion status with fresh state using refs
-      const { day } = userProfileRef.current ? getDayAndMonth(userProfileRef.current.startDate) : { day: 0 };
-      const todaysEntry = journalEntriesRef.current.find(entry => entry.day === day && entry.type === 'daily');
+      setSettings(prev => {
+        try {
+          // Recalculate completion status with fresh state using refs
+          const { day } = userProfileRef.current ? getDayAndMonth(userProfileRef.current.startDate) : { day: 0 };
+          const todaysEntry = journalEntriesRef.current.find(entry => entry.day === day && entry.type === 'daily');
 
-      const completion = {
-        ritualCompleted: prev.lastRitualDate === today && prev.ritualCompletedToday === true,
-        morningEntryCompleted: !!todaysEntry,
-        eveningCheckinCompleted: !!todaysEntry?.eveningCheckin
-      };
+          const completion = {
+            ritualCompleted: prev.lastRitualDate === today && prev.ritualCompletedToday === true,
+            morningEntryCompleted: !!todaysEntry,
+            eveningCheckinCompleted: !!todaysEntry?.eveningCheckin
+          };
 
-      // Update or create today's completion record
-      const existingCompletions = prev.dailyCompletions || [];
-      const todayCompletionIndex = existingCompletions.findIndex(c => c.date === today);
+          // Update or create today's completion record
+          const existingCompletions = prev.dailyCompletions || [];
+          const todayCompletionIndex = existingCompletions.findIndex(c => c?.date === today);
 
-      const newCompletion = {
-        date: today,
-        ...completion
-      };
+          const newCompletion = {
+            date: today,
+            ...completion
+          };
 
-      // Check if this completes the day (all three tasks done)
-      const wasCompleted = todayCompletionIndex >= 0 ?
-        existingCompletions[todayCompletionIndex].ritualCompleted &&
-        existingCompletions[todayCompletionIndex].morningEntryCompleted &&
-        existingCompletions[todayCompletionIndex].eveningCheckinCompleted : false;
+          // Check if this completes the day (all three tasks done)
+          const wasCompleted = todayCompletionIndex >= 0 ?
+            existingCompletions[todayCompletionIndex]?.ritualCompleted &&
+            existingCompletions[todayCompletionIndex]?.morningEntryCompleted &&
+            existingCompletions[todayCompletionIndex]?.eveningCheckinCompleted : false;
 
-      const isNowCompleted = completion.ritualCompleted &&
-                            completion.morningEntryCompleted &&
-                            completion.eveningCheckinCompleted;
+          const isNowCompleted = completion.ritualCompleted &&
+                                completion.morningEntryCompleted &&
+                                completion.eveningCheckinCompleted;
 
-      let updatedCompletions;
-      if (todayCompletionIndex >= 0) {
-        // Update existing completion
-        updatedCompletions = [...existingCompletions];
-        updatedCompletions[todayCompletionIndex] = newCompletion;
-      } else {
-        // Add new completion (keep last 90 days only)
-        updatedCompletions = [...existingCompletions, newCompletion].slice(-90);
-      }
+          let updatedCompletions;
+          if (todayCompletionIndex >= 0) {
+            // Update existing completion
+            updatedCompletions = [...existingCompletions];
+            updatedCompletions[todayCompletionIndex] = newCompletion;
+          } else {
+            // Add new completion (keep last 90 days only)
+            updatedCompletions = [...existingCompletions, newCompletion].slice(-90);
+          }
 
-      // Send notification if day just completed
-      if (!wasCompleted && isNowCompleted) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Perfect Day Complete! 🎉', {
-            body: 'You\'ve completed your daily ritual, morning entry, and evening check-in. Amazing consistency!',
-            icon: '/favicon.ico',
-            badge: '/favicon.ico'
-          });
+          // Send notification if day just completed
+          if (!wasCompleted && isNowCompleted) {
+            try {
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Perfect Day Complete! 🎉', {
+                  body: 'You\'ve completed your daily ritual, morning entry, and evening check-in. Amazing consistency!',
+                  icon: '/favicon.ico',
+                  badge: '/favicon.ico'
+                });
+              }
+            } catch (notifError) {
+              console.error('Error sending notification:', notifError);
+              // Don't fail the whole update if notification fails
+            }
+          }
+
+          return {
+            ...prev,
+            dailyCompletions: updatedCompletions
+          };
+        } catch (innerError) {
+          console.error('Error in updateDailyCompletion setSettings callback:', innerError);
+          // Return previous state if there's an error
+          return prev;
         }
-      }
-
-      return {
-        ...prev,
-        dailyCompletions: updatedCompletions
-      };
-    });
+      });
+    } catch (error) {
+      console.error('Error in updateDailyCompletion:', error);
+      // Don't throw - just log and continue
+    }
   };
 
   // Backfill historical completion data from journal entries
   // This fixes the calendar to show all past completions, not just today's
   const backfillCompletions = () => {
-    if (!userProfileRef.current) return;
+    try {
+      if (!userProfileRef.current) return;
 
-    const startDate = new Date(userProfileRef.current.startDate);
-    const entries = journalEntriesRef.current;
-    const today = getLocalDateString();
+      const startDate = new Date(userProfileRef.current.startDate);
+      const entries = journalEntriesRef.current;
+      const today = getLocalDateString();
 
-    setSettings(prev => {
-      const existingCompletions = prev.dailyCompletions || [];
-      const completionsMap = new Map(existingCompletions.map(c => [c.date, c]));
+      setSettings(prev => {
+        try {
+          const existingCompletions = prev.dailyCompletions || [];
+          const completionsMap = new Map(existingCompletions.map(c => [c?.date, c]).filter(([date]) => date));
 
-      // Build completion records for each day from journal entries
-      for (let journeyDay = 1; journeyDay <= 90; journeyDay++) {
-        const dayDate = new Date(startDate);
-        dayDate.setDate(dayDate.getDate() + journeyDay - 1);
-        const dateStr = getLocalDateString(dayDate);
+          // Build completion records for each day from journal entries
+          for (let journeyDay = 1; journeyDay <= 90; journeyDay++) {
+            const dayDate = new Date(startDate);
+            dayDate.setDate(dayDate.getDate() + journeyDay - 1);
+            const dateStr = getLocalDateString(dayDate);
 
-        // Find the daily entry for this journey day
-        const dayEntry = entries.find(entry => entry.day === journeyDay && entry.type === 'daily');
+            // Find the daily entry for this journey day
+            const dayEntry = entries.find(entry => entry.day === journeyDay && entry.type === 'daily');
 
-        if (dayEntry) {
-          // For today, use the current ritual status
-          // For past days, assume ritual was completed if entry exists (we can't know for sure)
-          const isToday = dateStr === today;
-          const ritualCompleted = isToday
-            ? (prev.lastRitualDate === dateStr && prev.ritualCompletedToday === true)
-            : true; // Assume completed for past days with entries
+            if (dayEntry) {
+              // For today, use the current ritual status
+              // For past days, assume ritual was completed if entry exists (we can't know for sure)
+              const isToday = dateStr === today;
+              const ritualCompleted = isToday
+                ? (prev.lastRitualDate === dateStr && prev.ritualCompletedToday === true)
+                : true; // Assume completed for past days with entries
 
-          const completion = {
-            date: dateStr,
-            ritualCompleted,
-            morningEntryCompleted: true, // Entry exists
-            eveningCheckinCompleted: !!dayEntry.eveningCheckin
+              const completion = {
+                date: dateStr,
+                ritualCompleted,
+                morningEntryCompleted: true, // Entry exists
+                eveningCheckinCompleted: !!dayEntry.eveningCheckin
+              };
+
+              completionsMap.set(dateStr, completion);
+            }
+          }
+
+          // Convert map back to array and keep only last 90 days
+          const updatedCompletions = Array.from(completionsMap.values())
+            .filter(c => c && c.date) // Filter out any invalid entries
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .slice(-90);
+
+          return {
+            ...prev,
+            dailyCompletions: updatedCompletions
           };
-
-          completionsMap.set(dateStr, completion);
+        } catch (innerError) {
+          console.error('Error in backfillCompletions setSettings callback:', innerError);
+          return prev;
         }
-      }
-
-      // Convert map back to array and keep only last 90 days
-      const updatedCompletions = Array.from(completionsMap.values())
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(-90);
-
-      return {
-        ...prev,
-        dailyCompletions: updatedCompletions
-      };
-    });
+      });
+    } catch (error) {
+      console.error('Error in backfillCompletions:', error);
+      // Don't throw - just log and continue
+    }
   };
 
   const handleSaveEntry = async (text: string) => {
