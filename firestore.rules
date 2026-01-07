@@ -9,6 +9,11 @@ service cloud.firestore {
       match /journalEntries/{entryId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // User's mood entries subcollection
+      match /moodEntries/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }

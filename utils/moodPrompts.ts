@@ -16,7 +16,7 @@ export const DEFAULT_EMOTION_EMOJIS: Record<DefaultEmotion, string> = {
 export const CONTEXT_LABELS: Record<MoodContext, string> = {
   career: 'Career',
   family: 'Family',
-  romantic: 'Romantic',
+  romantic: 'Romance',
   friendships: 'Friendships',
   physical_health: 'Physical Health',
   mental_health: 'Mental Health',

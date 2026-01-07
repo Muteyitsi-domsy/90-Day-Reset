@@ -2,6 +2,7 @@ import React from 'react';
 
 interface WelcomeScreenProps {
   onStart: () => void;
+  onSignIn?: () => void;
   copy?: {
     title?: string;
     subtitle?: string;
@@ -9,11 +10,11 @@ interface WelcomeScreenProps {
   };
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, copy }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, onSignIn, copy }) => {
   const {
     title = 'Welcome 🌿',
     subtitle = 'Are you ready to show up for your future self? Begin a gentle 90-day reset of habits, identity and daily rituals. One small step today.',
-    cta = 'Yes, I’m ready',
+    cta = 'Yes, I'm ready',
   } = copy || {};
 
   return (
@@ -36,6 +37,20 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, copy }) => {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-8">
           Your progress is saved locally and stays private.
         </p>
+
+        {onSignIn && (
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Already have an account?
+            </p>
+            <button
+              onClick={onSignIn}
+              className="text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] text-sm font-medium underline transition-colors"
+            >
+              Sign in to restore your data
+            </button>
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes fade-in {

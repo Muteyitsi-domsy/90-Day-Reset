@@ -181,6 +181,7 @@ const App: React.FC = () => {
         // Load user profile
         const savedProfile = await storageService.getUserProfile();
         if (savedProfile) {
+          console.log('📦 Loaded user profile from storage:', user ? 'Firestore' : 'localStorage');
           setUserProfile(savedProfile);
 
           // Load journal entries
@@ -220,9 +221,16 @@ const App: React.FC = () => {
             if (!settingsExist) {
               setAppState('onboarding_completion');
             } else {
+              // User has complete profile - restore their session
+              // If they were in the middle of onboarding, interrupt it and go to returning_welcome
+              if (appState === 'welcome' || appState === 'name_collection' || appState === 'onboarding') {
+                console.log('🔄 Existing user data found - skipping onboarding');
+              }
               setAppState('returning_welcome');
             }
           }
+        } else {
+          console.log('📭 No user profile found in storage');
         }
       } catch (e) {
         console.error('Error loading from storage:', e);
@@ -398,6 +406,15 @@ const App: React.FC = () => {
 
         localStorage.setItem('migrationCompleted', 'true');
         localStorage.setItem('migrationDate', new Date().toISOString());
+
+        // Clear localStorage data after successful migration to avoid confusion
+        // Keep only migration flags for reference
+        console.log('🧹 Clearing localStorage data after successful migration...');
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('journalEntries');
+        localStorage.removeItem('settings');
+        localStorage.removeItem('moodJournalEntries');
+
         setHasMigrated(true);
 
         console.log('✅ Migration completed successfully - reloading to fetch from cloud...');
@@ -1259,7 +1276,10 @@ const App: React.FC = () => {
 
     switch (appState) {
       case 'welcome':
-        return <WelcomeScreen onStart={() => setAppState('name_collection')} />;
+        return <WelcomeScreen
+          onStart={() => setAppState('name_collection')}
+          onSignIn={() => setShowAuthModal(true)}
+        />;
       case 'name_collection':
           return <NameCollection onComplete={(name) => {
               setUserName(name);
