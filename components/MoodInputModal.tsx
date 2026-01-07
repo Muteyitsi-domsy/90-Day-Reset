@@ -292,7 +292,7 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
     const contexts: Array<{ id: MoodContext; label: string; icon: string }> = [
       { id: 'career', label: 'Career', icon: '💼' },
       { id: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦' },
-      { id: 'romantic', label: 'Romantic', icon: '❤️' },
+      { id: 'romantic', label: 'Romance', icon: '❤️' },
       { id: 'friendships', label: 'Friendships', icon: '👥' },
       { id: 'physical_health', label: 'Physical Health', icon: '💪' },
       { id: 'mental_health', label: 'Mental Health', icon: '🧠' },

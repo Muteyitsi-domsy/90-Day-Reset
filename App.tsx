@@ -1239,14 +1239,16 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    if (isLoading && appState !== 'journal') {
+    // Show loading for all states except journal while data is loading
+    // This prevents showing welcome screen before cloud data loads
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <LoadingSpinner />
             </div>
         );
     }
-    
+
     if (isLocked && settings.pin) {
         return (
             <PinLockScreen

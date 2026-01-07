@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { MoodJournalEntry, CustomEmotion, Settings } from '../types';
 import { getEmotionEmoji, CONTEXT_LABELS } from '../utils/moodPrompts';
-import FloatingButton from './FloatingButton';
 
 interface MoodJournalViewProps {
   moodEntries: MoodJournalEntry[];
@@ -28,7 +27,10 @@ const MoodEntryCard: React.FC<{
   const emoji = getEmotionEmoji(entry.emotion, entry.isCustomEmotion, entry.customEmotionEmoji);
   const emotionName = entry.emotion.charAt(0).toUpperCase() + entry.emotion.slice(1);
   const contextLabel = CONTEXT_LABELS[entry.context];
-  const date = new Date(entry.date);
+
+  // Parse date as local date (YYYY-MM-DD format from storage)
+  const [year, month, day] = entry.date.split('-').map(Number);
+  const date = new Date(year, month - 1, day); // month is 0-indexed
   const formattedDate = date.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -129,9 +131,21 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
   onDeleteEntry,
   currentStreak = 0,
 }) => {
-  // Group entries by month
+  // Check if user has already written today (using YYYY-MM-DD format to match stored date)
+  const getLocalDateString = (date: Date = new Date()): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const today = getLocalDateString();
+  const hasWrittenToday = moodEntries.some(entry => entry.date === today);
+
+  // Group entries by month (parse as local date)
   const entriesByMonth = moodEntries.reduce((acc, entry) => {
-    const date = new Date(entry.date);
+    const [year, month, day] = entry.date.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // month is 0-indexed
     const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
     if (!acc[monthKey]) {
       acc[monthKey] = [];
@@ -159,6 +173,27 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
             {moodEntries.length} {moodEntries.length === 1 ? 'entry' : 'entries'}
           </p>
         </div>
+
+        {/* Write Entry Button */}
+        {!hasWrittenToday && (
+          <div className="mb-8">
+            <button
+              onClick={onNewEntry}
+              className="w-full py-4 px-6 rounded-xl bg-[var(--accent-primary)] text-white font-medium hover:bg-[var(--accent-primary-hover)] transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+            >
+              ✍️ Write Today's Entry
+            </button>
+          </div>
+        )}
+
+        {/* Already written message */}
+        {hasWrittenToday && (
+          <div className="mb-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-center">
+            <p className="text-green-700 dark:text-green-300 font-medium">
+              ✅ You've already written your entry for today. Come back tomorrow!
+            </p>
+          </div>
+        )}
 
         {/* Empty state */}
         {moodEntries.length === 0 && (
@@ -200,9 +235,6 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
             ))}
           </div>
         )}
-
-        {/* Floating action button */}
-        <FloatingButton onClick={onNewEntry} label="New Entry" />
       </div>
     </div>
   );
