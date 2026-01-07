@@ -119,6 +119,7 @@ const App: React.FC = () => {
   // Mood journaling state
   const [moodEntries, setMoodEntries] = useState<MoodJournalEntry[]>([]);
   const [showMoodInputModal, setShowMoodInputModal] = useState(false);
+  const [editingMoodEntry, setEditingMoodEntry] = useState<MoodJournalEntry | null>(null);
   const [isSavingMoodEntry, setIsSavingMoodEntry] = useState(false);
   const [activeView, setActiveView] = useState<'journey' | 'mood'>('journey'); // Toggle between 90-day journey and mood journal
   const [calendarView, setCalendarView] = useState<'journey' | 'mood'>('journey'); // Calendar toggle
@@ -860,6 +861,56 @@ const App: React.FC = () => {
     }
   };
 
+  const handleEditMoodEntry = (entry: MoodJournalEntry) => {
+    setEditingMoodEntry(entry);
+    setShowMoodInputModal(true);
+  };
+
+  const handleUpdateMoodEntry = async (entryData: {
+    emotion: string;
+    intensity: 'low' | 'medium' | 'high';
+    context: string;
+    prompt: string;
+    journalText: string;
+    isCustomEmotion: boolean;
+    customEmotionEmoji?: string;
+  }) => {
+    if (!editingMoodEntry) return;
+
+    try {
+      setIsSavingMoodEntry(true);
+
+      const updatedEntry: MoodJournalEntry = {
+        ...editingMoodEntry,
+        emotion: entryData.emotion,
+        intensity: entryData.intensity,
+        context: entryData.context as any,
+        prompt: entryData.prompt,
+        journalText: entryData.journalText,
+        isCustomEmotion: entryData.isCustomEmotion,
+        customEmotionEmoji: entryData.customEmotionEmoji,
+        timestamp: new Date().toISOString(), // Update timestamp
+      };
+
+      // Update in storage
+      await storageService.saveMoodEntry(updatedEntry);
+
+      // Update state
+      setMoodEntries(prev => prev.map(entry =>
+        entry.id === editingMoodEntry.id ? updatedEntry : entry
+      ));
+
+      // Close modal and reset editing state
+      setShowMoodInputModal(false);
+      setEditingMoodEntry(null);
+    } catch (error) {
+      console.error('Error updating mood entry:', error);
+      alert('Failed to update mood entry. Please try again.');
+    } finally {
+      setIsSavingMoodEntry(false);
+    }
+  };
+
   const handleAddCustomEmotion = (name: string, emoji: string) => {
     const newEmotion: CustomEmotion = {
       id: `custom-${Date.now()}`,
@@ -1394,6 +1445,7 @@ const App: React.FC = () => {
                 settings={settings}
                 onNewEntry={() => setShowMoodInputModal(true)}
                 onDeleteEntry={handleDeleteMoodEntry}
+                onEditEntry={handleEditMoodEntry}
                 currentStreak={userProfile.moodStreak || 0}
               />
             )}
@@ -1521,12 +1573,24 @@ const App: React.FC = () => {
       />
       {showMoodInputModal && (
         <MoodInputModal
-          onSave={handleSaveMoodEntry}
-          onClose={() => setShowMoodInputModal(false)}
+          onSave={editingMoodEntry ? handleUpdateMoodEntry : handleSaveMoodEntry}
+          onClose={() => {
+            setShowMoodInputModal(false);
+            setEditingMoodEntry(null);
+          }}
           isSaving={isSavingMoodEntry}
           customEmotions={settings.customEmotions || []}
           onAddCustomEmotion={handleAddCustomEmotion}
           previousPrompts={moodEntries.slice(0, 10).map(e => e.prompt)}
+          editEntry={editingMoodEntry ? {
+            emotion: editingMoodEntry.emotion,
+            intensity: editingMoodEntry.intensity,
+            context: editingMoodEntry.context,
+            prompt: editingMoodEntry.prompt,
+            journalText: editingMoodEntry.journalText,
+            isCustomEmotion: editingMoodEntry.isCustomEmotion,
+            customEmotionEmoji: editingMoodEntry.customEmotionEmoji,
+          } : undefined}
         />
       )}
       <PrivacyPolicy

@@ -17,6 +17,15 @@ interface MoodInputModalProps {
   customEmotions: CustomEmotion[];
   onAddCustomEmotion: (name: string, emoji: string) => void;
   previousPrompts?: string[]; // For prompt rotation
+  editEntry?: {
+    emotion: string;
+    intensity: MoodIntensity;
+    context: MoodContext;
+    prompt: string;
+    journalText: string;
+    isCustomEmotion: boolean;
+    customEmotionEmoji?: string;
+  }; // Entry data when editing
 }
 
 type Step = 'emotion' | 'intensity' | 'context' | 'journal';
@@ -40,15 +49,16 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
   customEmotions,
   onAddCustomEmotion,
   previousPrompts = [],
+  editEntry,
 }) => {
-  const [step, setStep] = useState<Step>('emotion');
-  const [selectedEmotion, setSelectedEmotion] = useState<string>('');
-  const [selectedIntensity, setSelectedIntensity] = useState<MoodIntensity>('medium');
-  const [selectedContext, setSelectedContext] = useState<MoodContext>('mental_health');
-  const [journalText, setJournalText] = useState('');
-  const [isCustomEmotion, setIsCustomEmotion] = useState(false);
-  const [customEmotionEmoji, setCustomEmotionEmoji] = useState('');
-  const [prompt, setPrompt] = useState('');
+  const [step, setStep] = useState<Step>(editEntry ? 'journal' : 'emotion');
+  const [selectedEmotion, setSelectedEmotion] = useState<string>(editEntry?.emotion || '');
+  const [selectedIntensity, setSelectedIntensity] = useState<MoodIntensity>(editEntry?.intensity || 'medium');
+  const [selectedContext, setSelectedContext] = useState<MoodContext>(editEntry?.context || 'mental_health');
+  const [journalText, setJournalText] = useState(editEntry?.journalText || '');
+  const [isCustomEmotion, setIsCustomEmotion] = useState(editEntry?.isCustomEmotion || false);
+  const [customEmotionEmoji, setCustomEmotionEmoji] = useState(editEntry?.customEmotionEmoji || '');
+  const [prompt, setPrompt] = useState(editEntry?.prompt || '');
 
   // Custom emotion creation state
   const [showCustomEmotionForm, setShowCustomEmotionForm] = useState(false);

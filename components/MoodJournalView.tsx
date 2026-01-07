@@ -8,6 +8,7 @@ interface MoodJournalViewProps {
   settings: Settings;
   onNewEntry: () => void;
   onDeleteEntry?: (entryId: string) => void;
+  onEditEntry?: (entry: MoodJournalEntry) => void;
   currentStreak?: number;
 }
 
@@ -17,10 +18,17 @@ const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
   </svg>
 );
 
+const EditIcon: React.FC<{ className: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+  </svg>
+);
+
 const MoodEntryCard: React.FC<{
   entry: MoodJournalEntry;
   onDelete?: (entryId: string) => void;
-}> = ({ entry, onDelete }) => {
+  onEdit?: (entry: MoodJournalEntry) => void;
+}> = ({ entry, onDelete, onEdit }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -71,16 +79,27 @@ const MoodEntryCard: React.FC<{
               <p className="text-sm text-[var(--text-secondary)]">{formattedDate}</p>
             </div>
           </div>
-          {onDelete && (
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
-              aria-label="Delete entry"
-            >
-              <TrashIcon className="w-5 h-5" />
-            </button>
-          )}
+          <div className="flex gap-2">
+            {onEdit && (
+              <button
+                onClick={() => onEdit(entry)}
+                className="p-2 rounded-lg text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors"
+                aria-label="Edit entry"
+              >
+                <EditIcon className="w-5 h-5" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                aria-label="Delete entry"
+              >
+                <TrashIcon className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Metadata badges */}
@@ -129,6 +148,7 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
   settings,
   onNewEntry,
   onDeleteEntry,
+  onEditEntry,
   currentStreak = 0,
 }) => {
   // Check if user has already written today (using YYYY-MM-DD format to match stored date)
@@ -228,6 +248,7 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
                       key={entry.id}
                       entry={entry}
                       onDelete={onDeleteEntry}
+                      onEdit={onEditEntry}
                     />
                   ))}
                 </div>
