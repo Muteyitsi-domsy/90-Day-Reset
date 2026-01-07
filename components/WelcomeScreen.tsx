@@ -14,7 +14,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, onSignIn, copy }
   const {
     title = 'Welcome 🌿',
     subtitle = 'Are you ready to show up for your future self? Begin a gentle 90-day reset of habits, identity and daily rituals. One small step today.',
-    cta = 'Yes, I'm ready',
+    cta = "Yes, I'm ready",
   } = copy || {};
 
   return (
