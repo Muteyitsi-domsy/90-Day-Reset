@@ -7,6 +7,8 @@ interface ReturnUserWelcomeScreenProps {
   userProfile: UserProfile;
   todaysEntry: JournalEntry | undefined;
   ritualCompleted?: boolean;
+  onSignIn?: () => void;
+  userEmail?: string | null;
 }
 
 const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
@@ -14,6 +16,8 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
   userProfile,
   todaysEntry,
   ritualCompleted = false,
+  onSignIn,
+  userEmail,
 }) => {
 
   const hour = new Date().getHours();
@@ -77,8 +81,26 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
         </div>
 
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-8">
-          Your progress is saved locally and stays private.
+          {userEmail ? (
+            <>Synced to cloud: {userEmail}</>
+          ) : (
+            <>Your progress is saved locally and stays private.</>
+          )}
         </p>
+
+        {onSignIn && !userEmail && (
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Have cloud backup?
+            </p>
+            <button
+              onClick={onSignIn}
+              className="text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] text-sm font-medium underline transition-colors"
+            >
+              Sign in to restore your data
+            </button>
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes fade-in {

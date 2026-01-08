@@ -1317,9 +1317,9 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    // Show loading for all states except journal while data is loading
-    // This prevents showing welcome screen before cloud data loads
-    if (isLoading) {
+    // Show loading spinner only if we have no user profile data yet (initial load)
+    // If we have a profile, show the welcome screen immediately even while loading other data
+    if (isLoading && !userProfile) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <LoadingSpinner />
@@ -1371,7 +1371,14 @@ const App: React.FC = () => {
           const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
           const today = getLocalDateString();
           const ritualCompleted = settings.lastRitualDate === today && settings.ritualCompletedToday === true;
-          return <ReturnUserWelcomeScreen userProfile={userProfile} todaysEntry={todaysEntry} onContinue={() => setAppState('journal')} ritualCompleted={ritualCompleted} />;
+          return <ReturnUserWelcomeScreen
+            userProfile={userProfile}
+            todaysEntry={todaysEntry}
+            onContinue={() => setAppState('journal')}
+            ritualCompleted={ritualCompleted}
+            onSignIn={() => setShowAuthModal(true)}
+            userEmail={user?.email}
+          />;
         }
         return null;
       case 'onboarding':
