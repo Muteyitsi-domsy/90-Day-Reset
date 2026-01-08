@@ -998,6 +998,23 @@ const App: React.FC = () => {
         return;
     }
 
+    // Check if report already exists (prevent duplicates)
+    const existingReport = journalEntries.find(entry => entry.week === weekToSummarize && entry.type === 'weekly_summary_report');
+    if (existingReport && !isRegeneration) {
+        console.log(`✓ Weekly report for Week ${weekToSummarize} already exists, skipping generation`);
+        setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        return;
+    }
+
+    // Check if there's data for this week
+    const weekEntries = journalEntries.filter(entry => entry.week === weekToSummarize && (entry.type === 'daily' || entry.type === 'hunch'));
+    if (weekEntries.length === 0) {
+        console.log(`ℹ️ No entries found for Week ${weekToSummarize}, skipping report generation`);
+        // Mark week as processed but don't generate empty report
+        setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        return;
+    }
+
     setIsLoading(true);
 
     const summaryEntryId = new Date().toISOString();
@@ -1022,8 +1039,6 @@ const App: React.FC = () => {
     setJournalEntries(prev => [...prev, summaryPlaceholder]);
 
     try {
-        const weekEntries = journalEntries.filter(entry => entry.week === weekToSummarize && (entry.type === 'daily' || entry.type === 'hunch'));
-
         const summaryData: SummaryData = await generateWeeklySummary(userProfile, weekToSummarize, weekEntries);
 
         const summaryEntry: JournalEntry = {
@@ -1038,14 +1053,30 @@ const App: React.FC = () => {
         };
 
         setJournalEntries(prev => prev.map(entry => entry.id === summaryEntryId ? summaryEntry : entry));
-        alert(`✅ Week ${weekToSummarize} report generated! Check the Reports section.`);
+
         if (!isRegeneration) {
+            // Only send one notification for auto-generated reports
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    new Notification(`Week ${weekToSummarize} Report Ready`, {
+                        body: 'Your weekly reflection is now available.',
+                        icon: '/favicon.ico',
+                        tag: `week-${weekToSummarize}` // Prevents duplicate notifications
+                    });
+                } catch (e) {
+                    console.log('Could not send notification');
+                }
+            }
             setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
+        } else {
+            alert(`✅ Week ${weekToSummarize} report regenerated! Check the Reports section.`);
         }
 
     } catch (error) {
         console.error("Error generating weekly summary:", error);
-        alert(`❌ Error generating report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        if (isRegeneration) {
+            alert(`❌ Error generating report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
         // Remove placeholder on error to allow retry next load or avoid corrupt state
          setJournalEntries(prev => prev.filter(entry => entry.id !== summaryEntryId));
         if (!isRegeneration) {
@@ -1056,10 +1087,32 @@ const App: React.FC = () => {
     }
 };
 
-  const handleGenerateMonthlySummary = async (monthToSummarize: number, newMonth: number) => {
+  const handleGenerateMonthlySummary = async (monthToSummarize: number, newMonth: number, isRegeneration: boolean = false) => {
     if (!userProfile || !settings.monthlyReports) {
          if (userProfile) setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
          return;
+    }
+
+    // Check if report already exists (prevent duplicates)
+    const startDay = (monthToSummarize - 1) * 30;
+    const endDay = monthToSummarize * 30;
+    const existingReport = journalEntries.find(entry =>
+        entry.type === 'monthly_summary_report' &&
+        entry.day > startDay && entry.day <= endDay
+    );
+    if (existingReport && !isRegeneration) {
+        console.log(`✓ Monthly report for Month ${monthToSummarize} already exists, skipping generation`);
+        setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
+        return;
+    }
+
+    // Check if there's data for this month
+    const monthEntries = journalEntries.filter(entry => entry.day > startDay && entry.day <= endDay && (entry.type === 'daily' || entry.type === 'hunch'));
+    if (monthEntries.length === 0) {
+        console.log(`ℹ️ No entries found for Month ${monthToSummarize}, skipping report generation`);
+        // Mark month as processed but don't generate empty report
+        setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
+        return;
     }
 
     setIsLoading(true);
@@ -1079,11 +1132,6 @@ const App: React.FC = () => {
     setJournalEntries(prev => [...prev, summaryPlaceholder]);
 
     try {
-        // Get entries that roughly correspond to the month. Logic: entries with day within (month-1)*30 to month*30
-        const startDay = (monthToSummarize - 1) * 30;
-        const endDay = monthToSummarize * 30;
-        const monthEntries = journalEntries.filter(entry => entry.day > startDay && entry.day <= endDay && (entry.type === 'daily' || entry.type === 'hunch'));
-
         const summaryData: SummaryData = await generateMonthlySummary(userProfile, monthToSummarize, monthEntries);
 
         const summaryEntry: JournalEntry = {
@@ -1099,6 +1147,19 @@ const App: React.FC = () => {
 
         setJournalEntries(prev => prev.map(entry => entry.id === summaryEntryId ? summaryEntry : entry));
         setUserProfile(prev => ({ ...prev!, month_count: newMonth }));
+
+        // Only send one notification for auto-generated reports
+        if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+                new Notification(`Month ${monthToSummarize} Report Ready`, {
+                    body: 'Your monthly insight is now available.',
+                    icon: '/favicon.ico',
+                    tag: `month-${monthToSummarize}` // Prevents duplicate notifications
+                });
+            } catch (e) {
+                console.log('Could not send notification');
+            }
+        }
 
     } catch (error) {
         console.error("Error generating monthly summary:", error);
@@ -1194,7 +1255,7 @@ const App: React.FC = () => {
     if (appState === 'journal' && userProfile && !userProfile.isPaused) {
         setupJournal();
     }
-  }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted, journalEntries]);
+  }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
 
   const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'name' | 'intentions'>) => {
     setUserProfile({ ...profile, name: userName, intentions: '', month_count: 1 });
