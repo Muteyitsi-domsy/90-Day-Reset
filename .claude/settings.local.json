@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(cat:*)",
-      "Bash(npm audit fix:*)"
+      "Bash(npm audit fix:*)",
+      "Bash(npm run build:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

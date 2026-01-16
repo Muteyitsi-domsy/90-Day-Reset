@@ -78,6 +78,13 @@
       --button-secondary-bg: rgba(68, 64, 60, 0.5); --button-secondary-text: #d6d3d1;
       --input-bg: rgba(28, 25, 23, 0.5); --input-border: #44403c; --ring-color: #a8a29e;
     }
+
+    /* Background gradient using CSS variables for reliable theme application */
+    body {
+      min-height: 100vh;
+      background: linear-gradient(to bottom right, var(--bg-from), var(--bg-to));
+      background-attachment: fixed;
+    }
   </style>
   <script>
     // Prevents FOUC by applying the theme before the body renders.
@@ -132,7 +139,7 @@
 }
 </script>
 </head>
-<body class="bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] font-sans">
+<body class="font-sans">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
