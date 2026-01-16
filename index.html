@@ -80,10 +80,15 @@
     }
 
     /* Background gradient using CSS variables for reliable theme application */
-    body {
+    html {
       min-height: 100vh;
       background: linear-gradient(to bottom right, var(--bg-from), var(--bg-to));
       background-attachment: fixed;
+    }
+
+    body {
+      min-height: 100vh;
+      background: transparent;
     }
   </style>
   <script>
