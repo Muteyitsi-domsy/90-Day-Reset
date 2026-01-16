@@ -278,8 +278,10 @@ const App: React.FC = () => {
 
     saveSettings();
 
-    // Apply theme
-    document.documentElement.className = ''; // Clear all classes first
+    // Apply theme - remove only theme-related classes, not all classes
+    const themeClasses = ['theme-default', 'theme-ocean', 'theme-sunset', 'theme-forest', 'dark'];
+    themeClasses.forEach(cls => document.documentElement.classList.remove(cls));
+
     document.documentElement.classList.add(`theme-${settings.theme}`);
     if (
       settings.themeMode === 'dark' ||
