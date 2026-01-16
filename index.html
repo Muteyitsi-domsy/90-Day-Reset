@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>90-Day Identity Reset</title>
+
+  <!-- Security Headers: Content Security Policy (CSP) -->
+  <!-- This is a fallback; primary CSP is set via HTTP headers in vercel.json -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://aistudiocdn.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: https: blob:; font-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.firebase.com https://*.firebaseio.com https://sentry.io https://*.sentry.io https://emailjs.com https://api.emailjs.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
+
+  <!-- Additional Security Headers -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <style>
     :root, .theme-default {
       --bg-from: #fdfbf7; --bg-to: #f4f1ea;
@@ -101,7 +110,17 @@
       }
     })();
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!--
+    SECURITY NOTE: External Scripts
+    - Tailwind CDN: Used for development/prototyping. For production, consider npm install.
+    - SRI (Subresource Integrity) hashes are not added to CDN scripts because:
+      1. Tailwind CDN content changes dynamically
+      2. Import maps don't support integrity attributes
+    - These sources are whitelisted in CSP via 'script-src' directive
+    - All external domains are explicitly allowed in vercel.json
+  -->
+  <script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
 <script type="importmap">
 {
   "imports": {

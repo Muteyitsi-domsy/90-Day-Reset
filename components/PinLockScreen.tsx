@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
+import { validateEmail, validatePin, generateRecoveryCode, VALIDATION_LIMITS } from '../src/utils/validation';
 
 interface PinLockScreenProps {
     correctPin: string;
@@ -9,37 +10,116 @@ interface PinLockScreenProps {
     onPinReset: (newPin: string) => void;
 }
 
+interface RateLimitData {
+    attempts: number;
+    lockedUntil: number;
+}
+
+const PIN_LENGTH = VALIDATION_LIMITS.PIN_LENGTH; // 6 characters
+const RECOVERY_CODE_LENGTH = VALIDATION_LIMITS.RECOVERY_CODE_LENGTH; // 7 digits
+const MAX_PIN_ATTEMPTS = 5; // Lock after 5 failed attempts
+const MAX_CODE_ATTEMPTS = 3; // Lock after 3 failed code verifications
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes lockout
+
 const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, onUnlock, onPinReset }) => {
-    const [pin, setPin] = useState<string[]>(Array(4).fill(''));
+    const [pin, setPin] = useState<string[]>(Array(PIN_LENGTH).fill(''));
     const [error, setError] = useState(false);
     const [showForgot, setShowForgot] = useState(false);
     const [recoveryStep, setRecoveryStep] = useState<'email' | 'code' | 'newpin'>('email');
     const [email, setEmail] = useState(userEmail || '');
     const [recoveryCode, setRecoveryCode] = useState('');
     const [enteredCode, setEnteredCode] = useState('');
-    const [newPin, setNewPin] = useState<string[]>(Array(4).fill(''));
+    const [newPin, setNewPin] = useState<string[]>(Array(PIN_LENGTH).fill(''));
     const [resetSent, setResetSent] = useState(false);
     const [sendingEmail, setSendingEmail] = useState(false);
     const [emailError, setEmailError] = useState('');
+    const [isLocked, setIsLocked] = useState(false);
+    const [lockoutMessage, setLockoutMessage] = useState('');
     const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
     const newPinInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
     // Initialize EmailJS
     useEffect(() => {
         emailjs.init('uAtxjwzd4c2lx_6xT'); // Initialize with public key
+
+        // Check if currently locked out
+        checkLockoutStatus();
     }, []);
+
+    // Rate limiting functions
+    const getRateLimitKey = (type: 'pin' | 'code'): string => {
+        return `rateLimit_${type}_${userEmail || 'guest'}`;
+    };
+
+    const getRateLimitData = (type: 'pin' | 'code'): RateLimitData => {
+        const key = getRateLimitKey(type);
+        const data = localStorage.getItem(key);
+        if (!data) {
+            return { attempts: 0, lockedUntil: 0 };
+        }
+        return JSON.parse(data);
+    };
+
+    const setRateLimitData = (type: 'pin' | 'code', data: RateLimitData): void => {
+        const key = getRateLimitKey(type);
+        localStorage.setItem(key, JSON.stringify(data));
+    };
+
+    const checkLockoutStatus = (): boolean => {
+        const pinData = getRateLimitData('pin');
+        const codeData = getRateLimitData('code');
+        const now = Date.now();
+
+        // Check PIN lockout
+        if (pinData.lockedUntil > now) {
+            const minutesLeft = Math.ceil((pinData.lockedUntil - now) / 60000);
+            setIsLocked(true);
+            setLockoutMessage(`Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
+            return true;
+        }
+
+        // Check code lockout
+        if (codeData.lockedUntil > now && recoveryStep === 'code') {
+            const minutesLeft = Math.ceil((codeData.lockedUntil - now) / 60000);
+            setEmailError(`Too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
+            return true;
+        }
+
+        setIsLocked(false);
+        setLockoutMessage('');
+        return false;
+    };
+
+    const recordFailedAttempt = (type: 'pin' | 'code'): void => {
+        const data = getRateLimitData(type);
+        const maxAttempts = type === 'pin' ? MAX_PIN_ATTEMPTS : MAX_CODE_ATTEMPTS;
+
+        data.attempts += 1;
+
+        if (data.attempts >= maxAttempts) {
+            data.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+            setRateLimitData(type, data);
+            checkLockoutStatus();
+        } else {
+            setRateLimitData(type, data);
+        }
+    };
+
+    const resetAttempts = (type: 'pin' | 'code'): void => {
+        setRateLimitData(type, { attempts: 0, lockedUntil: 0 });
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
         const { value } = e.target;
         const newPin = [...pin];
-        
-        // Only allow a single letter
-        const letter = value.match(/[a-zA-Z]/);
-        newPin[index] = letter ? letter[0].toUpperCase() : '';
+
+        // Allow both letters and numbers for more security
+        const char = value.match(/[a-zA-Z0-9]/);
+        newPin[index] = char ? char[0].toUpperCase() : '';
 
         setPin(newPin);
 
-        if (newPin[index] !== '' && index < 3) {
+        if (newPin[index] !== '' && index < PIN_LENGTH - 1) {
             inputsRef.current[index + 1]?.focus();
         }
     };
@@ -52,27 +132,47 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Check if locked out
+        if (checkLockoutStatus()) {
+            return;
+        }
+
         const enteredPin = pin.join('');
+
+        // Validate PIN format
+        const validationError = validatePin(enteredPin);
+        if (validationError) {
+            setError(true);
+            setTimeout(() => setError(false), 500);
+            return;
+        }
+
         if (enteredPin.toLowerCase() === correctPin.toLowerCase()) {
+            // Success - reset attempts and unlock
+            resetAttempts('pin');
             onUnlock();
         } else {
+            // Failed attempt - record it
+            recordFailedAttempt('pin');
             setError(true);
-            setPin(Array(4).fill(''));
+            setPin(Array(PIN_LENGTH).fill(''));
             inputsRef.current[0]?.focus();
-            setTimeout(() => setError(false), 500); // Reset error state after animation
+            setTimeout(() => setError(false), 500);
+
+            // Check if now locked out
+            checkLockoutStatus();
         }
-    };
-    
-    const generateRecoveryCode = (): string => {
-        return Math.floor(100000 + Math.random() * 900000).toString();
     };
 
     const handleForgotSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setEmailError('');
 
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            setEmailError('Please enter a valid email address.');
+        // Validate email using our validation utility
+        const emailValidationError = validateEmail(email);
+        if (emailValidationError) {
+            setEmailError(emailValidationError);
             return;
         }
 
@@ -82,7 +182,7 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
         }
 
         setSendingEmail(true);
-        const code = generateRecoveryCode();
+        const code = generateRecoveryCode(); // Now generates 7-digit code
         setRecoveryCode(code);
 
         // Store recovery code with expiration (15 minutes)
@@ -127,6 +227,11 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
         e.preventDefault();
         setEmailError('');
 
+        // Check if locked out from too many code attempts
+        if (checkLockoutStatus()) {
+            return;
+        }
+
         const storedData = localStorage.getItem('pinRecovery');
         if (!storedData) {
             setEmailError('Recovery code expired. Please request a new one.');
@@ -145,11 +250,22 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
         }
 
         if (enteredCode !== code) {
-            setEmailError('Incorrect code. Please try again.');
+            // Record failed code attempt
+            recordFailedAttempt('code');
+            const attemptsData = getRateLimitData('code');
+            const remainingAttempts = MAX_CODE_ATTEMPTS - attemptsData.attempts;
+
+            if (remainingAttempts > 0) {
+                setEmailError(`Incorrect code. ${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining.`);
+            }
+
+            // Check if now locked out
+            checkLockoutStatus();
             return;
         }
 
-        // Code verified successfully
+        // Code verified successfully - reset attempts and proceed
+        resetAttempts('code');
         localStorage.removeItem('pinRecovery');
         setRecoveryStep('newpin');
     };
@@ -158,12 +274,13 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
         const { value } = e.target;
         const updatedNewPin = [...newPin];
 
-        const letter = value.match(/[a-zA-Z]/);
-        updatedNewPin[index] = letter ? letter[0].toUpperCase() : '';
+        // Allow both letters and numbers for better security
+        const char = value.match(/[a-zA-Z0-9]/);
+        updatedNewPin[index] = char ? char[0].toUpperCase() : '';
 
         setNewPin(updatedNewPin);
 
-        if (updatedNewPin[index] !== '' && index < 3) {
+        if (updatedNewPin[index] !== '' && index < PIN_LENGTH - 1) {
             newPinInputsRef.current[index + 1]?.focus();
         }
     };
@@ -178,8 +295,10 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
         e.preventDefault();
         const pinValue = newPin.join('');
 
-        if (pinValue.length !== 4 || !/^[a-zA-Z]{4}$/.test(pinValue)) {
-            setEmailError('PIN must be exactly 4 letters.');
+        // Validate PIN using our validation utility
+        const validationError = validatePin(pinValue);
+        if (validationError) {
+            setEmailError(validationError);
             return;
         }
 
@@ -187,8 +306,12 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
         setShowForgot(false);
         setResetSent(false);
         setRecoveryStep('email');
-        setNewPin(Array(4).fill(''));
+        setNewPin(Array(PIN_LENGTH).fill(''));
         setEnteredCode('');
+
+        // Reset rate limiting for new PIN
+        resetAttempts('pin');
+        resetAttempts('code');
     };
 
     if (showForgot) {
@@ -233,14 +356,14 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
                                 </svg>
                             </div>
                             <p className="text-lg text-[var(--text-primary)] mb-2">Code Sent!</p>
-                            <p className="text-sm text-gray-500 mb-6">Please check your email and enter the 6-digit code below.</p>
+                            <p className="text-sm text-gray-500 mb-6">Please check your email and enter the 7-digit code below.</p>
                             <form onSubmit={handleCodeVerification} className="flex flex-col gap-4">
                                 <input
                                     type="text"
                                     value={enteredCode}
-                                    onChange={e => {setEnteredCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setEmailError('');}}
-                                    placeholder="000000"
-                                    maxLength={6}
+                                    onChange={e => {setEnteredCode(e.target.value.replace(/\D/g, '').slice(0, RECOVERY_CODE_LENGTH)); setEmailError('');}}
+                                    placeholder="0000000"
+                                    maxLength={RECOVERY_CODE_LENGTH}
                                     required
                                     className="w-full bg-[var(--input-bg)] border-2 border-[var(--input-border)] rounded-lg p-3 text-[var(--text-primary)] text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)]"
                                     autoFocus
@@ -260,10 +383,10 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
                     {recoveryStep === 'newpin' && (
                         <>
                             <p className="text-md text-[var(--text-primary)] mb-8">
-                                Enter your new 4-letter PIN.
+                                Enter your new 6-character PIN (letters and numbers).
                             </p>
                             <form onSubmit={handleNewPinSubmit} className="flex flex-col items-center">
-                                <div className="flex justify-center gap-3 mb-6">
+                                <div className="flex justify-center gap-2 mb-6 flex-wrap">
                                     {newPin.map((digit, index) => (
                                         <input
                                             key={index}
@@ -273,7 +396,7 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
                                             value={digit}
                                             onChange={(e) => handleNewPinChange(e, index)}
                                             onKeyDown={(e) => handleNewPinKeyDown(e, index)}
-                                            className="w-12 h-14 text-center text-2xl font-semibold bg-[var(--input-bg)] border-2 border-[var(--input-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
+                                            className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-semibold bg-[var(--input-bg)] border-2 border-[var(--input-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
                                             autoFocus={index === 0}
                                         />
                                     ))}
@@ -298,10 +421,15 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
             <div className={`max-w-sm w-full bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] text-center ${error ? 'animate-shake' : ''}`}>
                 <h1 className="text-2xl font-light text-[var(--text-secondary)] mb-4">Enter PIN</h1>
                 <p className="text-md text-[var(--text-primary)] mb-8">
-                    Enter your 4-letter PIN to continue.
+                    Enter your 6-character PIN to continue.
                 </p>
+                {isLocked && lockoutMessage && (
+                    <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+                        <p className="text-red-600 dark:text-red-400 text-sm font-medium">{lockoutMessage}</p>
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="flex flex-col items-center">
-                    <div className="flex justify-center gap-3 mb-6">
+                    <div className="flex justify-center gap-2 mb-6">
                         {pin.map((digit, index) => (
                             <input
                                 key={index}
@@ -311,18 +439,25 @@ const PinLockScreen: React.FC<PinLockScreenProps> = ({ correctPin, userEmail, on
                                 value={digit}
                                 onChange={(e) => handleChange(e, index)}
                                 onKeyDown={(e) => handleKeyDown(e, index)}
-                                className="w-12 h-14 text-center text-2xl font-semibold bg-[var(--input-bg)] border-2 border-[var(--input-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition"
+                                disabled={isLocked}
+                                className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-semibold bg-[var(--input-bg)] border-2 border-[var(--input-border)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition disabled:opacity-50 disabled:cursor-not-allowed"
                                 autoFocus={index === 0}
                             />
                         ))}
                     </div>
                     <button
                         type="submit"
-                        className="bg-[var(--accent-primary)] text-white px-8 py-3 rounded-lg text-lg font-medium shadow hover:bg-[var(--accent-primary-hover)] transition-colors duration-300"
+                        disabled={isLocked}
+                        className="bg-[var(--accent-primary)] text-white px-8 py-3 rounded-lg text-lg font-medium shadow hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Unlock
                     </button>
-                    <button type="button" onClick={() => setShowForgot(true)} className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline transition-colors">
+                    <button
+                        type="button"
+                        onClick={() => setShowForgot(true)}
+                        disabled={isLocked}
+                        className="mt-6 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                         Forgot PIN?
                     </button>
                 </form>

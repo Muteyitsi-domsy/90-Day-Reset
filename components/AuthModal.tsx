@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../src/hooks/useAuth';
+import { validateEmail, validatePassword, getPasswordStrength } from '../src/utils/validation';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,6 +19,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
   const [localError, setLocalError] = useState<string | null>(null);
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
+  // Password strength calculation
+  const passwordStrength = mode === 'signup' && password ? getPasswordStrength(password) : null;
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,20 +29,26 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
     setLocalError(null);
     clearError();
 
-    // Validation
-    if (!email || !email.includes('@')) {
-      setLocalError('Please enter a valid email address');
+    // Email validation
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setLocalError(emailError);
       return;
     }
 
-    if (mode === 'signup' && password !== confirmPassword) {
-      setLocalError('Passwords do not match');
-      return;
-    }
+    // Password validation for signup and signin
+    if (mode !== 'reset') {
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        setLocalError(passwordError);
+        return;
+      }
 
-    if (mode !== 'reset' && password.length < 6) {
-      setLocalError('Password must be at least 6 characters');
-      return;
+      // Check password match on signup
+      if (mode === 'signup' && password !== confirmPassword) {
+        setLocalError('Passwords do not match');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -145,11 +155,27 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    placeholder={mode === 'signup' ? 'Min 12 chars with uppercase, lowercase & number' : 'Enter your password'}
                     required
                     disabled={isLoading}
                     autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   />
+                  {mode === 'signup' && passwordStrength && (
+                    <div className="password-strength">
+                      <div className="password-strength-bar">
+                        <div
+                          className="password-strength-fill"
+                          style={{
+                            width: `${passwordStrength.score}%`,
+                            backgroundColor: passwordStrength.color
+                          }}
+                        />
+                      </div>
+                      <span className="password-strength-label" style={{ color: passwordStrength.color }}>
+                        {passwordStrength.label}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -359,6 +385,31 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
           border-radius: 8px;
           color: #ef4444;
           font-size: 0.9rem;
+        }
+
+        .password-strength {
+          margin-top: 0.5rem;
+        }
+
+        .password-strength-bar {
+          width: 100%;
+          height: 4px;
+          background: var(--border-color);
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .password-strength-fill {
+          height: 100%;
+          transition: all 0.3s ease;
+          border-radius: 2px;
+        }
+
+        .password-strength-label {
+          display: block;
+          margin-top: 0.25rem;
+          font-size: 0.75rem;
+          font-weight: 600;
         }
 
         .auth-success-message {

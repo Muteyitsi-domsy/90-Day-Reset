@@ -4,15 +4,31 @@
  * on platforms like Vercel or Netlify. The platform will automatically create the `/api/gemini` endpoint.
  */
 import { GoogleGenAI, Type } from "@google/genai";
-import { detectCrisis } from "../utils/crisisDetector.js"; 
+import { detectCrisis } from "../utils/crisisDetector.js";
+import {
+  getCorsHeaders,
+  SECURITY_HEADERS,
+  isOriginAllowed
+} from './security-config';
 
 export default async function handler(req: Request): Promise<Response> {
-    // CORS headers
+    // Get origin from request
+    const origin = req.headers.get('origin') || undefined;
+
+    // Validate origin
+    if (origin && !isOriginAllowed(origin)) {
+        return new Response(
+            JSON.stringify({ error: 'Forbidden: Origin not allowed' }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+    }
+
+    // Set secure CORS and security headers
+    const corsHeaders = getCorsHeaders(origin);
     const headers = {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        ...corsHeaders,
+        ...SECURITY_HEADERS,
     };
 
     // Handle OPTIONS request for CORS
@@ -27,15 +43,82 @@ export default async function handler(req: Request): Promise<Response> {
     try {
         const body = await req.json();
 
-        if (body.action === 'generate_weekly_summary' || body.action === 'generate_monthly_summary') {
-            const summary = await getSummary(body);
-            return new Response(JSON.stringify(summary), { status: 200, headers });
-        } else {
-            return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers });
+        // Validate action
+        if (!body.action || typeof body.action !== 'string') {
+            return new Response(
+                JSON.stringify({ error: 'Invalid action: must be a non-empty string' }),
+                { status: 400, headers }
+            );
         }
+
+        const validActions = ['generate_weekly_summary', 'generate_monthly_summary'];
+        if (!validActions.includes(body.action)) {
+            return new Response(
+                JSON.stringify({
+                    error: 'Invalid action',
+                    validActions
+                }),
+                { status: 400, headers }
+            );
+        }
+
+        // Validate entries
+        if (!Array.isArray(body.entries)) {
+            return new Response(
+                JSON.stringify({ error: 'Invalid entries: must be an array' }),
+                { status: 400, headers }
+            );
+        }
+
+        if (body.entries.length === 0) {
+            return new Response(
+                JSON.stringify({ error: 'Invalid entries: cannot be empty' }),
+                { status: 400, headers }
+            );
+        }
+
+        // Validate entries array size (max 100 entries)
+        if (body.entries.length > 100) {
+            return new Response(
+                JSON.stringify({ error: 'Too many entries: maximum 100 allowed' }),
+                { status: 413, headers }
+            );
+        }
+
+        // Validate each entry
+        for (const entry of body.entries) {
+            if (!entry.rawText || typeof entry.rawText !== 'string') {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid entry: rawText must be a non-empty string' }),
+                    { status: 400, headers }
+                );
+            }
+
+            // Limit individual entry size
+            if (entry.rawText.length > 50000) {
+                return new Response(
+                    JSON.stringify({ error: 'Entry too long: maximum 50,000 characters per entry' }),
+                    { status: 413, headers }
+                );
+            }
+        }
+
+        const summary = await getSummary(body);
+        return new Response(JSON.stringify(summary), { status: 200, headers });
+
     } catch (error) {
         console.error('Error in API handler:', error);
-        return new Response(JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }), { status: 500, headers });
+        // Sanitize error message to avoid leaking sensitive info
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const sanitizedMessage = errorMessage.includes('API key') ? 'Configuration error' : errorMessage;
+
+        return new Response(
+            JSON.stringify({
+                error: 'Internal server error',
+                details: sanitizedMessage
+            }),
+            { status: 500, headers }
+        );
     }
 }
 

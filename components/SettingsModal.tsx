@@ -11,6 +11,8 @@ interface SettingsModalProps {
     onUpdateProfile: (profile: UserProfile) => void;
     onPauseJourney: () => void;
     onResumeJourney: () => void;
+    onEnableMFA?: () => void;
+    onDisableMFA?: () => void;
 }
 
 const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -19,7 +21,7 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, onClose, onSave, onUpdateProfile, onPauseJourney, onResumeJourney }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, onClose, onSave, onUpdateProfile, onPauseJourney, onResumeJourney, onEnableMFA, onDisableMFA }) => {
     const [pinInput, setPinInput] = useState('');
     const [emailInput, setEmailInput] = useState(userProfile?.email || '');
     const [pinError, setPinError] = useState('');
@@ -251,6 +253,57 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
                                     Remove PIN
                                 </button>
                             )}
+
+                            {/* Multi-Factor Authentication */}
+                            <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+                                <div className="flex justify-between items-center mb-2">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                            Two-Factor Authentication
+                                        </label>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                                            Add an extra layer of security
+                                        </p>
+                                    </div>
+                                    <div className={`px-2 py-1 rounded text-xs font-medium ${
+                                        userProfile?.mfaEnabled
+                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                    }`}>
+                                        {userProfile?.mfaEnabled ? 'Enabled' : 'Disabled'}
+                                    </div>
+                                </div>
+
+                                {userProfile?.mfaEnabled ? (
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                                            MFA is protecting your account. You'll need your authenticator app to sign in.
+                                        </div>
+                                        {onDisableMFA && (
+                                            <button
+                                                onClick={onDisableMFA}
+                                                className="w-full px-4 py-2 rounded-lg border border-red-500 text-red-600 dark:border-red-400 dark:text-red-400 font-medium text-sm hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                            >
+                                                Disable MFA
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                                            Secure your account with time-based one-time passwords (TOTP).
+                                        </div>
+                                        {onEnableMFA && (
+                                            <button
+                                                onClick={onEnableMFA}
+                                                className="w-full px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-sm hover:bg-[var(--accent-primary-hover)] transition-colors"
+                                            >
+                                                Enable MFA
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

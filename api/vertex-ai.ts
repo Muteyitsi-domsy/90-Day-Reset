@@ -1,13 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleAuth } from 'google-auth-library';
+import {
+  getCorsHeaders,
+  SECURITY_HEADERS,
+  RATE_LIMIT_CONFIG,
+  VALIDATION_LIMITS,
+  isOriginAllowed
+} from './security-config';
 
 // Rate limiting storage (in-memory for serverless - will reset between cold starts)
-// For production, use Redis or Vercel KV
+// TODO: For production, migrate to Vercel KV for persistent storage
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 // Configuration
-const DAILY_LIMIT_PER_USER = 50; // Max 50 AI requests per user per day
-const MAX_COST_PER_MONTH = 100; // Hard cap at $100/month (adjust as needed)
+const DAILY_LIMIT_PER_USER = RATE_LIMIT_CONFIG.DAILY_LIMIT_PER_USER;
+const MAX_COST_PER_MONTH = RATE_LIMIT_CONFIG.MAX_COST_PER_MONTH;
 const VERTEX_PROJECT_ID = process.env.VERTEX_PROJECT_ID;
 const VERTEX_LOCATION = process.env.VERTEX_LOCATION || 'us-central1';
 
@@ -69,11 +76,24 @@ function trackCost(cost: number): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers for client-side requests
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  // Get origin from request
+  const origin = req.headers.origin as string | undefined;
+
+  // Validate origin and set secure CORS headers
+  if (origin && !isOriginAllowed(origin)) {
+    return res.status(403).json({ error: 'Forbidden: Origin not allowed' });
+  }
+
+  // Set CORS headers
+  const corsHeaders = getCorsHeaders(origin);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    res.setHeader(key, value);
+  });
+
+  // Set security headers
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    res.setHeader(key, value);
+  });
 
   // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
@@ -88,11 +108,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { prompt, userId, requestType, config } = req.body;
 
+    // Validate prompt
     if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ error: 'Invalid prompt' });
+      return res.status(400).json({ error: 'Invalid prompt: must be a non-empty string' });
+    }
+
+    if (prompt.length === 0) {
+      return res.status(400).json({ error: 'Invalid prompt: cannot be empty' });
+    }
+
+    if (prompt.length > RATE_LIMIT_CONFIG.MAX_PROMPT_LENGTH) {
+      return res.status(413).json({
+        error: `Prompt too long: maximum ${RATE_LIMIT_CONFIG.MAX_PROMPT_LENGTH} characters`,
+        maxLength: RATE_LIMIT_CONFIG.MAX_PROMPT_LENGTH
+      });
+    }
+
+    // Validate requestType
+    const validRequestTypes = ['onboarding', 'analysis', 'summary', 'hunch', 'general'];
+    if (requestType && !validRequestTypes.includes(requestType)) {
+      return res.status(400).json({
+        error: 'Invalid request type',
+        validTypes: validRequestTypes
+      });
+    }
+
+    // Validate config parameters
+    if (config) {
+      if (config.temperature !== undefined) {
+        if (typeof config.temperature !== 'number' || config.temperature < 0 || config.temperature > 2) {
+          return res.status(400).json({
+            error: 'Invalid temperature: must be between 0 and 2'
+          });
+        }
+      }
+
+      if (config.maxOutputTokens !== undefined) {
+        if (typeof config.maxOutputTokens !== 'number' ||
+            config.maxOutputTokens < 100 ||
+            config.maxOutputTokens > RATE_LIMIT_CONFIG.MAX_OUTPUT_TOKENS) {
+          return res.status(400).json({
+            error: `Invalid maxOutputTokens: must be between 100 and ${RATE_LIMIT_CONFIG.MAX_OUTPUT_TOKENS}`
+          });
+        }
+      }
+
+      if (config.topP !== undefined) {
+        if (typeof config.topP !== 'number' || config.topP < 0 || config.topP > 1) {
+          return res.status(400).json({
+            error: 'Invalid topP: must be between 0 and 1'
+          });
+        }
+      }
+    }
+
+    // Validate userId
+    if (userId && typeof userId !== 'string') {
+      return res.status(400).json({ error: 'Invalid userId: must be a string' });
     }
 
     // Use a default userId if not provided (for backward compatibility)
+    // NOTE: This should be replaced with server-side authentication
     const effectiveUserId = userId || 'anonymous';
 
     // Rate limiting check

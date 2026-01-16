@@ -1,9 +1,20 @@
 import { UserProfile, Settings, JournalEntry, MoodJournalEntry } from '../types';
 import { StorageService } from './storageService';
+import {
+  encryptJSON,
+  decryptJSON,
+  safeRead,
+  isEncrypted,
+  migrateToEncrypted,
+  clearEncryptionKeys,
+} from '../utils/encryption';
 
 /**
  * LocalStorage implementation of StorageService
  * Handles data persistence using browser's localStorage API
+ *
+ * SECURITY: Sensitive data (journal entries, user profile, mood entries) is encrypted
+ * using AES-256 encryption. Settings are stored unencrypted as they're not sensitive.
  */
 export class LocalStorageService implements StorageService {
   private readonly KEYS = {
@@ -13,10 +24,23 @@ export class LocalStorageService implements StorageService {
     MOOD_ENTRIES: 'moodEntries',
   };
 
+  // Current user ID for encryption key derivation
+  private userId?: string;
+
+  /**
+   * Sets the current user ID for encryption
+   * Should be called after authentication
+   */
+  setUserId(userId: string | undefined): void {
+    this.userId = userId;
+  }
+
   // User Profile operations
   async saveUserProfile(profile: UserProfile): Promise<void> {
     try {
-      localStorage.setItem(this.KEYS.USER_PROFILE, JSON.stringify(profile));
+      // Encrypt profile data before saving
+      const encrypted = encryptJSON(profile, this.userId);
+      localStorage.setItem(this.KEYS.USER_PROFILE, encrypted);
     } catch (error) {
       console.error('Error saving user profile to localStorage:', error);
       throw new Error('Failed to save user profile');
@@ -28,7 +52,16 @@ export class LocalStorageService implements StorageService {
       const savedProfile = localStorage.getItem(this.KEYS.USER_PROFILE);
       if (!savedProfile) return null;
 
-      const profile: UserProfile = JSON.parse(savedProfile);
+      // Try to read data (handles both encrypted and unencrypted for migration)
+      const decryptedData = safeRead(savedProfile, this.userId);
+      if (!decryptedData) return null;
+
+      const profile: UserProfile = JSON.parse(decryptedData);
+
+      // If data wasn't encrypted, encrypt it now (migration)
+      if (!isEncrypted(savedProfile)) {
+        await this.saveUserProfile(profile);
+      }
 
       // Migration from 'stage' to 'arc'
       if ((profile as any).stage) {
@@ -150,7 +183,17 @@ export class LocalStorageService implements StorageService {
       const savedEntries = localStorage.getItem(this.KEYS.JOURNAL_ENTRIES);
       if (!savedEntries) return [];
 
-      const rawEntries: any[] = JSON.parse(savedEntries);
+      // Decrypt entries (handles migration from unencrypted)
+      const decryptedData = safeRead(savedEntries, this.userId);
+      if (!decryptedData) return [];
+
+      const rawEntries: any[] = JSON.parse(decryptedData);
+
+      // If data wasn't encrypted, encrypt it now (migration)
+      if (!isEncrypted(savedEntries)) {
+        // Re-save with encryption
+        await this._saveAllEntries(rawEntries);
+      }
 
       // Migration: Add `type` to entries that don't have it and parse summaryData
       const typedEntries = rawEntries.map(e => ({
@@ -210,7 +253,17 @@ export class LocalStorageService implements StorageService {
       const savedEntries = localStorage.getItem(this.KEYS.MOOD_ENTRIES);
       if (!savedEntries) return [];
 
-      const entries: MoodJournalEntry[] = JSON.parse(savedEntries);
+      // Decrypt entries (handles migration from unencrypted)
+      const decryptedData = safeRead(savedEntries, this.userId);
+      if (!decryptedData) return [];
+
+      const entries: MoodJournalEntry[] = JSON.parse(decryptedData);
+
+      // If data wasn't encrypted, encrypt it now (migration)
+      if (!isEncrypted(savedEntries)) {
+        await this._saveAllMoodEntries(entries);
+      }
+
       return entries;
     } catch (error) {
       console.error('Error loading mood entries from localStorage:', error);
@@ -238,6 +291,9 @@ export class LocalStorageService implements StorageService {
       localStorage.removeItem(this.KEYS.SETTINGS);
       localStorage.removeItem(this.KEYS.JOURNAL_ENTRIES);
       localStorage.removeItem(this.KEYS.MOOD_ENTRIES);
+
+      // Clear encryption keys
+      clearEncryptionKeys();
     } catch (error) {
       console.error('Error clearing localStorage:', error);
       throw new Error('Failed to clear storage');
@@ -253,7 +309,9 @@ export class LocalStorageService implements StorageService {
         return rest;
       });
 
-      localStorage.setItem(this.KEYS.JOURNAL_ENTRIES, JSON.stringify(entriesToSave));
+      // Encrypt before saving
+      const encrypted = encryptJSON(entriesToSave, this.userId);
+      localStorage.setItem(this.KEYS.JOURNAL_ENTRIES, encrypted);
     } catch (error) {
       console.error('Error saving journal entries to localStorage:', error);
       throw new Error('Failed to save journal entries');
@@ -263,7 +321,9 @@ export class LocalStorageService implements StorageService {
   // Private helper to save all mood entries
   private async _saveAllMoodEntries(entries: MoodJournalEntry[]): Promise<void> {
     try {
-      localStorage.setItem(this.KEYS.MOOD_ENTRIES, JSON.stringify(entries));
+      // Encrypt before saving
+      const encrypted = encryptJSON(entries, this.userId);
+      localStorage.setItem(this.KEYS.MOOD_ENTRIES, encrypted);
     } catch (error) {
       console.error('Error saving mood entries to localStorage:', error);
       throw new Error('Failed to save mood entries');

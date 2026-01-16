@@ -70,6 +70,12 @@ export interface UserProfile {
   // Mood journaling tracking
   moodStreak?: number; // Separate streak for mood journaling
   lastMoodEntryDate?: string; // Last date user made a mood journal entry
+
+  // Multi-Factor Authentication (MFA)
+  mfaEnabled?: boolean; // Whether MFA is enabled for this user
+  mfaSecret?: string; // Base32 encoded TOTP secret (encrypted in storage)
+  mfaBackupCodes?: string[]; // Hashed backup recovery codes
+  mfaSetupDate?: string; // ISO date when MFA was enabled
 }
 
 export interface DailyCompletion {

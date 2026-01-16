@@ -152,7 +152,7 @@ function getAuthErrorMessage(errorCode: string): string {
     case 'auth/operation-not-allowed':
       return 'Email/password accounts are not enabled.';
     case 'auth/weak-password':
-      return 'Password should be at least 6 characters.';
+      return 'Password must be at least 12 characters with uppercase, lowercase, and number.';
     case 'auth/user-disabled':
       return 'This account has been disabled.';
     case 'auth/user-not-found':

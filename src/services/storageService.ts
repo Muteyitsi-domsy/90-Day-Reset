@@ -37,6 +37,9 @@ export interface StorageService {
 
   // Utility
   clearAll(): Promise<void>;
+
+  // Optional: Set user ID for encryption (only applicable to LocalStorageService)
+  setUserId?(userId: string | undefined): void;
 }
 
 /**
@@ -50,5 +53,9 @@ export function getStorageService(userId?: string): StorageService {
   if (userId) {
     return new FirestoreService(userId);
   }
-  return new LocalStorageService();
+
+  // Create localStorage service and set user ID for encryption
+  const localService = new LocalStorageService();
+  localService.setUserId(userId);
+  return localService;
 }

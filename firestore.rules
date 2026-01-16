@@ -1,19 +1,155 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions for validation
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(required) {
+      return request.resource.data.keys().hasAll(required);
+    }
+
+    function hasOnlyAllowedFields(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    function isWithinSizeLimit(bytes) {
+      return request.resource.size() < bytes;
+    }
+
+    function isString(field) {
+      return request.resource.data[field] is string;
+    }
+
+    function isNumber(field) {
+      return request.resource.data[field] is number;
+    }
+
+    function isTimestamp(field) {
+      return request.resource.data[field] is timestamp;
+    }
+
+    function stringLength(field, min, max) {
+      return isString(field) &&
+             request.resource.data[field].size() >= min &&
+             request.resource.data[field].size() <= max;
+    }
+
     // Users can only read/write their own data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Read: User must be authenticated and own the document
+      allow read: if isOwner(userId);
+
+      // Create: User creates their own profile with required fields
+      allow create: if isOwner(userId) &&
+        hasRequiredFields(['name', 'arc', 'createdAt']) &&
+        hasOnlyAllowedFields(['name', 'email', 'arc', 'idealSelfManifesto', 'streak', 'month_count', 'mfaEnabled', 'mfaSecret', 'mfaBackupCodes', 'mfaSetupDate', 'createdAt', 'updatedAt']) &&
+        stringLength('name', 2, 100) &&
+        stringLength('arc', 3, 20) &&
+        (request.resource.data.idealSelfManifesto == null || stringLength('idealSelfManifesto', 0, 1000)) &&
+        (request.resource.data.mfaSecret == null || stringLength('mfaSecret', 10, 200)) &&
+        isTimestamp('createdAt') &&
+        isWithinSizeLimit(15000); // 15KB max for user profile (increased for MFA data)
+
+      // Update: User can update their own profile
+      allow update: if isOwner(userId) &&
+        hasOnlyAllowedFields(['name', 'email', 'arc', 'idealSelfManifesto', 'streak', 'month_count', 'mfaEnabled', 'mfaSecret', 'mfaBackupCodes', 'mfaSetupDate', 'createdAt', 'updatedAt']) &&
+        request.resource.data.createdAt == resource.data.createdAt && // Can't change createdAt
+        (request.resource.data.mfaSecret == null || stringLength('mfaSecret', 10, 200)) &&
+        isWithinSizeLimit(15000); // 15KB max for user profile (increased for MFA data)
+
+      // Delete: User can delete their own profile
+      allow delete: if isOwner(userId);
 
       // User's journal entries subcollection
       match /journalEntries/{entryId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // Read: User must own the parent document
+        allow read: if isOwner(userId);
+
+        // Create: Validate journal entry structure
+        allow create: if isOwner(userId) &&
+          hasRequiredFields(['id', 'rawText', 'type', 'day', 'createdAt']) &&
+          hasOnlyAllowedFields(['id', 'rawText', 'analysis', 'type', 'day', 'prompt', 'createdAt', 'updatedAt']) &&
+          stringLength('rawText', 1, 50000) && // Max 50KB per entry
+          isString('type') &&
+          request.resource.data.type in ['daily', 'weekly_summary_report', 'monthly_summary_report'] &&
+          isNumber('day') &&
+          request.resource.data.day >= 1 && request.resource.data.day <= 90 &&
+          isTimestamp('createdAt') &&
+          isWithinSizeLimit(100000); // 100KB max per journal entry
+
+        // Update: Can update entry but not change id or createdAt
+        allow update: if isOwner(userId) &&
+          hasOnlyAllowedFields(['id', 'rawText', 'analysis', 'type', 'day', 'prompt', 'createdAt', 'updatedAt']) &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          stringLength('rawText', 1, 50000) &&
+          isWithinSizeLimit(100000);
+
+        // Delete: User can delete their own entries
+        allow delete: if isOwner(userId);
       }
 
       // User's mood entries subcollection
       match /moodEntries/{entryId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // Read: User must own the parent document
+        allow read: if isOwner(userId);
+
+        // Create: Validate mood entry structure
+        allow create: if isOwner(userId) &&
+          hasRequiredFields(['id', 'mood', 'day', 'createdAt']) &&
+          hasOnlyAllowedFields(['id', 'mood', 'energy', 'notes', 'day', 'createdAt', 'updatedAt']) &&
+          isString('mood') &&
+          request.resource.data.mood in ['terrible', 'bad', 'okay', 'good', 'great'] &&
+          (request.resource.data.energy == null ||
+           (isNumber('energy') && request.resource.data.energy >= 1 && request.resource.data.energy <= 5)) &&
+          (request.resource.data.notes == null || stringLength('notes', 0, 1000)) &&
+          isNumber('day') &&
+          request.resource.data.day >= 1 && request.resource.data.day <= 90 &&
+          isTimestamp('createdAt') &&
+          isWithinSizeLimit(5000); // 5KB max per mood entry
+
+        // Update: Can update entry but not change id or createdAt
+        allow update: if isOwner(userId) &&
+          hasOnlyAllowedFields(['id', 'mood', 'energy', 'notes', 'day', 'createdAt', 'updatedAt']) &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          isWithinSizeLimit(5000);
+
+        // Delete: User can delete their own entries
+        allow delete: if isOwner(userId);
       }
+    }
+
+    // Audit logs collection (append-only)
+    match /auditLogs/{logId} {
+      // Read: Users can only read their own audit logs
+      allow read: if isAuthenticated() &&
+        request.auth.uid == resource.data.userId;
+
+      // Create: Users can create audit logs for themselves
+      // Logs are append-only and immutable after creation
+      allow create: if isAuthenticated() &&
+        request.auth.uid == request.resource.data.userId &&
+        hasRequiredFields(['userId', 'eventType', 'severity', 'timestamp', 'description', 'success']) &&
+        hasOnlyAllowedFields(['userId', 'eventType', 'severity', 'timestamp', 'description', 'metadata', 'userAgent', 'deviceId', 'ipAddress', 'success', 'errorMessage']) &&
+        isString('userId') &&
+        isString('eventType') &&
+        isString('severity') &&
+        request.resource.data.severity in ['info', 'warning', 'critical'] &&
+        isTimestamp('timestamp') &&
+        stringLength('description', 1, 500) &&
+        isWithinSizeLimit(10000); // 10KB max per audit log
+
+      // Update and Delete: NOT ALLOWED (audit logs are immutable)
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
