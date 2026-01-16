@@ -421,6 +421,19 @@ const SecurityDashboard = () => {
 
 ### 🔴 Critical (Must Complete Before Launch)
 
+- [ ] **Add Privacy Policy & Terms Links to App**
+  - [ ] Add footer links to Privacy Policy and Terms of Service
+  - [ ] Add checkbox to signup: "I agree to the Terms of Service and Privacy Policy"
+  - [ ] Make documents accessible from Settings page
+  - [ ] Consider adding links in AuthModal during signup
+  - 📝 Files: `PRIVACY_POLICY.md`, `TERMS_OF_SERVICE.md`
+
+- [ ] **Update Contact Email Addresses**
+  - [ ] Replace `[Your Contact Email]` in Privacy Policy
+  - [ ] Replace `[Your Security Contact Email]` in Privacy Policy
+  - [ ] Replace contact placeholders in Terms of Service
+  - [ ] Add real contact information to both documents
+
 - [ ] **Rotate All API Keys**
   - [ ] Firebase API key (if using restricted keys)
   - [ ] Gemini API key
