@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import './src/index.css';
 
 /**
  * Sanitizes sensitive data before sending to Sentry
