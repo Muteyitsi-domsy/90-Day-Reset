@@ -18,6 +18,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Password strength calculation
   const passwordStrength = mode === 'signup' && password ? getPasswordStrength(password) : null;
@@ -47,6 +48,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
       // Check password match on signup
       if (mode === 'signup' && password !== confirmPassword) {
         setLocalError('Passwords do not match');
+        return;
+      }
+
+      // Check terms agreement on signup
+      if (mode === 'signup' && !agreedToTerms) {
+        setLocalError('You must agree to the Terms of Service and Privacy Policy');
         return;
       }
     }
@@ -80,6 +87,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
     setConfirmPassword('');
     setLocalError(null);
     setResetEmailSent(false);
+    setAgreedToTerms(false);
     clearError();
     onClose();
   };
@@ -93,6 +101,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
     setMode(newMode);
     setLocalError(null);
     setResetEmailSent(false);
+    setAgreedToTerms(false);
     clearError();
   };
 
@@ -192,6 +201,40 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
                     disabled={isLoading}
                     autoComplete="new-password"
                   />
+                </div>
+              )}
+
+              {mode === 'signup' && (
+                <div className="terms-agreement">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      disabled={isLoading}
+                      className="terms-checkbox"
+                    />
+                    <span className="terms-text">
+                      I agree to the{' '}
+                      <a
+                        href="/TERMS_OF_SERVICE.md"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="terms-link"
+                      >
+                        Terms of Service
+                      </a>
+                      {' '}and{' '}
+                      <a
+                        href="/PRIVACY_POLICY.md"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="terms-link"
+                      >
+                        Privacy Policy
+                      </a>
+                    </span>
+                  </label>
                 </div>
               )}
 
@@ -513,6 +556,58 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
           opacity: 0.5;
           cursor: not-allowed;
           transform: none;
+        }
+
+        .terms-agreement {
+          margin: 1rem 0;
+          padding: 0.75rem;
+          background: var(--card-bg-secondary, rgba(0, 0, 0, 0.02));
+          border-radius: 0.5rem;
+        }
+
+        .checkbox-label {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          cursor: pointer;
+          font-size: 0.875rem;
+          line-height: 1.5;
+        }
+
+        .terms-checkbox {
+          width: 1.125rem;
+          height: 1.125rem;
+          margin-top: 0.125rem;
+          cursor: pointer;
+          flex-shrink: 0;
+          accent-color: var(--accent-primary);
+        }
+
+        .terms-checkbox:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+
+        .terms-text {
+          color: var(--text-secondary);
+          flex: 1;
+        }
+
+        .terms-link {
+          color: var(--accent-primary);
+          text-decoration: underline;
+          font-weight: 500;
+          transition: opacity 0.2s;
+        }
+
+        .terms-link:hover {
+          opacity: 0.8;
+        }
+
+        .terms-link:focus {
+          outline: 2px solid var(--accent-primary);
+          outline-offset: 2px;
+          border-radius: 2px;
         }
       `}</style>
     </div>
