@@ -114,6 +114,7 @@ const App: React.FC = () => {
   const [viewedReport, setViewedReport] = useState<JournalEntry | null>(null);
   const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [hasMigrated, setHasMigrated] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -1477,7 +1478,7 @@ const App: React.FC = () => {
       case 'welcome':
         return <WelcomeScreen
           onStart={() => setAppState('name_collection')}
-          onSignIn={() => setShowAuthModal(true)}
+          onSignIn={() => { setAuthModalMode('signin'); setShowAuthModal(true); }}
         />;
       case 'name_collection':
           return <NameCollection onComplete={(name) => {
@@ -1495,7 +1496,7 @@ const App: React.FC = () => {
             todaysEntry={todaysEntry}
             onContinue={() => setAppState('journal')}
             ritualCompleted={ritualCompleted}
-            onSignIn={() => setShowAuthModal(true)}
+            onSignIn={() => { setAuthModalMode('signin'); setShowAuthModal(true); }}
             userEmail={user?.email}
           />;
         }
@@ -1722,6 +1723,7 @@ const App: React.FC = () => {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+        defaultMode={authModalMode}
         onSuccess={async () => {
           setShowAuthModal(false);
           // Don't reload immediately - let migration happen first

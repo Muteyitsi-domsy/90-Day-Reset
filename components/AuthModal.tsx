@@ -37,8 +37,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
       return;
     }
 
-    // Password validation for signup and signin
-    if (mode !== 'reset') {
+    // Password validation for signup only (not signin - allows users with older weaker passwords to sign in)
+    if (mode === 'signup') {
       const passwordError = validatePassword(password);
       if (passwordError) {
         setLocalError(passwordError);
@@ -46,16 +46,22 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
       }
 
       // Check password match on signup
-      if (mode === 'signup' && password !== confirmPassword) {
+      if (password !== confirmPassword) {
         setLocalError('Passwords do not match');
         return;
       }
 
       // Check terms agreement on signup
-      if (mode === 'signup' && !agreedToTerms) {
+      if (!agreedToTerms) {
         setLocalError('You must agree to the Terms of Service and Privacy Policy');
         return;
       }
+    }
+
+    // Basic password check for signin (just ensure it's not empty)
+    if (mode === 'signin' && !password.trim()) {
+      setLocalError('Please enter your password');
+      return;
     }
 
     setIsLoading(true);
