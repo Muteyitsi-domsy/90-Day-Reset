@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
 import { StorageService } from './storageService';
 
 /**
@@ -237,17 +237,71 @@ export class FirestoreService implements StorageService {
     }
   }
 
+  // Flip Journal Entry operations
+  async saveFlipEntry(entry: FlipJournalEntry): Promise<void> {
+    try {
+      const entryDocRef = doc(db, 'users', this.userId, 'flipJournalEntries', entry.id);
+
+      // Add timestamps for tracking
+      const entryWithTimestamp = {
+        ...entry,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(entryDocRef, entryWithTimestamp);
+    } catch (error) {
+      console.error('Error saving flip entry to Firestore:', error);
+      throw new Error('Failed to save flip entry to cloud');
+    }
+  }
+
+  async deleteFlipEntry(entryId: string): Promise<void> {
+    try {
+      const entryDocRef = doc(db, 'users', this.userId, 'flipJournalEntries', entryId);
+      await deleteDoc(entryDocRef);
+    } catch (error) {
+      console.error('Error deleting flip entry from Firestore:', error);
+      throw new Error('Failed to delete flip entry from cloud');
+    }
+  }
+
+  async getFlipEntries(): Promise<FlipJournalEntry[]> {
+    try {
+      const entriesCollectionRef = collection(db, 'users', this.userId, 'flipJournalEntries');
+      const querySnapshot = await getDocs(entriesCollectionRef);
+
+      const entries: FlipJournalEntry[] = [];
+      querySnapshot.forEach(doc => {
+        const data = doc.data();
+        // Remove Firestore-specific fields (createdAt, updatedAt)
+        const { createdAt, updatedAt, ...entry } = data;
+        entries.push(entry as FlipJournalEntry);
+      });
+
+      // Sort by timestamp (most recent first)
+      entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return entries;
+    } catch (error) {
+      console.error('Error loading flip entries from Firestore:', error);
+      throw new Error('Failed to load flip entries from cloud');
+    }
+  }
+
   async getAllData(): Promise<{
     profile: UserProfile | null;
     settings: Settings | null;
     entries: JournalEntry[];
     moodEntries: MoodJournalEntry[];
+    flipEntries: FlipJournalEntry[];
   }> {
     return {
       profile: await this.getUserProfile(),
       settings: await this.getSettings(),
       entries: await this.getJournalEntries(),
       moodEntries: await this.getMoodEntries(),
+      flipEntries: await this.getFlipEntries(),
     };
   }
 
@@ -270,6 +324,13 @@ export class FirestoreService implements StorageService {
       const moodEntriesCollectionRef = collection(db, 'users', this.userId, 'moodEntries');
       const moodEntriesSnapshot = await getDocs(moodEntriesCollectionRef);
       moodEntriesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // Delete all flip journal entries
+      const flipEntriesCollectionRef = collection(db, 'users', this.userId, 'flipJournalEntries');
+      const flipEntriesSnapshot = await getDocs(flipEntriesCollectionRef);
+      flipEntriesSnapshot.forEach(doc => {
         batch.delete(doc.ref);
       });
 

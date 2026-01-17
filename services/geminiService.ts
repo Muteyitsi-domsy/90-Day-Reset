@@ -802,6 +802,91 @@ Your output must be a single, clean JSON object matching the provided schema.`;
 }
 
 
+/**
+ * Generates a reframing question from the user's wiser, future self perspective
+ * Used by the Flip Journal feature
+ */
+export async function generateReframingQuestion(challenge: string): Promise<string> {
+  const prompt = `
+You are the user's wiser, older self who has already overcome this challenge. Your role is to ask a single powerful question that helps them see the situation from a different angle.
+
+The user has shared this challenge or stuck thought:
+"""
+${challenge}
+"""
+
+Generate ONE thought-provoking question that:
+1. Comes from the perspective of their wiser future self who conquered this
+2. Encourages viewing the situation from an unexpected or hidden angle
+3. Opens possibilities rather than validating negative patterns
+4. Focuses on growth, learning, or hidden opportunities
+5. Is open-ended (not yes/no)
+6. Uses warm, conversational language (not clinical or therapeutic)
+
+The question should feel like wisdom from their future self gently guiding them to a new perspective.
+
+Respond with ONLY the question itself, no introduction or explanation. Start the question directly.
+`;
+
+  try {
+    // Use Vertex AI if enabled
+    if (import.meta.env.VITE_USE_VERTEX_AI === 'true') {
+      const userId = localStorage.getItem('userId') || 'anonymous';
+      const VERTEX_API_URL = import.meta.env.VITE_VERTEX_API_URL || '/api/vertex-ai';
+
+      const response = await fetch(VERTEX_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          userId,
+          requestType: 'analysis',
+          config: { temperature: 0.8, maxOutputTokens: 256 }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        if (response.status === 429) {
+          throw new Error('Daily AI request limit reached. Please try again tomorrow.');
+        }
+        throw new Error(error.error || `API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.text.trim();
+    }
+
+    // Fallback to Gemini API
+    if (!ai) {
+      throw new Error("AI not configured. Please enable Vertex AI or set VITE_GEMINI_API_KEY.");
+    }
+
+    const result = await rateLimiter.enqueue(async () => {
+      const response = await ai!.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: prompt,
+        config: { temperature: 0.8, maxOutputTokens: 256 }
+      });
+      return response.text.trim();
+    }, `flip_reframe_${Date.now()}`);
+
+    return result;
+  } catch (error) {
+    console.error("Error generating reframing question:", error);
+
+    // Provide user-friendly error messages for quota errors
+    if (error && typeof error === 'object' && 'message' in error) {
+      const errorMessage = (error as Error).message.toLowerCase();
+      if (errorMessage.includes('quota') || errorMessage.includes('429') || errorMessage.includes('resource_exhausted')) {
+        throw new Error('Question generation quota exceeded. Please try again in a few minutes.');
+      }
+    }
+
+    throw new Error(`Failed to generate reframing question: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 export function getDayAndMonth(startDate: string): { day: number; month: number } {
   const start = new Date(startDate);
   const today = new Date();

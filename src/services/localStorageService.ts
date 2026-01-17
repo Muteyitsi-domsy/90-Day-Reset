@@ -1,4 +1,4 @@
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
 import { StorageService } from './storageService';
 import {
   encryptJSON,
@@ -22,6 +22,7 @@ export class LocalStorageService implements StorageService {
     SETTINGS: 'settings',
     JOURNAL_ENTRIES: 'journalEntries',
     MOOD_ENTRIES: 'moodEntries',
+    FLIP_ENTRIES: 'flip_journal_entries',
   };
 
   // Current user ID for encryption key derivation
@@ -271,17 +272,72 @@ export class LocalStorageService implements StorageService {
     }
   }
 
+  // Flip Journal Entry operations
+  async saveFlipEntry(entry: FlipJournalEntry): Promise<void> {
+    try {
+      const entries = await this.getFlipEntries();
+      const existingIndex = entries.findIndex(e => e.id === entry.id);
+
+      if (existingIndex >= 0) {
+        entries[existingIndex] = entry;
+      } else {
+        entries.push(entry);
+      }
+
+      await this._saveAllFlipEntries(entries);
+    } catch (error) {
+      console.error('Error saving flip entry to localStorage:', error);
+      throw new Error('Failed to save flip entry');
+    }
+  }
+
+  async deleteFlipEntry(entryId: string): Promise<void> {
+    try {
+      const entries = await this.getFlipEntries();
+      const filteredEntries = entries.filter(e => e.id !== entryId);
+      await this._saveAllFlipEntries(filteredEntries);
+    } catch (error) {
+      console.error('Error deleting flip entry from localStorage:', error);
+      throw new Error('Failed to delete flip entry');
+    }
+  }
+
+  async getFlipEntries(): Promise<FlipJournalEntry[]> {
+    try {
+      const savedEntries = localStorage.getItem(this.KEYS.FLIP_ENTRIES);
+      if (!savedEntries) return [];
+
+      // Decrypt entries (handles migration from unencrypted)
+      const decryptedData = safeRead(savedEntries, this.userId);
+      if (!decryptedData) return [];
+
+      const entries: FlipJournalEntry[] = JSON.parse(decryptedData);
+
+      // If data wasn't encrypted, encrypt it now (migration)
+      if (!isEncrypted(savedEntries)) {
+        await this._saveAllFlipEntries(entries);
+      }
+
+      return entries;
+    } catch (error) {
+      console.error('Error loading flip entries from localStorage:', error);
+      return [];
+    }
+  }
+
   async getAllData(): Promise<{
     profile: UserProfile | null;
     settings: Settings | null;
     entries: JournalEntry[];
     moodEntries: MoodJournalEntry[];
+    flipEntries: FlipJournalEntry[];
   }> {
     return {
       profile: await this.getUserProfile(),
       settings: await this.getSettings(),
       entries: await this.getJournalEntries(),
       moodEntries: await this.getMoodEntries(),
+      flipEntries: await this.getFlipEntries(),
     };
   }
 
@@ -291,6 +347,7 @@ export class LocalStorageService implements StorageService {
       localStorage.removeItem(this.KEYS.SETTINGS);
       localStorage.removeItem(this.KEYS.JOURNAL_ENTRIES);
       localStorage.removeItem(this.KEYS.MOOD_ENTRIES);
+      localStorage.removeItem(this.KEYS.FLIP_ENTRIES);
 
       // Clear encryption keys
       clearEncryptionKeys();
@@ -327,6 +384,18 @@ export class LocalStorageService implements StorageService {
     } catch (error) {
       console.error('Error saving mood entries to localStorage:', error);
       throw new Error('Failed to save mood entries');
+    }
+  }
+
+  // Private helper to save all flip entries
+  private async _saveAllFlipEntries(entries: FlipJournalEntry[]): Promise<void> {
+    try {
+      // Encrypt before saving
+      const encrypted = encryptJSON(entries, this.userId);
+      localStorage.setItem(this.KEYS.FLIP_ENTRIES, encrypted);
+    } catch (error) {
+      console.error('Error saving flip entries to localStorage:', error);
+      throw new Error('Failed to save flip entries');
     }
   }
 }

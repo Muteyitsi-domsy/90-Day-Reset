@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
 import { getDailyPrompt } from './services/promptGenerator';
-import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion } from './types';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
@@ -33,6 +33,9 @@ import { ContactUs } from './components/ContactUs';
 import MoodInputModal from './components/MoodInputModal';
 import MoodJournalView from './components/MoodJournalView';
 import MoodCalendarView from './components/MoodCalendarView';
+import FlipInputModal from './components/FlipInputModal';
+import FlipJournalView from './components/FlipJournalView';
+import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -121,8 +124,13 @@ const App: React.FC = () => {
   const [showMoodInputModal, setShowMoodInputModal] = useState(false);
   const [editingMoodEntry, setEditingMoodEntry] = useState<MoodJournalEntry | null>(null);
   const [isSavingMoodEntry, setIsSavingMoodEntry] = useState(false);
-  const [activeView, setActiveView] = useState<'journey' | 'mood'>('journey'); // Toggle between 90-day journey and mood journal
+  const [activeView, setActiveView] = useState<'journey' | 'mood' | 'flip'>('journey'); // Toggle between 90-day journey, mood journal, and flip journal
   const [calendarView, setCalendarView] = useState<'journey' | 'mood'>('journey'); // Calendar toggle
+
+  // Flip journaling state
+  const [flipEntries, setFlipEntries] = useState<FlipJournalEntry[]>([]);
+  const [showFlipInputModal, setShowFlipInputModal] = useState(false);
+  const [isSavingFlipEntry, setIsSavingFlipEntry] = useState(false);
 
   // Firebase auth state and storage service
   const { user, loading: authLoading } = useAuth();
@@ -209,6 +217,10 @@ const App: React.FC = () => {
           // Load mood entries
           const savedMoodEntries = await storageService.getMoodEntries();
           setMoodEntries(savedMoodEntries);
+
+          // Load flip entries
+          const savedFlipEntries = await storageService.getFlipEntries();
+          setFlipEntries(savedFlipEntries);
 
           // Set active view based on journey completion
           if (savedProfile.journeyCompleted) {
@@ -992,6 +1004,50 @@ const App: React.FC = () => {
     } : null);
   };
 
+  // Flip journal handlers
+  const handleSaveFlipEntry = async (entryData: {
+    challenge: string;
+    reframingQuestion: string;
+    reframedPerspective: string;
+  }) => {
+    try {
+      setIsSavingFlipEntry(true);
+
+      const newEntry: FlipJournalEntry = {
+        id: `flip-${Date.now()}`,
+        date: getFlipLocalDateString(),
+        timestamp: new Date().toISOString(),
+        challenge: entryData.challenge,
+        reframingQuestion: entryData.reframingQuestion,
+        reframedPerspective: entryData.reframedPerspective,
+      };
+
+      // Save to storage
+      await storageService.saveFlipEntry(newEntry);
+
+      // Update state (add to beginning for newest-first)
+      setFlipEntries(prev => [newEntry, ...prev]);
+
+      // Close modal
+      setShowFlipInputModal(false);
+    } catch (error) {
+      console.error('Error saving flip entry:', error);
+      alert('Failed to save flip entry. Please try again.');
+    } finally {
+      setIsSavingFlipEntry(false);
+    }
+  };
+
+  const handleDeleteFlipEntry = async (entryId: string) => {
+    try {
+      await storageService.deleteFlipEntry(entryId);
+      setFlipEntries(prev => prev.filter(entry => entry.id !== entryId));
+    } catch (error) {
+      console.error('Error deleting flip entry:', error);
+      alert('Failed to delete flip entry. Please try again.');
+    }
+  };
+
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {
     if (!userProfile || !userProfile.idealSelfManifesto) return;
 
@@ -1535,7 +1591,7 @@ const App: React.FC = () => {
                 onSaveEveningCheckin={handleSaveEveningCheckin}
                 settings={settings}
               />
-            ) : (
+            ) : activeView === 'mood' ? (
               <MoodJournalView
                 moodEntries={moodEntries}
                 customEmotions={settings.customEmotions || []}
@@ -1544,6 +1600,12 @@ const App: React.FC = () => {
                 onDeleteEntry={handleDeleteMoodEntry}
                 onEditEntry={handleEditMoodEntry}
                 currentStreak={userProfile.moodStreak || 0}
+              />
+            ) : (
+              <FlipJournalView
+                flipEntries={flipEntries}
+                onNewEntry={() => setShowFlipInputModal(true)}
+                onDeleteEntry={handleDeleteFlipEntry}
               />
             )}
              <Menu
@@ -1688,6 +1750,13 @@ const App: React.FC = () => {
             isCustomEmotion: editingMoodEntry.isCustomEmotion,
             customEmotionEmoji: editingMoodEntry.customEmotionEmoji,
           } : undefined}
+        />
+      )}
+      {showFlipInputModal && (
+        <FlipInputModal
+          onSave={handleSaveFlipEntry}
+          onClose={() => setShowFlipInputModal(false)}
+          isSaving={isSavingFlipEntry}
         />
       )}
       <PrivacyPolicy

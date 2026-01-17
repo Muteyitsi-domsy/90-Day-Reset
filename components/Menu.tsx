@@ -28,9 +28,9 @@ interface MenuProps {
     onOpenTerms?: () => void;
     onOpenContact?: () => void;
     onSetupCloudBackup?: () => void;
-    // Mood journaling
-    activeView?: 'journey' | 'mood';
-    onToggleView?: (view: 'journey' | 'mood') => void;
+    // Journaling
+    activeView?: 'journey' | 'mood' | 'flip';
+    onToggleView?: (view: 'journey' | 'mood' | 'flip') => void;
     calendarView?: 'journey' | 'mood';
     onToggleCalendarView?: (view: 'journey' | 'mood') => void;
     onOpenMoodJournal?: () => void;
@@ -293,7 +293,7 @@ const Menu: React.FC<MenuProps> = ({
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
 
-                    {/* View Toggle - 90-Day Journey vs Daily Journal */}
+                    {/* View Toggle - 90-Day Journey / Daily Journal / Flip Journal */}
                     {onToggleView && (
                         <div className="mb-4">
                             <div className="flex rounded-lg bg-gray-200 dark:bg-gray-800 p-1">
@@ -302,31 +302,48 @@ const Menu: React.FC<MenuProps> = ({
                                         onToggleView('journey');
                                         onToggleCalendarView?.('journey');
                                     }}
-                                    className={`flex-1 py-2 px-3 rounded-md transition-all font-medium ${
+                                    className={`flex-1 py-2 px-2 rounded-md transition-all font-medium text-xs ${
                                         activeView === 'journey'
                                             ? 'bg-white dark:bg-gray-700 shadow text-[var(--accent-primary)]'
                                             : 'text-gray-600 dark:text-gray-400'
                                     }`}
                                 >
-                                    90-Day Journey
+                                    90-Day
                                 </button>
                                 <button
                                     onClick={() => {
                                         onToggleView('mood');
                                         onToggleCalendarView?.('mood');
                                     }}
-                                    className={`flex-1 py-2 px-3 rounded-md transition-all font-medium ${
+                                    className={`flex-1 py-2 px-2 rounded-md transition-all font-medium text-xs ${
                                         activeView === 'mood'
                                             ? 'bg-white dark:bg-gray-700 shadow text-[var(--accent-primary)]'
                                             : 'text-gray-600 dark:text-gray-400'
                                     }`}
                                 >
-                                    Daily Journal
+                                    Daily
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        onToggleView('flip');
+                                    }}
+                                    className={`flex-1 py-2 px-2 rounded-md transition-all font-medium text-xs ${
+                                        activeView === 'flip'
+                                            ? 'bg-white dark:bg-gray-700 shadow text-[var(--accent-primary)]'
+                                            : 'text-gray-600 dark:text-gray-400'
+                                    }`}
+                                >
+                                    Flip
                                 </button>
                             </div>
                             {activeView === 'mood' && (
                                 <p className="text-xs text-[var(--text-secondary)] mt-2 text-center">
                                     Flexible journaling based on your mood and needs
+                                </p>
+                            )}
+                            {activeView === 'flip' && (
+                                <p className="text-xs text-[var(--text-secondary)] mt-2 text-center">
+                                    Reframe challenges through your wiser self's eyes
                                 </p>
                             )}
                         </div>
@@ -361,7 +378,7 @@ const Menu: React.FC<MenuProps> = ({
                     )}
 
                     {/* (a) Intention */}
-                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView === 'mood' ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                         <button onClick={() => toggleSection('intention')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             <span className="font-medium text-[var(--text-primary)]">My Intention</span>
                             <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'intention' ? 'rotate-180' : ''}`} />
@@ -374,7 +391,7 @@ const Menu: React.FC<MenuProps> = ({
                     </div>
 
                     {/* Daily Ritual */}
-                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView === 'mood' ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                         <button onClick={() => toggleSection('ritual')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             <div className="flex items-center gap-2">
                                 <span className="font-medium text-[var(--text-primary)]">Daily Ritual</span>
@@ -508,7 +525,7 @@ const Menu: React.FC<MenuProps> = ({
                     </div>
 
                     {/* (b) Ideal Self Manifesto */}
-                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView === 'mood' ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                         <button onClick={() => toggleSection('manifesto')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             <span className="font-medium text-[var(--text-primary)]">Ideal Self Manifesto</span>
                             <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'manifesto' ? 'rotate-180' : ''}`} />
@@ -521,7 +538,7 @@ const Menu: React.FC<MenuProps> = ({
                     </div>
 
                     {/* (c) Reports */}
-                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${(settings.weeklyReports || settings.monthlyReports) && activeView !== 'mood' ? '' : 'opacity-50 pointer-events-none'}`}>
+                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${(settings.weeklyReports || settings.monthlyReports) && activeView === 'journey' ? '' : 'opacity-50 pointer-events-none'}`}>
                         <button onClick={() => toggleSection('reports')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative">
                             <div className="flex items-center gap-2">
                                 <span className="font-medium text-[var(--text-primary)]">Reports</span>
@@ -749,7 +766,7 @@ const Menu: React.FC<MenuProps> = ({
                                 </div>
                                 
                                 {/* Pause Journey */}
-                                <div className={`pt-4 border-t border-gray-200 dark:border-gray-700 ${activeView === 'mood' ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <div className={`pt-4 border-t border-gray-200 dark:border-gray-700 ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">Journey Status</h4>
                                     {userProfile?.isPaused ? (
                                         <button onClick={onResumeJourney} className="w-full py-2 bg-[var(--accent-primary)] text-white rounded-md text-sm">Resume Journey</button>
@@ -797,7 +814,7 @@ const Menu: React.FC<MenuProps> = ({
                     </div>
 
                     {/* (e) Final Summary Config */}
-                     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView === 'mood' ? 'opacity-50 pointer-events-none' : ''}`}>
+                     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                         <button onClick={() => toggleSection('finalSummary')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                             <span className="font-medium text-[var(--text-primary)]">Final Summary Setup</span>
                             <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'finalSummary' ? 'rotate-180' : ''}`} />

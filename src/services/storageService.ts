@@ -1,4 +1,4 @@
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
 import { LocalStorageService } from './localStorageService';
 import { FirestoreService } from './firestoreService';
 
@@ -27,12 +27,18 @@ export interface StorageService {
   deleteMoodEntry(entryId: string): Promise<void>;
   getMoodEntries(): Promise<MoodJournalEntry[]>;
 
+  // Flip Journal Entry operations
+  saveFlipEntry(entry: FlipJournalEntry): Promise<void>;
+  deleteFlipEntry(entryId: string): Promise<void>;
+  getFlipEntries(): Promise<FlipJournalEntry[]>;
+
   // Bulk operations
   getAllData(): Promise<{
     profile: UserProfile | null;
     settings: Settings | null;
     entries: JournalEntry[];
     moodEntries: MoodJournalEntry[];
+    flipEntries: FlipJournalEntry[];
   }>;
 
   // Utility

@@ -178,8 +178,18 @@ export interface JournalEntry {
   type: 'daily' | 'weekly_summary_report' | 'monthly_summary_report' | 'hunch';
   hunchType?: HunchType; // Added to distinguish types
   prompt: string;
-  rawText: string; 
+  rawText: string;
   analysis?: EntryAnalysis;
   eveningCheckin?: EveningCheckin;
   summaryData?: SummaryData;
+}
+
+// Flip Journal Types - Cognitive reframing tool
+export interface FlipJournalEntry {
+  id: string;                    // flip-{timestamp}
+  date: string;                  // YYYY-MM-DD format
+  timestamp: string;             // Full ISO timestamp
+  challenge: string;             // The stuck thought/situation
+  reframingQuestion: string;     // AI-generated question
+  reframedPerspective: string;   // User's wiser-self response
 }
