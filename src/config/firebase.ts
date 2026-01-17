@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence, indexedDBLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -16,6 +16,26 @@ export const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Authentication
 export const auth = getAuth(app);
+
+// Set persistence to LOCAL - keeps user logged in across browser sessions
+// Try indexedDB first (more reliable), fall back to localStorage
+const initPersistence = async () => {
+  try {
+    await setPersistence(auth, indexedDBLocalPersistence);
+    console.log('Auth persistence set to indexedDB');
+  } catch (error) {
+    console.warn('IndexedDB persistence failed, trying localStorage:', error);
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      console.log('Auth persistence set to localStorage');
+    } catch (localError) {
+      console.error('Failed to set auth persistence:', localError);
+    }
+  }
+};
+
+// Initialize persistence (runs immediately)
+initPersistence();
 
 // Initialize Firestore
 export const db = getFirestore(app);

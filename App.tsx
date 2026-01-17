@@ -1436,9 +1436,9 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    // Show loading spinner only if we have no user profile data yet (initial load)
-    // If we have a profile, show the welcome screen immediately even while loading other data
-    if (isLoading && !userProfile) {
+    // Show loading spinner while auth is initializing or data is loading
+    // This prevents flashing the welcome screen before auth state is known
+    if (authLoading || (isLoading && !userProfile)) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <LoadingSpinner />
