@@ -219,9 +219,14 @@ const App: React.FC = () => {
           const savedMoodEntries = await storageService.getMoodEntries();
           setMoodEntries(savedMoodEntries);
 
-          // Load flip entries
-          const savedFlipEntries = await storageService.getFlipEntries();
-          setFlipEntries(savedFlipEntries);
+          // Load flip entries (gracefully handle if collection doesn't exist yet)
+          try {
+            const savedFlipEntries = await storageService.getFlipEntries();
+            setFlipEntries(savedFlipEntries);
+          } catch (flipError) {
+            console.warn('Could not load flip entries (may need Firestore rules update):', flipError);
+            setFlipEntries([]);
+          }
 
           // Set active view based on journey completion
           if (savedProfile.journeyCompleted) {

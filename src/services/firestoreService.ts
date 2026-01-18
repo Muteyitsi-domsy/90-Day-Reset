@@ -283,9 +283,14 @@ export class FirestoreService implements StorageService {
       entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       return entries;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle permission errors gracefully - rules may not include this collection yet
+      if (error?.code === 'permission-denied') {
+        console.warn('Flip entries: Firestore rules need to be updated to include flipJournalEntries collection');
+        return [];
+      }
       console.error('Error loading flip entries from Firestore:', error);
-      throw new Error('Failed to load flip entries from cloud');
+      return []; // Return empty instead of throwing to not break app loading
     }
   }
 
