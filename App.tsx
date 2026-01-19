@@ -35,6 +35,7 @@ import MoodJournalView from './components/MoodJournalView';
 import MoodCalendarView from './components/MoodCalendarView';
 import FlipInputModal from './components/FlipInputModal';
 import FlipJournalView from './components/FlipJournalView';
+import FlipPromptModal from './components/FlipPromptModal';
 import SuspendedAccountScreen from './components/SuspendedAccountScreen';
 import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
 
@@ -133,6 +134,8 @@ const App: React.FC = () => {
   const [flipEntries, setFlipEntries] = useState<FlipJournalEntry[]>([]);
   const [showFlipInputModal, setShowFlipInputModal] = useState(false);
   const [isSavingFlipEntry, setIsSavingFlipEntry] = useState(false);
+  const [pendingFlipMoodEntry, setPendingFlipMoodEntry] = useState<MoodJournalEntry | null>(null);
+  const [showFlipPrompt, setShowFlipPrompt] = useState(false);
 
   // Firebase auth state and storage service
   const { user, loading: authLoading } = useAuth();
@@ -884,6 +887,15 @@ const App: React.FC = () => {
 
       // Close modal
       setShowMoodInputModal(false);
+
+      // Check if user can flip this entry (daily limit is 3)
+      const today = getFlipLocalDateString();
+      const todayFlipCount = flipEntries.filter(e => e.date === today).length;
+      if (todayFlipCount < 3) {
+        // Show flip prompt
+        setPendingFlipMoodEntry(newEntry);
+        setShowFlipPrompt(true);
+      }
     } catch (error) {
       console.error('Error saving mood entry:', error);
       alert('Failed to save mood entry. Please try again.');
@@ -1062,11 +1074,18 @@ const App: React.FC = () => {
     }
   };
 
+  // Helper to get today's flip count
+  const getTodayFlipCount = (): number => {
+    const today = getFlipLocalDateString();
+    return flipEntries.filter(entry => entry.date === today).length;
+  };
+
   // Flip journal handlers
   const handleSaveFlipEntry = async (entryData: {
     challenge: string;
     reframingQuestion: string;
     reframedPerspective: string;
+    linkedMoodEntryId?: string;
   }) => {
     try {
       setIsSavingFlipEntry(true);
@@ -1078,6 +1097,7 @@ const App: React.FC = () => {
         challenge: entryData.challenge,
         reframingQuestion: entryData.reframingQuestion,
         reframedPerspective: entryData.reframedPerspective,
+        linkedMoodEntryId: entryData.linkedMoodEntryId,
       };
 
       // Save to storage
@@ -1086,8 +1106,9 @@ const App: React.FC = () => {
       // Update state (add to beginning for newest-first)
       setFlipEntries(prev => [newEntry, ...prev]);
 
-      // Close modal
+      // Close modal and clear pending flip mood entry
       setShowFlipInputModal(false);
+      setPendingFlipMoodEntry(null);
     } catch (error) {
       console.error('Error saving flip entry:', error);
       alert('Failed to save flip entry. Please try again.');
@@ -1104,6 +1125,32 @@ const App: React.FC = () => {
       console.error('Error deleting flip entry:', error);
       alert('Failed to delete flip entry. Please try again.');
     }
+  };
+
+  // Flip prompt handlers (after mood entry save)
+  const handleAcceptFlipPrompt = () => {
+    setShowFlipPrompt(false);
+    // Open flip modal with the mood entry's journal text as initial challenge
+    setShowFlipInputModal(true);
+  };
+
+  const handleDeclineFlipPrompt = () => {
+    setShowFlipPrompt(false);
+    // Keep pendingFlipMoodEntry so user can flip later from MoodJournalView
+    // It will be cleared when a flip is actually saved or when a new mood entry is created
+  };
+
+  // Handler to flip today's mood entry from MoodJournalView
+  const handleFlipTodaysMoodEntry = (moodEntry: MoodJournalEntry) => {
+    // Check daily flip limit
+    const today = getFlipLocalDateString();
+    const todayFlipCount = flipEntries.filter(e => e.date === today).length;
+    if (todayFlipCount >= 3) {
+      alert('You have reached your daily flip limit (3). Try again tomorrow!');
+      return;
+    }
+    setPendingFlipMoodEntry(moodEntry);
+    setShowFlipInputModal(true);
   };
 
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {
@@ -1668,12 +1715,15 @@ const App: React.FC = () => {
                 onDeleteEntry={handleDeleteMoodEntry}
                 onEditEntry={handleEditMoodEntry}
                 currentStreak={userProfile.moodStreak || 0}
+                onFlipEntry={handleFlipTodaysMoodEntry}
+                flipEntries={flipEntries}
               />
             ) : (
               <FlipJournalView
                 flipEntries={flipEntries}
                 onNewEntry={() => setShowFlipInputModal(true)}
                 onDeleteEntry={handleDeleteFlipEntry}
+                moodEntries={moodEntries}
               />
             )}
              <Menu
@@ -1825,9 +1875,21 @@ const App: React.FC = () => {
       {showFlipInputModal && (
         <FlipInputModal
           onSave={handleSaveFlipEntry}
-          onClose={() => setShowFlipInputModal(false)}
+          onClose={() => {
+            setShowFlipInputModal(false);
+            setPendingFlipMoodEntry(null);
+          }}
           isSaving={isSavingFlipEntry}
           onCrisisDetected={(severity) => handleCrisisDetected(severity, 'flip')}
+          initialChallenge={pendingFlipMoodEntry?.journalText}
+          linkedMoodEntryId={pendingFlipMoodEntry?.id}
+        />
+      )}
+      {showFlipPrompt && pendingFlipMoodEntry && (
+        <FlipPromptModal
+          onAccept={handleAcceptFlipPrompt}
+          onDecline={handleDeclineFlipPrompt}
+          remainingFlips={3 - flipEntries.filter(e => e.date === getFlipLocalDateString()).length}
         />
       )}
       <PrivacyPolicy

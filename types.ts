@@ -198,4 +198,5 @@ export interface FlipJournalEntry {
   challenge: string;             // The stuck thought/situation
   reframingQuestion: string;     // AI-generated question
   reframedPerspective: string;   // User's wiser-self response
+  linkedMoodEntryId?: string;    // Reference to mood entry if flipped from mood journal
 }

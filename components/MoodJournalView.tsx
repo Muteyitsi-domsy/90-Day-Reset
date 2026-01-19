@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { MoodJournalEntry, CustomEmotion, Settings } from '../types';
+import type { MoodJournalEntry, CustomEmotion, Settings, FlipJournalEntry } from '../types';
 import { getEmotionEmoji, CONTEXT_LABELS } from '../utils/moodPrompts';
 
 interface MoodJournalViewProps {
@@ -10,6 +10,8 @@ interface MoodJournalViewProps {
   onDeleteEntry?: (entryId: string) => void;
   onEditEntry?: (entry: MoodJournalEntry) => void;
   currentStreak?: number;
+  onFlipEntry?: (entry: MoodJournalEntry) => void;
+  flipEntries?: FlipJournalEntry[];
 }
 
 const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -150,6 +152,8 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
   onDeleteEntry,
   onEditEntry,
   currentStreak = 0,
+  onFlipEntry,
+  flipEntries = [],
 }) => {
   // Check if user has already written today (using YYYY-MM-DD format to match stored date)
   const getLocalDateString = (date: Date = new Date()): string => {
@@ -206,14 +210,40 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
           </div>
         )}
 
-        {/* Already written message */}
-        {hasWrittenToday && (
-          <div className="mb-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-center">
-            <p className="text-green-700 dark:text-green-300 font-medium">
-              ✅ You've already written your entry for today. Come back tomorrow!
-            </p>
-          </div>
-        )}
+        {/* Already written message with flip option */}
+        {hasWrittenToday && (() => {
+          const todaysEntry = moodEntries.find(entry => entry.date === today);
+          const isAlreadyFlipped = todaysEntry && flipEntries.some(f => f.linkedMoodEntryId === todaysEntry.id);
+          const todayFlipCount = flipEntries.filter(f => f.date === today).length;
+          const canFlip = onFlipEntry && todaysEntry && !isAlreadyFlipped && todayFlipCount < 3;
+
+          return (
+            <div className="mb-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+              <p className="text-green-700 dark:text-green-300 font-medium text-center mb-3">
+                ✅ You've already written your entry for today.
+              </p>
+              {canFlip && (
+                <button
+                  onClick={() => onFlipEntry(todaysEntry)}
+                  className="w-full py-2 px-4 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <span>🔄</span>
+                  <span>Flip Today's Entry</span>
+                </button>
+              )}
+              {isAlreadyFlipped && (
+                <p className="text-sm text-center text-purple-600 dark:text-purple-400 mt-2">
+                  🔄 You've already flipped today's entry
+                </p>
+              )}
+              {!canFlip && !isAlreadyFlipped && todayFlipCount >= 3 && (
+                <p className="text-sm text-center text-gray-500 dark:text-gray-400 mt-2">
+                  Daily flip limit reached (3/3)
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Empty state */}
         {moodEntries.length === 0 && (

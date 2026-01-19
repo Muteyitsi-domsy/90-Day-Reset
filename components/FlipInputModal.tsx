@@ -12,10 +12,13 @@ interface FlipInputModalProps {
     challenge: string;
     reframingQuestion: string;
     reframedPerspective: string;
+    linkedMoodEntryId?: string;
   }) => void;
   onClose: () => void;
   isSaving: boolean;
   onCrisisDetected: (severity: CrisisSeverity) => void;
+  initialChallenge?: string;      // Pre-filled challenge from mood entry
+  linkedMoodEntryId?: string;     // Reference to mood entry being flipped
 }
 
 type Step = 'challenge' | 'question' | 'perspective';
@@ -37,13 +40,24 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
   onClose,
   isSaving,
   onCrisisDetected,
+  initialChallenge,
+  linkedMoodEntryId,
 }) => {
   const [step, setStep] = useState<Step>('challenge');
-  const [challenge, setChallenge] = useState('');
+  const [challenge, setChallenge] = useState(initialChallenge || '');
   const [reframingQuestion, setReframingQuestion] = useState('');
   const [reframedPerspective, setReframedPerspective] = useState('');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [questionError, setQuestionError] = useState<string | null>(null);
+
+  // Auto-submit if we have an initial challenge from mood entry (skip to question generation)
+  React.useEffect(() => {
+    if (initialChallenge && initialChallenge.trim()) {
+      // Auto-advance to question generation
+      handleChallengeSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChallengeSubmit = async () => {
     if (!challenge.trim()) return;
@@ -81,6 +95,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
       challenge,
       reframingQuestion,
       reframedPerspective,
+      linkedMoodEntryId,
     });
   };
 

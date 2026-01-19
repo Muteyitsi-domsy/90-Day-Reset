@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { FlipJournalEntry } from '../types';
+import type { FlipJournalEntry, MoodJournalEntry } from '../types';
 import {
   MAX_ENTRIES_PER_DAY,
   getLocalDateString,
@@ -11,6 +11,7 @@ interface FlipJournalViewProps {
   flipEntries: FlipJournalEntry[];
   onNewEntry: () => void;
   onDeleteEntry?: (entryId: string) => void;
+  moodEntries?: MoodJournalEntry[];
 }
 
 const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -22,7 +23,8 @@ const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
 const FlipEntryCard: React.FC<{
   entry: FlipJournalEntry;
   onDelete?: (entryId: string) => void;
-}> = ({ entry, onDelete }) => {
+  linkedMoodEntry?: MoodJournalEntry;
+}> = ({ entry, onDelete, linkedMoodEntry }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -65,6 +67,12 @@ const FlipEntryCard: React.FC<{
             <span className="text-3xl">🔄</span>
             <div>
               <p className="text-sm text-[var(--text-secondary)]">{formattedDate}</p>
+              {linkedMoodEntry && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1 mt-0.5">
+                  <span>📝</span>
+                  <span>Flipped from Daily Journal</span>
+                </p>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -149,6 +157,7 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
   flipEntries,
   onNewEntry,
   onDeleteEntry,
+  moodEntries = [],
 }) => {
   const canCreate = canCreateEntryToday(flipEntries);
   const remainingToday = getRemainingEntriesToday(flipEntries);
@@ -157,6 +166,12 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
   const sortedEntries = [...flipEntries].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
+
+  // Helper to find linked mood entry
+  const getLinkedMoodEntry = (flipEntry: FlipJournalEntry): MoodJournalEntry | undefined => {
+    if (!flipEntry.linkedMoodEntryId) return undefined;
+    return moodEntries.find(m => m.id === flipEntry.linkedMoodEntryId);
+  };
 
   // Group entries by date
   const entriesByDate = sortedEntries.reduce((acc, entry) => {
@@ -245,6 +260,7 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
                       key={entry.id}
                       entry={entry}
                       onDelete={onDeleteEntry}
+                      linkedMoodEntry={getLinkedMoodEntry(entry)}
                     />
                   ))}
                 </div>
