@@ -222,10 +222,17 @@ export interface MonthlySummaryData {
   encouragingMessage: string;
 }
 
+export interface CategoryMoodData {
+  context: MoodContext;
+  topMoods: Array<{ emotion: string; emoji: string; count: number; percentage: number }>;
+  totalEntries: number;
+}
+
 export interface AnnualRecapData {
   year: number;
-  topMoods: Array<{ emotion: string; emoji: string; count: number; percentage: number }>;
+  topMoods: Array<{ emotion: string; emoji: string; count: number; percentage: number }>; // Top 5 across all categories
   totalEntries: number;
   longestStreak: number;
   mostActiveMonth: string;
+  moodsByCategory: Record<MoodContext, CategoryMoodData>; // Top 3 moods per category
 }

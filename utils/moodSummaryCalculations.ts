@@ -1,4 +1,4 @@
-import type { MoodJournalEntry, MoodSummaryState, MonthlySummaryData, AnnualRecapData, CustomEmotion } from '../types';
+import type { MoodJournalEntry, MoodSummaryState, MonthlySummaryData, AnnualRecapData, CustomEmotion, MoodContext, CategoryMoodData } from '../types';
 import { DEFAULT_EMOTION_EMOJIS } from './moodPrompts';
 import { getMessageForMood } from './moodSummaryMessages';
 
@@ -6,6 +6,12 @@ import { getMessageForMood } from './moodSummaryMessages';
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+// All mood contexts for category breakdown
+const ALL_CONTEXTS: MoodContext[] = [
+  'career', 'family', 'romantic', 'friendships',
+  'physical_health', 'mental_health', 'spirituality'
 ];
 
 // Get emoji for an emotion (handles both default and custom)
@@ -236,6 +242,48 @@ function findMostActiveMonth(entries: MoodJournalEntry[]): string {
   return MONTH_NAMES[monthIndex];
 }
 
+// Calculate top moods for a specific category
+function calculateCategoryMoods(
+  entries: MoodJournalEntry[],
+  context: MoodContext,
+  customEmotions: CustomEmotion[]
+): CategoryMoodData {
+  const categoryEntries = entries.filter(e => e.context === context);
+
+  if (categoryEntries.length === 0) {
+    return {
+      context,
+      topMoods: [],
+      totalEntries: 0,
+    };
+  }
+
+  // Count emotions for this category
+  const emotionCounts: Record<string, number> = {};
+  categoryEntries.forEach(entry => {
+    const emotion = entry.emotion.toLowerCase();
+    emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+  });
+
+  // Sort by count and take top 3 moods
+  const sortedEmotions = Object.entries(emotionCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  const topMoods = sortedEmotions.map(([emotion, count]) => ({
+    emotion: emotion.charAt(0).toUpperCase() + emotion.slice(1),
+    emoji: getEmotionEmoji(emotion, customEmotions),
+    count,
+    percentage: Math.round((count / categoryEntries.length) * 100),
+  }));
+
+  return {
+    context,
+    topMoods,
+    totalEntries: categoryEntries.length,
+  };
+}
+
 // Calculate annual recap data
 export function calculateAnnualRecap(
   entries: MoodJournalEntry[],
@@ -250,17 +298,17 @@ export function calculateAnnualRecap(
 
   if (yearEntries.length === 0) return null;
 
-  // Count emotions
+  // Count emotions across all categories
   const emotionCounts: Record<string, number> = {};
   yearEntries.forEach(entry => {
     const emotion = entry.emotion.toLowerCase();
     emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
   });
 
-  // Sort by count and take top moods
+  // Sort by count and take top 5 moods (overview)
   const sortedEmotions = Object.entries(emotionCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5); // Top 5 moods
+    .slice(0, 5);
 
   const topMoods = sortedEmotions.map(([emotion, count]) => ({
     emotion: emotion.charAt(0).toUpperCase() + emotion.slice(1),
@@ -269,12 +317,19 @@ export function calculateAnnualRecap(
     percentage: Math.round((count / yearEntries.length) * 100),
   }));
 
+  // Calculate top 3 moods per category (deep dive)
+  const moodsByCategory = {} as Record<MoodContext, CategoryMoodData>;
+  ALL_CONTEXTS.forEach(context => {
+    moodsByCategory[context] = calculateCategoryMoods(yearEntries, context, customEmotions);
+  });
+
   return {
     year,
     topMoods,
     totalEntries: yearEntries.length,
     longestStreak: calculateLongestStreak(yearEntries),
     mostActiveMonth: findMostActiveMonth(yearEntries),
+    moodsByCategory,
   };
 }
 

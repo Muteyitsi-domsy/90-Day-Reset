@@ -9,7 +9,9 @@
       "Bash(npm install:*)",
       "Bash(npm audit:*)",
       "Bash(git add:*)",
-      "Bash(curl -s https://90-day-reset.vercel.app/)"
+      "Bash(curl -s https://90-day-reset.vercel.app/)",
+      "Bash(ls:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
