@@ -35,6 +35,7 @@ import MoodJournalView from './components/MoodJournalView';
 import MoodCalendarView from './components/MoodCalendarView';
 import FlipInputModal from './components/FlipInputModal';
 import FlipJournalView from './components/FlipJournalView';
+import SuspendedAccountScreen from './components/SuspendedAccountScreen';
 import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
 
 
@@ -1013,6 +1014,54 @@ const App: React.FC = () => {
     } : null);
   };
 
+  // Crisis detection handler with high severity tracking
+  const handleCrisisDetected = (severity: CrisisSeverity, source: 'mood' | 'flip' | 'daily' = 'daily') => {
+    setCrisisSeverity(severity);
+
+    // Track high severity (3) occurrences for potential account suspension
+    if (severity === 3 && userProfile) {
+      const now = new Date();
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      // Get existing occurrences and filter to last 7 days
+      const existingOccurrences = userProfile.crisisOccurrences || [];
+      const recentOccurrences = existingOccurrences.filter(
+        (o) => new Date(o.date) >= oneWeekAgo
+      );
+
+      // Add new occurrence
+      const newOccurrence = { date: now.toISOString(), severity };
+      const updatedOccurrences = [...recentOccurrences, newOccurrence];
+
+      // Count high severity (3) in the last week
+      const highSeverityCount = updatedOccurrences.filter((o) => o.severity === 3).length;
+
+      // If more than 3 high severity in a week, suspend account
+      if (highSeverityCount > 3) {
+        setUserProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                crisisOccurrences: updatedOccurrences,
+                accountSuspended: true,
+                suspendedDate: now.toISOString(),
+              }
+            : null
+        );
+      } else {
+        // Just update occurrences
+        setUserProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                crisisOccurrences: updatedOccurrences,
+              }
+            : null
+        );
+      }
+    }
+  };
+
   // Flip journal handlers
   const handleSaveFlipEntry = async (entryData: {
     challenge: string;
@@ -1455,6 +1504,16 @@ const App: React.FC = () => {
         );
     }
 
+    // Check for suspended account due to repeated high severity crisis detections
+    if (userProfile?.accountSuspended) {
+        return (
+            <SuspendedAccountScreen
+                suspendedDate={userProfile.suspendedDate}
+                userEmail={userProfile.email}
+            />
+        );
+    }
+
     if (isLocked && settings.pin) {
         return (
             <PinLockScreen
@@ -1760,6 +1819,7 @@ const App: React.FC = () => {
             isCustomEmotion: editingMoodEntry.isCustomEmotion,
             customEmotionEmoji: editingMoodEntry.customEmotionEmoji,
           } : undefined}
+          onCrisisDetected={(severity) => handleCrisisDetected(severity, 'mood')}
         />
       )}
       {showFlipInputModal && (
@@ -1767,6 +1827,7 @@ const App: React.FC = () => {
           onSave={handleSaveFlipEntry}
           onClose={() => setShowFlipInputModal(false)}
           isSaving={isSavingFlipEntry}
+          onCrisisDetected={(severity) => handleCrisisDetected(severity, 'flip')}
         />
       )}
       <PrivacyPolicy

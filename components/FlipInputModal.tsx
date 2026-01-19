@@ -5,6 +5,7 @@ import {
   PERSPECTIVE_MAX_LENGTH,
   getRandomFallbackQuestion,
 } from '../utils/flipPrompts';
+import { detectCrisis, CrisisSeverity } from '../utils/crisisDetector';
 
 interface FlipInputModalProps {
   onSave: (entry: {
@@ -14,6 +15,7 @@ interface FlipInputModalProps {
   }) => void;
   onClose: () => void;
   isSaving: boolean;
+  onCrisisDetected: (severity: CrisisSeverity) => void;
 }
 
 type Step = 'challenge' | 'question' | 'perspective';
@@ -34,6 +36,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
   onSave,
   onClose,
   isSaving,
+  onCrisisDetected,
 }) => {
   const [step, setStep] = useState<Step>('challenge');
   const [challenge, setChallenge] = useState('');
@@ -44,6 +47,14 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
 
   const handleChallengeSubmit = async () => {
     if (!challenge.trim()) return;
+
+    // Check for crisis content before proceeding
+    const severity = detectCrisis(challenge);
+    if (severity >= 2) {
+      onCrisisDetected(severity);
+      onClose(); // Close the flip modal so crisis modal can show
+      return;
+    }
 
     setStep('question');
     setIsGeneratingQuestion(true);

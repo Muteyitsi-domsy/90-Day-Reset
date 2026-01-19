@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { DefaultEmotion, MoodContext, MoodIntensity, CustomEmotion } from '../types';
 import { DEFAULT_EMOTION_EMOJIS, CONTEXT_LABELS, getMoodPrompt } from '../utils/moodPrompts';
+import { detectCrisis, CrisisSeverity } from '../utils/crisisDetector';
 
 interface MoodInputModalProps {
   onSave: (entry: {
@@ -26,6 +27,7 @@ interface MoodInputModalProps {
     isCustomEmotion: boolean;
     customEmotionEmoji?: string;
   }; // Entry data when editing
+  onCrisisDetected: (severity: CrisisSeverity) => void;
 }
 
 type Step = 'emotion' | 'intensity' | 'context' | 'journal';
@@ -50,6 +52,7 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
   onAddCustomEmotion,
   previousPrompts = [],
   editEntry,
+  onCrisisDetected,
 }) => {
   const [step, setStep] = useState<Step>(editEntry ? 'journal' : 'emotion');
   const [selectedEmotion, setSelectedEmotion] = useState<string>(editEntry?.emotion || '');
@@ -103,6 +106,14 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
 
   const handleSave = () => {
     if (journalText.trim() && selectedEmotion) {
+      // Check for crisis content before saving
+      const severity = detectCrisis(journalText);
+      if (severity >= 2) {
+        onCrisisDetected(severity);
+        onClose(); // Close the mood modal so crisis modal can show
+        return;
+      }
+
       onSave({
         emotion: selectedEmotion,
         intensity: selectedIntensity,

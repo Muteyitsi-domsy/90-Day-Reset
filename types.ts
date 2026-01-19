@@ -76,6 +76,11 @@ export interface UserProfile {
   mfaSecret?: string; // Base32 encoded TOTP secret (encrypted in storage)
   mfaBackupCodes?: string[]; // Hashed backup recovery codes
   mfaSetupDate?: string; // ISO date when MFA was enabled
+
+  // Crisis tracking and account safety
+  crisisOccurrences?: { date: string; severity: number }[]; // Track high severity crisis detections
+  accountSuspended?: boolean; // Account suspended due to repeated high severity crisis
+  suspendedDate?: string; // ISO date when account was suspended
 }
 
 export interface DailyCompletion {
