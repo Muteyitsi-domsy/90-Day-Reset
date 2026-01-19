@@ -668,6 +668,9 @@ const App: React.FC = () => {
     // --- End of Streak Logic ---
 
     if (severity >= 2) {
+      // Mark entry as crisis-flagged so UI can handle it appropriately
+      const crisisEntry: JournalEntry = { ...newEntry, crisisFlagged: true };
+      setJournalEntries(prev => prev.map(entry => entry.id === crisisEntry.id ? crisisEntry : entry));
       setCrisisSeverity(severity);
       setIsLoading(false);
       return; // Stop here, do not call AI analysis
@@ -780,7 +783,7 @@ const App: React.FC = () => {
     if (severity >= 2) {
       setCrisisSeverity(severity);
       setJournalEntries(prev => prev.map(entry =>
-        entry.id === entryId ? { ...entry, rawText: newText, analysis: undefined } : entry
+        entry.id === entryId ? { ...entry, rawText: newText, analysis: undefined, crisisFlagged: true } : entry
       ));
       setIsLoading(false);
       return;

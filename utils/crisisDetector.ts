@@ -10,6 +10,7 @@ export type CrisisSeverity = 0 | 1 | 2 | 3;
  */
 
 // HIGH SEVERITY: Explicit suicidal intent or imminent danger
+// These are specific enough that they rarely have false positives
 const HIGH_WORDS = [
   // Direct suicidal statements
   "i want to kill myself",
@@ -19,204 +20,226 @@ const HIGH_WORDS = [
   "wanna kill myself",
   "gonna kill myself",
   "i want to die",
-  "i'm going to die",
+  "i'm going to die by",
   "want to die",
   "wanna die",
-  "going to die",
-  "gonna die",
   "ready to die",
 
   // End life variations
   "end my life",
   "end it all",
   "i will end it",
-  "gonna end it",
-  "going to end it",
-  "want to end it",
-  "ready to end it",
+  "gonna end it all",
+  "going to end it all",
+  "want to end it all",
+  "ready to end it all",
 
-  // Suicide-related
-  "suicide",
-  "suicidal",
+  // Suicide-related (explicit)
   "commit suicide",
   "kill myself",
+  "suicidal thoughts",
+  "feeling suicidal",
+  "i am suicidal",
+  "i'm suicidal",
 
-  // No desire to live
-  "i don't want to live",
-  "don't want to live",
-  "can't go on",
-  "cannot go on",
-  "won't make it",
-  "can't make it",
+  // No desire to live (explicit statements)
+  "i don't want to live anymore",
+  "don't want to live anymore",
+  "i don't want to be alive",
+  "don't want to be alive",
 
-  // Internet slang/abbreviations
-  "kms", // kill myself
-  "ctb", // cease to breathe
+  // Internet slang (kms, ctb) handled by containsStandaloneAbbreviation() with word boundaries
 
   // Planning or method mentions
   "planned my suicide",
   "suicide plan",
   "how to kill myself",
-  "ways to die",
-  "painless death",
+  "ways to kill myself",
+  "painless way to die",
   "goodbye cruel world",
-  "this is goodbye",
-  "my final",
-  "last goodbye",
+  "this is my goodbye",
+  "my final goodbye",
+  "last goodbye forever",
 ];
 
-// MODERATE SEVERITY: Self-harm, passive ideation, or strong distress
+// MODERATE SEVERITY: Explicit self-harm or clear passive ideation
+// Kept specific - removed overly broad phrases
 const MODERATE_WORDS = [
-  // Self-harm explicit
+  // Self-harm explicit (with clear self-reference)
   "hurt myself",
-  "self-harm",
-  "self harm",
+  "hurting myself",
   "harm myself",
+  "harming myself",
   "cutting myself",
   "cut myself",
-  "cutting",
   "burn myself",
   "burning myself",
+  "self-harm",
+  "self harm",
 
-  // Overdose/substances
-  "overdose",
-  "od on",
-  "take all my pills",
-  "take pills",
+  // Overdose/substances (explicit)
+  "overdose on",
+  "od on pills",
+  "take all my pills to",
 
-  // Passive suicidal ideation
-  "i might hurt myself",
-  "i wish i wasn't here",
-  "wish i would disappear",
-  "wish i was dead",
+  // Clear passive suicidal ideation
+  "i wish i was dead",
   "wish i were dead",
+  "i wish i wasn't alive",
   "better off dead",
   "world without me",
-  "everyone better off",
+  "everyone would be better off without me",
   "better off without me",
+  "i wish i could disappear forever",
+  "wish i would just disappear",
 
-  // Crisis states
-  "i can't cope",
-  "cannot cope",
-  "losing control",
-  "lost control",
-  "breaking point",
-  "can't take it",
-  "cannot take it",
-  "too much to handle",
+  // Clear crisis states (with "i" self-reference)
+  "i can't cope anymore",
+  "i cannot cope anymore",
+  "i've lost all control",
 
-  // Escape-focused language
-  "need to escape",
-  "want to escape",
-  "make it stop",
-  "end the pain",
+  // Explicit ending desires
+  "end the pain permanently",
+  "make it all stop forever",
   "stop existing",
-
-  // Harm ideation
-  "intrusive thoughts",
-  "thoughts of dying",
-  "thoughts of death",
-  "thinking about death",
-  "obsessing about death",
 ];
 
 // LOW SEVERITY: Distress, hopelessness, emotional pain
+// These don't trigger the crisis modal but are tracked
+// Includes phrases moved from MODERATE that were too broad
 const LOW_WORDS = [
   // Hopelessness
   "hopeless",
   "no hope",
   "lost hope",
   "giving up hope",
+  "lost all hope",
 
   // Worthlessness
   "worthless",
   "i'm worthless",
   "feel worthless",
+  "i am worthless",
   "no worth",
 
   // Emotional emptiness
-  "empty",
   "feel empty",
   "hollow inside",
-  "numb",
   "feeling numb",
   "emotionally numb",
 
-  // Overwhelm
+  // Overwhelm (common but worth noting)
   "overwhelmed",
   "too overwhelmed",
-  "drowning",
+  "drowning in",
   "suffocating",
 
-  // Giving up
-  "give up",
-  "giving up",
+  // Giving up (general)
   "want to give up",
-  "can't handle",
-  "cannot handle",
+  "giving up on everything",
+  "can't handle this",
+  "cannot handle this",
 
   // Despair
-  "despair",
+  "in despair",
   "despairing",
-  "crushed",
-  "broken",
-  "shattered",
-  "destroyed",
+  "feel crushed",
+  "feel broken",
+  "feel shattered",
+  "feel destroyed",
 
   // Burden language
   "burden to everyone",
-  "a burden",
-  "burdening",
+  "i'm a burden",
+  "being a burden",
 
-  // Dark thoughts
+  // Dark thoughts (general)
   "dark place",
   "dark thoughts",
   "spiraling",
   "falling apart",
+
+  // Moved from MODERATE - too broad without context
+  "breaking point",
+  "at my limit",
+  "can't take it",
+  "cannot take it",
+  "too much to handle",
+  "losing control",
+  "lost control",
+  "need to escape",
+  "want to escape",
+  "make it stop",
+  "intrusive thoughts",
+  "thoughts of death",
+  "thinking about death",
+  "thoughts of dying",
 ];
 
 // NEGATION PATTERNS: Phrases that indicate user is NOT in crisis
 const NEGATION_PATTERNS = [
   // Explicit negations
-  /\b(not|never|no longer|don't|dont|doesn't|doesnt)\s+(want to|going to|thinking about|planning to|feel|feeling)\s+(kill|die|suicide|hurt|harm)/i,
+  /\b(not|never|no longer|don't|dont|doesn't|doesnt|wasn't|isn't|am not)\s+(want to|going to|thinking about|planning to|feel|feeling)\s+(kill|die|suicide|hurt|harm)/i,
 
   // Past tense (historical, not current)
-  /(used to|once|previously|in the past|before|formerly)\s+(want|feel|think|consider)/i,
+  /\b(used to|once|previously|in the past|before|formerly|years ago|months ago)\s+(want|feel|think|consider|have)/i,
 
   // Helping others
-  /(helping|supporting|preventing|stopping)\s+(someone|others|people|friend)/i,
+  /\b(helping|supporting|preventing|stopping|talking to|counseling)\s+(someone|others|people|friend|a friend|my friend)/i,
 
   // Academic/professional context
-  /(studying|researching|reading about|learning about|writing about)\s+(suicide|depression|mental health)/i,
+  /\b(studying|researching|reading about|learning about|writing about|article about|book about)\s+(suicide|depression|mental health|crisis)/i,
 
   // Positive recovery language
-  /(recovering from|recovered from|healing from|getting better|feeling better|no longer)/i,
+  /\b(recovering from|recovered from|healing from|getting better|feeling better|no longer|glad i didn't|thankful i didn't)/i,
+
+  // Discussing others' experiences
+  /\b(my friend|a friend|someone i know|my family member|a colleague)\s+(is|was|has been|had been)/i,
+
+  // Quoting or referencing
+  /\b(they said|she said|he said|the article|the book|the show|in the movie)/i,
 ];
 
-// PATTERN-BASED DETECTION: Regex patterns for indirect language
-const HIGH_SEVERITY_PATTERNS = [
-  // Time-based urgency
-  /\b(tonight|today|right now|very soon|this week)\b.*\b(die|kill|end it|suicide)\b/i,
+// CONTEXT-AWARE PATTERNS: Require additional context to trigger
+// These patterns look for concerning phrases WITH self-referential context
+const HIGH_CONTEXT_PATTERNS = [
+  // Time-based urgency with suicidal content
+  /\b(tonight|today|right now|soon|this week)\b.{0,30}\b(i will|i'm going to|going to|gonna)\b.{0,20}\b(die|kill|end it|end my life)\b/i,
 
-  // Finality language
-  /\b(final|last|goodbye|farewell)\b.*\b(message|words|time|day|night)\b/i,
+  // Finality language with personal reference
+  /\bmy\s+(final|last)\s+(message|words|letter|note|goodbye)\b/i,
 
-  // Method + intent
-  /\b(have|got|found)\s+(pills|knife|rope|gun|weapon)\b/i,
+  // Method + intent (specific)
+  /\b(i have|i've got|i found|i bought)\s+(pills|knife|rope|gun|weapon)\s+(to|for|ready)\b/i,
 
-  // Plan indication
-  /\b(plan to|planning to|decided to|going to)\s+(kill|die|end|suicide)\b/i,
+  // Clear plan indication
+  /\b(i plan to|i'm planning to|i've decided to|decided to)\s+(kill myself|end my life|die|commit suicide)\b/i,
+
+  // Saying goodbye in crisis context
+  /\b(goodbye|farewell)\s+(everyone|world|all).{0,20}(won't|will not|can't|cannot)\s+(see|be|make it)/i,
 ];
 
-const MODERATE_SEVERITY_PATTERNS = [
-  // Frequency patterns (repeated thoughts)
-  /\b(always|constantly|every day|all the time|can't stop)\s+(thinking about|thoughts of)\s+(death|dying|ending|hurting)\b/i,
+const MODERATE_CONTEXT_PATTERNS = [
+  // Cutting/self-harm with clear self-reference (not "cutting vegetables")
+  /\b(i've been|i am|i'm|i started|started)\s+(cutting|burning|hurting|harming)\b/i,
 
-  // Ideation without plan
-  /\b(wonder|imagine|think about|fantasize)\s+(what it|how it|if i)\s+(died|wasn't here|disappeared)\b/i,
+  // Escape in distress context (not "escape for vacation")
+  /\b(need to|want to|have to)\s+escape\s+(from)?\s*(this life|everything|it all|my life|reality|the pain)/i,
 
-  // Deteriorating state
-  /\b(getting worse|spiraling|losing|can't|cannot)\s+(control|handle|cope|function)\b/i,
+  // Make it stop in existential context
+  /\b(want|need)\s+(it|everything|this|the pain|my life)\s+to\s+stop\b/i,
+
+  // Intrusive thoughts about self-harm specifically
+  /\b(intrusive thoughts|can't stop thinking)\s+(about|of)\s+(hurting|harming|killing)\s+(myself|me)\b/i,
+
+  // Thoughts of death with personal suffering context
+  /\b(my|i have|i'm having)\s+(thoughts of|obsession with)\s+(death|dying|ending)\b/i,
+
+  // Passive ideation patterns
+  /\b(what if|wonder what|imagine if)\s+(i|my life)\s+(wasn't|weren't|ended|disappeared)\b/i,
+
+  // Deteriorating state with crisis language
+  /\b(i'm|i am)\s+(at|past|beyond)\s+(my|the)\s+(breaking point|limit|end)\b/i,
 ];
 
 /**
@@ -227,7 +250,7 @@ function normalize(text: string): string {
 }
 
 /**
- * Checks if text contains any of the specified words
+ * Checks if text contains any of the specified words/phrases
  */
 function containsAny(text: string, words: string[]): boolean {
   return words.some((w) => text.includes(w));
@@ -241,28 +264,61 @@ function hasNegation(text: string): boolean {
 }
 
 /**
- * Checks if text matches any high severity pattern
+ * Checks if text matches any high severity context pattern
  */
-function matchesHighPattern(text: string): boolean {
-  return HIGH_SEVERITY_PATTERNS.some(pattern => pattern.test(text));
+function matchesHighContextPattern(text: string): boolean {
+  return HIGH_CONTEXT_PATTERNS.some(pattern => pattern.test(text));
 }
 
 /**
- * Checks if text matches any moderate severity pattern
+ * Checks if text matches any moderate severity context pattern
  */
-function matchesModeratePattern(text: string): boolean {
-  return MODERATE_SEVERITY_PATTERNS.some(pattern => pattern.test(text));
+function matchesModerateContextPattern(text: string): boolean {
+  return MODERATE_CONTEXT_PATTERNS.some(pattern => pattern.test(text));
 }
 
 /**
- * Enhanced crisis detection with pattern matching and negation detection.
+ * Check for standalone abbreviations (kms, ctb) that aren't part of other words
+ */
+function containsStandaloneAbbreviation(text: string): boolean {
+  // Match kms/ctb only as standalone words, not part of other words
+  return /\b(kms|ctb)\b/i.test(text);
+}
+
+/**
+ * Check for the word "suicide" or "suicidal" in concerning contexts
+ * Avoids false positives from "suicide prevention", "suicide awareness", etc.
+ */
+function containsSuicideInConcerningContext(text: string): boolean {
+  const t = text.toLowerCase();
+
+  // Skip if in clearly educational/supportive context
+  if (/\b(suicide\s+prevention|suicide\s+awareness|suicide\s+hotline|preventing\s+suicide|anti-suicide)\b/i.test(t)) {
+    return false;
+  }
+
+  // Match concerning uses: "my suicide", "commit suicide", "thinking of suicide", etc.
+  if (/\b(my|commit|committing|attempted|considering|thinking of|thoughts of|planning)\s+suicide\b/i.test(t)) {
+    return true;
+  }
+
+  // "suicidal" with self-reference
+  if (/\b(i am|i'm|i feel|feeling|i've been)\s+suicidal\b/i.test(t)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Enhanced crisis detection with context-aware matching.
  * Returns 0-3 severity level.
  *
  * Features:
- * - Expanded keyword lists with slang and variations
- * - Negation detection to reduce false positives
- * - Pattern-based matching for indirect language
- * - Context-aware severity scoring
+ * - Focused keyword lists (reduced false positives)
+ * - Negation detection
+ * - Context-aware pattern matching for ambiguous phrases
+ * - Standalone abbreviation detection
  *
  * @param text - The journal entry or text to analyze
  * @returns CrisisSeverity (0-3)
@@ -273,29 +329,51 @@ export function detectCrisis(text: string): CrisisSeverity {
   if (!t) return 0;
 
   // Check for negation patterns first (reduce false positives)
-  if (hasNegation(text)) {
-    // If negation detected, downgrade severity by one level
-    // Still check for patterns in case negation is weak
-    if (matchesModeratePattern(t) || containsAny(t, MODERATE_WORDS)) {
-      return 1; // Downgrade moderate to low
+  const hasNegationContext = hasNegation(t);
+
+  if (hasNegationContext) {
+    // Even with negation, still check for very explicit current crisis language
+    // But downgrade severity for most matches
+    if (containsAny(t, ["i want to kill myself", "i'm going to kill myself", "kill myself today", "end my life tonight"])) {
+      // These are so explicit that negation might not apply - check more carefully
+      if (!/\b(not|never|no longer|don't)\s+(want to|going to)\s+kill/i.test(t)) {
+        return 3; // Still high severity if direct statement without clear negation
+      }
     }
-    if (containsAny(t, LOW_WORDS)) {
-      return 0; // Downgrade low to none
+    // With negation context, cap at severity 1 (low concern)
+    if (containsAny(t, LOW_WORDS) || matchesModerateContextPattern(t)) {
+      return 1;
     }
     return 0;
   }
 
-  // HIGH SEVERITY: Check both keywords and patterns
-  if (containsAny(t, HIGH_WORDS) || matchesHighPattern(t)) {
+  // HIGH SEVERITY: Check keywords, abbreviations, and context patterns
+  if (containsAny(t, HIGH_WORDS)) {
     return 3;
   }
 
-  // MODERATE SEVERITY: Check both keywords and patterns
-  if (containsAny(t, MODERATE_WORDS) || matchesModeratePattern(t)) {
+  if (containsStandaloneAbbreviation(t)) {
+    return 3;
+  }
+
+  if (containsSuicideInConcerningContext(t)) {
+    return 3;
+  }
+
+  if (matchesHighContextPattern(t)) {
+    return 3;
+  }
+
+  // MODERATE SEVERITY: Check explicit self-harm keywords and context patterns
+  if (containsAny(t, MODERATE_WORDS)) {
     return 2;
   }
 
-  // LOW SEVERITY: Distress language only
+  if (matchesModerateContextPattern(t)) {
+    return 2;
+  }
+
+  // LOW SEVERITY: Distress language
   if (containsAny(t, LOW_WORDS)) {
     return 1;
   }

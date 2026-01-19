@@ -182,6 +182,7 @@ export interface JournalEntry {
   analysis?: EntryAnalysis;
   eveningCheckin?: EveningCheckin;
   summaryData?: SummaryData;
+  crisisFlagged?: boolean; // Set when entry triggers crisis detection (severity >= 2)
 }
 
 // Flip Journal Types - Cognitive reframing tool

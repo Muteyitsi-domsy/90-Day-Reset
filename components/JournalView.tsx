@@ -124,9 +124,15 @@ const EntryCard: React.FC<{
                     {isExpanded ? 'Show Less' : 'Read More'}
                 </button>
             )}
-            {entry.analysis ? <EntryAnalysisView analysis={entry.analysis} /> : (isToday && entry.type === 'daily' && <div className="mt-4"><LoadingSpinner/></div>)}
+            {entry.analysis ? (
+              <EntryAnalysisView analysis={entry.analysis} />
+            ) : entry.crisisFlagged ? (
+              null // Crisis-flagged entries: no analysis shown, evening check-in still available below
+            ) : (
+              isToday && entry.type === 'daily' && <div className="mt-4"><LoadingSpinner/></div>
+            )}
             
-            {isToday && entry.analysis && !entry.eveningCheckin && onStartCheckin && (
+            {isToday && (entry.analysis || entry.crisisFlagged) && !entry.eveningCheckin && onStartCheckin && (
                 <div className="mt-6 pt-6 border-t border-gray-300/50 dark:border-gray-700/50">
                     <h3 className="text-lg font-light text-center text-[var(--text-secondary)] mb-3">Ready to reflect on your day?</h3>
                     <button
