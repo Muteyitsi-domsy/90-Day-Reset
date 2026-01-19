@@ -531,30 +531,131 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
             </div>
           </section>
 
+          {/* Firebase Console Quick Links */}
+          <section>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
+              App Metrics (Firebase Console)
+            </h3>
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
+              <p className="text-sm text-indigo-800 dark:text-indigo-200 mb-4">
+                View real-time app metrics directly in Firebase Console. Click any link below to open in a new tab.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a
+                  href={`https://console.firebase.google.com/project/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/authentication/users`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
+                >
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
+                    <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)]">Users</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Total users, sign-ins, exports</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+
+                <a
+                  href={`https://console.firebase.google.com/project/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/firestore/data`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
+                >
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                    <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)]">Database</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Browse all user data</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+
+                <a
+                  href={`https://console.firebase.google.com/project/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/firestore/usage`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
+                >
+                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                    <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)]">Usage</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Reads, writes, storage</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+
+                <a
+                  href={`https://console.firebase.google.com/project/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/analytics`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
+                >
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                    <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-[var(--text-primary)]">Analytics</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Active users, retention</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+
+              <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <strong className="text-[var(--text-primary)]">Tip:</strong> In the Users tab, you can see total user count at the top and export the full list to CSV.
+                  In Database, browse <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">/users</code> to see all profiles and their journal entries.
+                </p>
+              </div>
+            </div>
+          </section>
+
           {/* How to Monitor Production */}
           <section>
             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
-              Production Monitoring Setup
+              Future: In-App Metrics
             </h3>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
               <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
                 <p>
-                  <strong className="text-[var(--text-primary)]">When you add a backend:</strong>
+                  <strong className="text-[var(--text-primary)]">When you have paying users (~50-100):</strong>
                 </p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>Track API calls per user in your database</li>
-                  <li>Log costs using Gemini API usage endpoints</li>
-                  <li>Set up alerts when daily costs exceed thresholds</li>
-                  <li>Monitor abuse (users making excessive requests)</li>
-                  <li>Implement soft/hard limits per subscription tier</li>
+                  <li>Upgrade to Firebase Blaze plan (pay-as-you-go)</li>
+                  <li>Add Cloud Functions to aggregate user metrics</li>
+                  <li>Display real-time stats directly in this dashboard</li>
+                  <li>Set up alerts for unusual activity</li>
                 </ol>
                 <p className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <strong className="text-[var(--text-primary)]">Free vs Paid Tiers:</strong>
+                  <strong className="text-[var(--text-primary)]">Metrics we can add later:</strong>
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Free: Manual journaling only (no AI)</li>
-                  <li>Premium ($7-10/mo): Unlimited AI analysis</li>
-                  <li>Track usage to detect and prevent abuse</li>
+                  <li>Total users, active users (7/30 day)</li>
+                  <li>Journal entries created per day/week</li>
+                  <li>Average streak length, completion rate</li>
+                  <li>Feature adoption (MFA, mood journal, flip journal)</li>
+                  <li>Mood trends across all users</li>
                 </ul>
               </div>
             </div>
