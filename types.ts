@@ -81,6 +81,9 @@ export interface UserProfile {
   crisisOccurrences?: { date: string; severity: number }[]; // Track high severity crisis detections
   accountSuspended?: boolean; // Account suspended due to repeated high severity crisis
   suspendedDate?: string; // ISO date when account was suspended
+
+  // Mood summary state
+  moodSummaryState?: MoodSummaryState;
 }
 
 export interface DailyCompletion {
@@ -199,4 +202,30 @@ export interface FlipJournalEntry {
   reframingQuestion: string;     // AI-generated question
   reframedPerspective: string;   // User's wiser-self response
   linkedMoodEntryId?: string;    // Reference to mood entry if flipped from mood journal
+}
+
+// Mood Summary Types - Monthly and Annual summaries
+export interface MoodSummaryState {
+  lastMonthlySummaryShown: string | null;  // "YYYY-MM" format
+  monthlySummaryDownloaded: boolean;
+  lastAnnualSummaryShown: number | null;   // Year (e.g., 2025)
+  annualSummaryDownloaded: boolean;
+}
+
+export interface MonthlySummaryData {
+  month: number;
+  year: number;
+  predominantMood: string;
+  moodEmoji: string;
+  moodCount: number;
+  totalEntries: number;
+  encouragingMessage: string;
+}
+
+export interface AnnualRecapData {
+  year: number;
+  topMoods: Array<{ emotion: string; emoji: string; count: number; percentage: number }>;
+  totalEntries: number;
+  longestStreak: number;
+  mostActiveMonth: string;
 }

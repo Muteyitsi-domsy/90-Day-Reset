@@ -14,17 +14,23 @@ import { useEffect, useState } from 'react';
 import { rateLimiter } from '../services/rateLimiter';
 import { analysisCache } from '../services/analysisCache';
 import { QuotaStatus } from './QuotaStatus';
-import { Settings } from '../types';
+import { Settings, MoodJournalEntry, CustomEmotion, MonthlySummaryData, AnnualRecapData } from '../types';
+import { calculateMonthlySummary, calculateAnnualRecap } from '../utils/moodSummaryCalculations';
 
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
   settings: Settings;
+  moodEntries?: MoodJournalEntry[];
+  onTestMonthlySummary?: (data: MonthlySummaryData) => void;
+  onTestAnnualRecap?: (data: AnnualRecapData) => void;
 }
 
-export function AdminDashboard({ isOpen, onClose, settings }: AdminDashboardProps) {
+export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], onTestMonthlySummary, onTestAnnualRecap }: AdminDashboardProps) {
   const [pinInput, setPinInput] = useState('');
   const [isPinVerified, setIsPinVerified] = useState(false);
+  const [testMonth, setTestMonth] = useState(new Date().getMonth()); // 0-indexed
+  const [testYear, setTestYear] = useState(new Date().getFullYear());
   const [pinError, setPinError] = useState('');
   const [cacheStats, setCacheStats] = useState({
     totalEntries: 0,
@@ -296,6 +302,105 @@ export function AdminDashboard({ isOpen, onClose, settings }: AdminDashboardProp
                   Clear Expired Cache Only
                 </button>
               </div>
+            </div>
+          </section>
+
+          {/* Mood Summary Testing */}
+          <section>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
+              Mood Summary Testing
+            </h3>
+            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+              <p className="text-sm text-green-800 dark:text-green-200 mb-3">
+                Test monthly and annual mood summaries with your existing data.
+                Total mood entries: <strong>{moodEntries.length}</strong>
+              </p>
+
+              {moodEntries.length === 0 ? (
+                <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+                  No mood entries found. Add some mood journal entries first to test summaries.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Month/Year Selector */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Month</label>
+                      <select
+                        value={testMonth}
+                        onChange={(e) => setTestMonth(parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-[var(--text-primary)] text-sm"
+                      >
+                        {['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'].map((month, i) => (
+                          <option key={i} value={i}>{month}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Year</label>
+                      <select
+                        value={testYear}
+                        onChange={(e) => setTestYear(parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-[var(--text-primary)] text-sm"
+                      >
+                        {[2024, 2025, 2026].map((year) => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Entry count for selected period */}
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    Entries for {['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'][testMonth]} {testYear}: {
+                      moodEntries.filter(e => {
+                        const d = new Date(e.date);
+                        return d.getMonth() === testMonth && d.getFullYear() === testYear;
+                      }).length
+                    } | Entries for {testYear}: {
+                      moodEntries.filter(e => new Date(e.date).getFullYear() === testYear).length
+                    }
+                  </div>
+
+                  {/* Test Buttons */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        const customEmotions = settings.customEmotions || [];
+                        const data = calculateMonthlySummary(moodEntries, testMonth, testYear, customEmotions);
+                        if (data && onTestMonthlySummary) {
+                          onTestMonthlySummary(data);
+                          onClose();
+                        } else if (!data) {
+                          alert(`No entries found for ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][testMonth]} ${testYear}`);
+                        }
+                      }}
+                      disabled={!onTestMonthlySummary}
+                      className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-md text-sm font-medium"
+                    >
+                      Test Monthly Summary
+                    </button>
+                    <button
+                      onClick={() => {
+                        const customEmotions = settings.customEmotions || [];
+                        const data = calculateAnnualRecap(moodEntries, testYear, customEmotions);
+                        if (data && onTestAnnualRecap) {
+                          onTestAnnualRecap(data);
+                          onClose();
+                        } else if (!data) {
+                          alert(`No entries found for ${testYear}`);
+                        }
+                      }}
+                      disabled={!onTestAnnualRecap}
+                      className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-md text-sm font-medium"
+                    >
+                      Test Annual Recap
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

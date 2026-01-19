@@ -37,7 +37,11 @@ import FlipInputModal from './components/FlipInputModal';
 import FlipJournalView from './components/FlipJournalView';
 import FlipPromptModal from './components/FlipPromptModal';
 import SuspendedAccountScreen from './components/SuspendedAccountScreen';
+import MonthlySummaryModal from './components/MonthlySummaryModal';
+import AnnualRecapModal from './components/AnnualRecapModal';
 import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
+import { shouldShowMonthlySummary, shouldShowAnnualRecap, calculateMonthlySummary, calculateAnnualRecap } from './utils/moodSummaryCalculations';
+import type { MoodSummaryState, MonthlySummaryData, AnnualRecapData } from './types';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -136,6 +140,13 @@ const App: React.FC = () => {
   const [isSavingFlipEntry, setIsSavingFlipEntry] = useState(false);
   const [pendingFlipMoodEntry, setPendingFlipMoodEntry] = useState<MoodJournalEntry | null>(null);
   const [showFlipPrompt, setShowFlipPrompt] = useState(false);
+
+  // Mood summary state
+  const [showMonthlySummaryModal, setShowMonthlySummaryModal] = useState(false);
+  const [showAnnualRecapModal, setShowAnnualRecapModal] = useState(false);
+  const [monthlySummaryData, setMonthlySummaryData] = useState<MonthlySummaryData | null>(null);
+  const [annualRecapData, setAnnualRecapData] = useState<AnnualRecapData | null>(null);
+  const [canRedownloadAnnual, setCanRedownloadAnnual] = useState(false);
 
   // Firebase auth state and storage service
   const { user, loading: authLoading } = useAuth();
@@ -1153,6 +1164,82 @@ const App: React.FC = () => {
     setShowFlipInputModal(true);
   };
 
+  // Check for mood summaries after mood entries are loaded
+  useEffect(() => {
+    if (!userProfile || moodEntries.length === 0 || isLoading) return;
+
+    const customEmotions = settings.customEmotions || [];
+
+    // Check monthly summary
+    const monthlyCheck = shouldShowMonthlySummary(userProfile.moodSummaryState, moodEntries);
+    if (monthlyCheck.shouldShow) {
+      const summaryData = calculateMonthlySummary(moodEntries, monthlyCheck.month, monthlyCheck.year, customEmotions);
+      if (summaryData) {
+        setMonthlySummaryData(summaryData);
+        setShowMonthlySummaryModal(true);
+        return; // Show monthly first, then annual on next check
+      }
+    }
+
+    // Check annual recap
+    const annualCheck = shouldShowAnnualRecap(userProfile.moodSummaryState, moodEntries);
+    if (annualCheck.shouldShow) {
+      const recapData = calculateAnnualRecap(moodEntries, annualCheck.year, customEmotions);
+      if (recapData) {
+        setAnnualRecapData(recapData);
+        setCanRedownloadAnnual(false);
+        setShowAnnualRecapModal(true);
+      }
+    } else if (annualCheck.isWithinDownloadWindow && userProfile.moodSummaryState?.annualSummaryDownloaded) {
+      // User already saw modal but can re-download during window
+      const recapData = calculateAnnualRecap(moodEntries, annualCheck.year, customEmotions);
+      if (recapData) {
+        setAnnualRecapData(recapData);
+        setCanRedownloadAnnual(true);
+        // Don't auto-show modal, but data is ready if user wants to access it
+      }
+    }
+  }, [moodEntries, userProfile?.moodSummaryState, isLoading, settings.customEmotions]);
+
+  // Handle monthly summary modal close
+  const handleMonthlySummaryClose = (downloaded: boolean) => {
+    setShowMonthlySummaryModal(false);
+
+    if (!userProfile || !monthlySummaryData) return;
+
+    const monthKey = `${monthlySummaryData.year}-${String(monthlySummaryData.month).padStart(2, '0')}`;
+    const updatedSummaryState: MoodSummaryState = {
+      ...userProfile.moodSummaryState,
+      lastMonthlySummaryShown: monthKey,
+      monthlySummaryDownloaded: downloaded,
+      lastAnnualSummaryShown: userProfile.moodSummaryState?.lastAnnualSummaryShown || null,
+      annualSummaryDownloaded: userProfile.moodSummaryState?.annualSummaryDownloaded || false,
+    };
+
+    setUserProfile(prev => prev ? { ...prev, moodSummaryState: updatedSummaryState } : null);
+    setMonthlySummaryData(null);
+  };
+
+  // Handle annual recap modal close
+  const handleAnnualRecapClose = (downloaded: boolean) => {
+    setShowAnnualRecapModal(false);
+
+    if (!userProfile || !annualRecapData) return;
+
+    const updatedSummaryState: MoodSummaryState = {
+      ...userProfile.moodSummaryState,
+      lastMonthlySummaryShown: userProfile.moodSummaryState?.lastMonthlySummaryShown || null,
+      monthlySummaryDownloaded: userProfile.moodSummaryState?.monthlySummaryDownloaded || false,
+      lastAnnualSummaryShown: annualRecapData.year,
+      annualSummaryDownloaded: downloaded || userProfile.moodSummaryState?.annualSummaryDownloaded || false,
+    };
+
+    setUserProfile(prev => prev ? { ...prev, moodSummaryState: updatedSummaryState } : null);
+    if (!canRedownloadAnnual) {
+      setAnnualRecapData(null);
+    }
+  };
+
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {
     if (!userProfile || !userProfile.idealSelfManifesto) return;
 
@@ -1836,6 +1923,16 @@ const App: React.FC = () => {
         isOpen={showAdminDashboard}
         onClose={() => setShowAdminDashboard(false)}
         settings={settings}
+        moodEntries={moodEntries}
+        onTestMonthlySummary={(data) => {
+          setMonthlySummaryData(data);
+          setShowMonthlySummaryModal(true);
+        }}
+        onTestAnnualRecap={(data) => {
+          setAnnualRecapData(data);
+          setCanRedownloadAnnual(true); // Allow re-download in test mode
+          setShowAnnualRecapModal(true);
+        }}
       />
       <AuthModal
         isOpen={showAuthModal}
@@ -1890,6 +1987,19 @@ const App: React.FC = () => {
           onAccept={handleAcceptFlipPrompt}
           onDecline={handleDeclineFlipPrompt}
           remainingFlips={3 - flipEntries.filter(e => e.date === getFlipLocalDateString()).length}
+        />
+      )}
+      {showMonthlySummaryModal && monthlySummaryData && (
+        <MonthlySummaryModal
+          data={monthlySummaryData}
+          onClose={handleMonthlySummaryClose}
+        />
+      )}
+      {showAnnualRecapModal && annualRecapData && (
+        <AnnualRecapModal
+          data={annualRecapData}
+          onClose={handleAnnualRecapClose}
+          canRedownload={canRedownloadAnnual}
         />
       )}
       <PrivacyPolicy
