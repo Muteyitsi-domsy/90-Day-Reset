@@ -1,21 +1,45 @@
 /**
- * Admin Dashboard - Only visible to app developers
+ * Admin Dashboard - Only visible to app founder/developers
  *
- * Access: Type "admin" three times quickly on any screen to toggle admin mode
- * Or add ?admin=true to URL
+ * Access: Press Ctrl+Shift+A or add ?admin=true to URL
+ *
+ * Protected by a separate "Founder PIN" stored in localStorage.
+ * This PIN is independent of user accounts - only the founder knows it.
  *
  * This dashboard helps you monitor:
  * - API usage across all users (when you have a backend)
  * - Current quota status
  * - Cost projections
+ * - Mood summary testing
  */
 
 import { useEffect, useState } from 'react';
 import { rateLimiter } from '../services/rateLimiter';
 import { analysisCache } from '../services/analysisCache';
 import { QuotaStatus } from './QuotaStatus';
-import { Settings, MoodJournalEntry, CustomEmotion, MonthlySummaryData, AnnualRecapData } from '../types';
+import { Settings, MoodJournalEntry, MonthlySummaryData, AnnualRecapData } from '../types';
 import { calculateMonthlySummary, calculateAnnualRecap } from '../utils/moodSummaryCalculations';
+
+// Founder PIN storage key - separate from user data
+const FOUNDER_PIN_KEY = '90day_founder_pin';
+
+// Get founder PIN from localStorage
+function getFounderPin(): string | null {
+  try {
+    return localStorage.getItem(FOUNDER_PIN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// Save founder PIN to localStorage
+function saveFounderPin(pin: string): void {
+  try {
+    localStorage.setItem(FOUNDER_PIN_KEY, pin.toUpperCase());
+  } catch (e) {
+    console.error('Failed to save founder PIN:', e);
+  }
+}
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -28,8 +52,11 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], onTestMonthlySummary, onTestAnnualRecap }: AdminDashboardProps) {
   const [pinInput, setPinInput] = useState('');
+  const [confirmPinInput, setConfirmPinInput] = useState('');
   const [isPinVerified, setIsPinVerified] = useState(false);
-  const [testMonth, setTestMonth] = useState(new Date().getMonth()); // 0-indexed
+  const [isCreatingPin, setIsCreatingPin] = useState(false);
+  const [founderPinExists, setFounderPinExists] = useState(false);
+  const [testMonth, setTestMonth] = useState(new Date().getMonth());
   const [testYear, setTestYear] = useState(new Date().getFullYear());
   const [pinError, setPinError] = useState('');
   const [cacheStats, setCacheStats] = useState({
@@ -42,24 +69,46 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
   useEffect(() => {
     if (isOpen) {
       setCacheStats(analysisCache.getStats());
-      // Reset PIN verification when opening (unless no PIN is set)
-      if (!settings.pin) {
-        setIsPinVerified(true);
-      } else {
-        setIsPinVerified(false);
-        setPinInput('');
-        setPinError('');
-      }
+      // Check if founder PIN exists
+      const existingPin = getFounderPin();
+      setFounderPinExists(!!existingPin);
+      setIsCreatingPin(!existingPin);
+      // Reset state when opening
+      setIsPinVerified(false);
+      setPinInput('');
+      setConfirmPinInput('');
+      setPinError('');
     }
-  }, [isOpen, settings.pin]);
+  }, [isOpen]);
+
+  const handleCreatePin = () => {
+    if (pinInput.length !== 4) {
+      setPinError('PIN must be exactly 4 characters');
+      return;
+    }
+    if (pinInput.toUpperCase() !== confirmPinInput.toUpperCase()) {
+      setPinError('PINs do not match');
+      setConfirmPinInput('');
+      return;
+    }
+    // Save the founder PIN
+    saveFounderPin(pinInput);
+    setFounderPinExists(true);
+    setIsCreatingPin(false);
+    setIsPinVerified(true);
+    setPinInput('');
+    setConfirmPinInput('');
+    setPinError('');
+  };
 
   const handlePinSubmit = () => {
-    if (!settings.pin) {
-      setPinError('No PIN set. Please set a PIN in settings first.');
+    const founderPin = getFounderPin();
+    if (!founderPin) {
+      setPinError('No founder PIN set');
       return;
     }
 
-    if (pinInput.toUpperCase() === settings.pin.toUpperCase()) {
+    if (pinInput.toUpperCase() === founderPin.toUpperCase()) {
       setIsPinVerified(true);
       setPinError('');
       setPinInput('');
@@ -71,7 +120,11 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
 
   const handlePinKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handlePinSubmit();
+      if (isCreatingPin) {
+        handleCreatePin();
+      } else {
+        handlePinSubmit();
+      }
     }
   };
 
@@ -114,7 +167,7 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
               Admin Dashboard
             </h2>
             <p className="text-xs text-gray-500 mt-1">
-              {isPinVerified ? 'Developer-only monitoring and debugging tools' : 'PIN required for access'}
+              {isPinVerified ? 'Founder-only monitoring and debugging tools' : 'Founder PIN required for access'}
             </p>
           </div>
           <button
@@ -127,8 +180,88 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
           </button>
         </div>
 
-        {/* PIN Entry Screen */}
-        {!isPinVerified && (
+        {/* Create Founder PIN Screen */}
+        {isCreatingPin && !isPinVerified && (
+          <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-6">
+                <div className="inline-block p-4 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+                  <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                  Create Founder PIN
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Set up a 4-character PIN to protect the Admin Dashboard.
+                  <br />
+                  <strong>Save this PIN safely</strong> - it's not linked to any account.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Create PIN</label>
+                  <input
+                    type="text"
+                    value={pinInput}
+                    onChange={(e) => {
+                      setPinInput(e.target.value.slice(0, 4));
+                      setPinError('');
+                    }}
+                    placeholder="Enter 4-character PIN"
+                    maxLength={4}
+                    autoFocus
+                    className="w-full px-4 py-3 text-center text-lg tracking-widest uppercase border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Confirm PIN</label>
+                  <input
+                    type="text"
+                    value={confirmPinInput}
+                    onChange={(e) => {
+                      setConfirmPinInput(e.target.value.slice(0, 4));
+                      setPinError('');
+                    }}
+                    onKeyPress={handlePinKeyPress}
+                    placeholder="Confirm PIN"
+                    maxLength={4}
+                    className="w-full px-4 py-3 text-center text-lg tracking-widest uppercase border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                {pinError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                    <p className="text-sm text-red-600 dark:text-red-400 text-center">
+                      {pinError}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleCreatePin}
+                  disabled={pinInput.length !== 4 || confirmPinInput.length !== 4}
+                  className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                >
+                  Create Founder PIN
+                </button>
+
+                <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-xs text-amber-800 dark:text-amber-200 text-center">
+                    <strong>Important:</strong> This PIN is stored locally on this device only.
+                    Write it down and keep it safe - you'll need it to access admin features.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Enter PIN Screen */}
+        {!isCreatingPin && !isPinVerified && founderPinExists && (
           <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
             <div className="max-w-md w-full">
               <div className="text-center mb-6">
@@ -138,10 +271,10 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
-                  Admin Access Required
+                  Founder Access Required
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Enter your app PIN to access the admin dashboard
+                  Enter your Founder PIN to access the admin dashboard
                 </p>
               </div>
 
@@ -150,11 +283,11 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
                   type="text"
                   value={pinInput}
                   onChange={(e) => {
-                    setPinInput(e.target.value);
+                    setPinInput(e.target.value.slice(0, 4));
                     setPinError('');
                   }}
                   onKeyPress={handlePinKeyPress}
-                  placeholder="Enter 4-letter PIN"
+                  placeholder="Enter Founder PIN"
                   maxLength={4}
                   autoFocus
                   className="w-full px-4 py-3 text-center text-lg tracking-widest uppercase border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -175,12 +308,6 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
                 >
                   Unlock Dashboard
                 </button>
-
-                <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                    <strong>Note:</strong> If you haven't set a PIN yet, go to Settings → Security to create one first.
-                  </p>
-                </div>
               </div>
             </div>
           </div>
