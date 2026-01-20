@@ -1,5 +1,5 @@
 import React from 'react';
-import { JournalEntry, UserProfile } from '../types';
+import { JournalEntry, UserProfile, MoodJournalEntry } from '../types';
 import DailyCompletionCircle from './DailyCompletionCircle';
 
 interface ReturnUserWelcomeScreenProps {
@@ -9,6 +9,9 @@ interface ReturnUserWelcomeScreenProps {
   ritualCompleted?: boolean;
   onSignIn?: () => void;
   userEmail?: string | null;
+  // New props for mood journal focus
+  isJourneyPaused?: boolean;
+  todaysMoodEntry?: MoodJournalEntry | null;
 }
 
 const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
@@ -18,39 +21,68 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
   ritualCompleted = false,
   onSignIn,
   userEmail,
+  isJourneyPaused = false,
+  todaysMoodEntry = null,
 }) => {
 
   const hour = new Date().getHours();
   const hasDoneMorning = !!todaysEntry;
   const hasDoneEvening = !!todaysEntry?.eveningCheckin;
   const isEveningTime = hour >= 16;
+  const isMorning = hour < 12;
 
-  let title = `Welcome back, ${userProfile.name}!`;
-  let subtitle = "It's a new day, and a new opportunity to connect with yourself.";
-  let cta = "Begin Today's Reflection";
+  // Check if journey is active (started and not paused)
+  const isJourneyActive = userProfile.startDate && !isJourneyPaused;
+  const hasMoodEntryToday = !!todaysMoodEntry;
 
-  if (hasDoneMorning) {
-    if (hasDoneEvening) {
-      title = `All done for today, ${userProfile.name}!`;
-      subtitle = "You've shown up for yourself completely. Rest well and see you tomorrow.";
-      cta = "View Your Journey";
-    } else {
-      if (isEveningTime) {
-        title = `Good evening, ${userProfile.name}.`;
-        subtitle = "Ready to reflect on your day and complete your evening check-in?";
-        cta = "Continue to Journal";
-      } else {
-        title = `Great work today, ${userProfile.name}!`;
-        subtitle = "Your morning reflection is complete. Return this evening to check in on your day.";
+  let title = '';
+  let subtitle = '';
+  let cta = '';
+
+  if (isJourneyActive) {
+    // 90-day journey is active - show journey-focused messaging
+    if (hasDoneMorning) {
+      if (hasDoneEvening) {
+        title = `All done for today, ${userProfile.name}!`;
+        subtitle = "You've shown up for yourself completely. Rest well and see you tomorrow.";
         cta = "View Your Journey";
+      } else {
+        if (isEveningTime) {
+          title = `Good evening, ${userProfile.name}.`;
+          subtitle = "Ready to reflect on your day and complete your evening check-in?";
+          cta = "Continue to Journal";
+        } else {
+          title = `Great work today, ${userProfile.name}!`;
+          subtitle = "Your morning reflection is complete. Return this evening to check in on your day.";
+          cta = "View Your Journey";
+        }
       }
-    }
-  } else {
+    } else {
       title = `You showed up, ${userProfile.name}! ☀️`;
       subtitle = "It is so amazing that you are showing up for yourself. Let's begin today's reflection.";
       cta = "Begin Today's Reflection";
+    }
+  } else {
+    // Journey is paused or not started - show mood journal focused messaging
+    if (hasMoodEntryToday) {
+      title = `You showed up for yourself today, ${userProfile.name}! ✓`;
+      subtitle = "You've already logged your mood. Taking time to check in with yourself matters.";
+      cta = "View Your Journal";
+    } else {
+      // Time-appropriate greeting
+      if (isMorning) {
+        title = `Good morning, ${userProfile.name}!`;
+        subtitle = "Ready to log your mood for the day? A moment of reflection sets the tone.";
+      } else if (isEveningTime) {
+        title = `Good evening, ${userProfile.name}.`;
+        subtitle = "How has your day been? Take a moment to log your mood and reflect.";
+      } else {
+        title = `Welcome back, ${userProfile.name}!`;
+        subtitle = "Ready to check in with yourself? Logging your mood helps build self-awareness.";
+      }
+      cta = "Log Your Mood";
+    }
   }
-
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 font-sans">
@@ -60,16 +92,45 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
           {subtitle}
         </p>
 
-        {/* Daily Completion Circle */}
-        <div className="flex justify-center mb-8">
-          <DailyCompletionCircle
-            ritualCompleted={ritualCompleted}
-            morningEntryCompleted={hasDoneMorning}
-            eveningCheckinCompleted={hasDoneEvening}
-            size="large"
-            showLabel={true}
-          />
-        </div>
+        {isJourneyActive ? (
+          // Show Daily Completion Circle for active journey
+          <div className="flex justify-center mb-8">
+            <DailyCompletionCircle
+              ritualCompleted={ritualCompleted}
+              morningEntryCompleted={hasDoneMorning}
+              eveningCheckinCompleted={hasDoneEvening}
+              size="large"
+              showLabel={true}
+            />
+          </div>
+        ) : (
+          // Show mood journal status for paused/no journey
+          <div className="flex justify-center mb-8">
+            <div className="flex flex-col items-center">
+              {hasMoodEntryToday ? (
+                // Journalled today - show tick
+                <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
+                  <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : (
+                // Not journalled - show mood icon
+                <div className="w-24 h-24 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center mb-3">
+                  <span className="text-5xl">🌱</span>
+                </div>
+              )}
+              <p className="text-sm text-[var(--text-primary)] font-medium">
+                {hasMoodEntryToday ? 'Mood logged today' : 'Mood Journal'}
+              </p>
+              {isJourneyPaused && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  90-day journey paused
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-center">
           <button

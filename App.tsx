@@ -1692,13 +1692,23 @@ const App: React.FC = () => {
           const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
           const today = getLocalDateString();
           const ritualCompleted = settings.lastRitualDate === today && settings.ritualCompletedToday === true;
+          // Find today's mood entry for paused/no journey state
+          const todaysMoodEntry = moodEntries.find(entry => entry.date === today) || null;
           return <ReturnUserWelcomeScreen
             userProfile={userProfile}
             todaysEntry={todaysEntry}
-            onContinue={() => setAppState('journal')}
+            onContinue={() => {
+              // If paused, go to mood journal view; otherwise normal journal
+              if (userProfile.isPaused) {
+                setActiveView('mood');
+              }
+              setAppState('journal');
+            }}
             ritualCompleted={ritualCompleted}
             onSignIn={() => { setAuthModalMode('signin'); setShowAuthModal(true); }}
             userEmail={user?.email}
+            isJourneyPaused={userProfile.isPaused}
+            todaysMoodEntry={todaysMoodEntry}
           />;
         }
         return null;
