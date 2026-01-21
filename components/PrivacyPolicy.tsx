@@ -36,7 +36,7 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-light text-[var(--text-primary)]">Privacy Policy</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: December 2024</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: January 2025</p>
             </div>
             <button
               onClick={onClose}
@@ -173,7 +173,14 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           <div className="policy-section">
             <h2>11. Contact Us</h2>
             <p>
-              For privacy concerns or questions, please contact us through the app's Contact page or via the Menu.
+              For privacy concerns or questions, please contact us:
+            </p>
+            <ul>
+              <li><strong>Privacy inquiries:</strong> <a href="mailto:privacy@renew90.app" className="text-[var(--accent-primary)] hover:underline">privacy@renew90.app</a></li>
+              <li><strong>General administration:</strong> <a href="mailto:admin@renew90.app" className="text-[var(--accent-primary)] hover:underline">admin@renew90.app</a></li>
+            </ul>
+            <p>
+              You can also reach us through the app's Contact page in the Menu.
             </p>
           </div>
         </div>

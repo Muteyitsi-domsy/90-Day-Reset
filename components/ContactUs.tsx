@@ -7,12 +7,11 @@ interface ContactUsProps {
 
 type ContactCategory = 'support' | 'feedback' | 'bugs' | 'privacy' | null;
 
-// Placeholder emails - replace with actual emails
 const CONTACT_EMAILS = {
-  support: 'support@example.com',    // TODO: Replace with actual support email
-  feedback: 'feedback@example.com',  // TODO: Replace with actual feedback email
-  bugs: 'bugs@example.com',          // TODO: Replace with actual bugs email
-  privacy: 'privacy@example.com',    // TODO: Replace with actual privacy email
+  support: 'support@renew90.app',
+  feedback: 'feedback@renew90.app',
+  bugs: 'bugs@renew90.app',
+  privacy: 'privacy@renew90.app',
 };
 
 const CONTACT_CONFIG = {

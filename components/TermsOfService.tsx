@@ -36,7 +36,7 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
           <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-light text-[var(--text-primary)]">Terms of Service</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: December 2024</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: January 2025</p>
             </div>
             <button
               onClick={onClose}
@@ -220,7 +220,14 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
           <div className="terms-section">
             <h2>15. Contact</h2>
             <p>
-              For questions about these Terms, please contact us through the app's Contact page or via the Menu.
+              For questions about these Terms, please contact us:
+            </p>
+            <ul>
+              <li><strong>General inquiries:</strong> <a href="mailto:support@renew90.app" className="text-[var(--accent-primary)] hover:underline">support@renew90.app</a></li>
+              <li><strong>Administration:</strong> <a href="mailto:admin@renew90.app" className="text-[var(--accent-primary)] hover:underline">admin@renew90.app</a></li>
+            </ul>
+            <p>
+              You can also reach us through the app's Contact page in the Menu.
             </p>
           </div>
 
