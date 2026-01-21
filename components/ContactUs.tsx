@@ -1,10 +1,249 @@
+import React, { useState } from 'react';
+
 interface ContactUsProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type ContactCategory = 'support' | 'feedback' | 'bugs' | 'privacy' | null;
+
+// Placeholder emails - replace with actual emails
+const CONTACT_EMAILS = {
+  support: 'support@example.com',    // TODO: Replace with actual support email
+  feedback: 'feedback@example.com',  // TODO: Replace with actual feedback email
+  bugs: 'bugs@example.com',          // TODO: Replace with actual bugs email
+  privacy: 'privacy@example.com',    // TODO: Replace with actual privacy email
+};
+
+const CONTACT_CONFIG = {
+  support: {
+    icon: '💬',
+    title: 'General Support',
+    description: 'Questions about using the app, your account, or general inquiries',
+    subjectPrefix: '[Support Request]',
+    placeholder: 'Describe what you need help with...',
+    encourageScreenshot: true,
+    responseTime: 'We typically respond within 24-48 hours',
+  },
+  feedback: {
+    icon: '💡',
+    title: 'Feedback & Suggestions',
+    description: 'Share ideas to help us improve the app experience',
+    subjectPrefix: '[Feedback]',
+    placeholder: 'Share your thoughts, ideas, or suggestions...',
+    encourageScreenshot: false,
+    responseTime: 'We read every piece of feedback',
+  },
+  bugs: {
+    icon: '🐛',
+    title: 'Report a Bug',
+    description: 'Found something broken? Help us fix it!',
+    subjectPrefix: '[Bug Report]',
+    placeholder: 'Describe what happened and what you expected to happen...',
+    encourageScreenshot: true,
+    responseTime: 'We prioritize bug fixes',
+  },
+  privacy: {
+    icon: '🔒',
+    title: 'Privacy & Data',
+    description: 'Questions about your data, privacy, or security concerns',
+    subjectPrefix: '[Privacy Inquiry]',
+    placeholder: 'Describe your privacy-related question or concern...',
+    encourageScreenshot: false,
+    responseTime: 'We take privacy seriously and respond promptly',
+  },
+};
+
 export function ContactUs({ isOpen, onClose }: ContactUsProps) {
+  const [selectedCategory, setSelectedCategory] = useState<ContactCategory>(null);
+  const [message, setMessage] = useState('');
+  const [includeDeviceInfo, setIncludeDeviceInfo] = useState(true);
+
   if (!isOpen) return null;
+
+  const handleCategorySelect = (category: ContactCategory) => {
+    setSelectedCategory(category);
+    setMessage('');
+    setIncludeDeviceInfo(category === 'bugs' || category === 'support');
+  };
+
+  const handleBack = () => {
+    setSelectedCategory(null);
+    setMessage('');
+  };
+
+  const handleClose = () => {
+    setSelectedCategory(null);
+    setMessage('');
+    onClose();
+  };
+
+  const getDeviceInfo = () => {
+    const info = [];
+    info.push(`Browser: ${navigator.userAgent}`);
+    info.push(`Screen: ${window.screen.width}x${window.screen.height}`);
+    info.push(`Viewport: ${window.innerWidth}x${window.innerHeight}`);
+    info.push(`Platform: ${navigator.platform}`);
+    info.push(`Language: ${navigator.language}`);
+    info.push(`Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+    return info.join('\n');
+  };
+
+  const handleSendEmail = () => {
+    if (!selectedCategory || !message.trim()) return;
+
+    const config = CONTACT_CONFIG[selectedCategory];
+    const email = CONTACT_EMAILS[selectedCategory];
+
+    let body = message;
+
+    if (includeDeviceInfo && (selectedCategory === 'bugs' || selectedCategory === 'support')) {
+      body += '\n\n---\nDevice Information:\n' + getDeviceInfo();
+    }
+
+    const subject = encodeURIComponent(`${config.subjectPrefix} 90-Day Identity Reset`);
+    const encodedBody = encodeURIComponent(body);
+
+    window.location.href = `mailto:${email}?subject=${subject}&body=${encodedBody}`;
+  };
+
+  const renderCategoryList = () => (
+    <div className="space-y-4">
+      <div className="text-center mb-6">
+        <p className="text-[var(--text-secondary)]">
+          Choose the type of message you'd like to send
+        </p>
+      </div>
+
+      <div className="grid gap-3">
+        {(Object.keys(CONTACT_CONFIG) as Array<keyof typeof CONTACT_CONFIG>).map((key) => {
+          const config = CONTACT_CONFIG[key];
+          return (
+            <button
+              key={key}
+              onClick={() => handleCategorySelect(key)}
+              className="flex items-start gap-4 p-4 bg-[var(--input-bg)] hover:bg-[var(--card-bg-secondary)] border border-[var(--card-border)] rounded-xl transition-all duration-200 text-left group hover:border-[var(--accent-primary)] hover:shadow-md"
+            >
+              <span className="text-3xl">{config.icon}</span>
+              <div className="flex-1">
+                <h3 className="font-medium text-[var(--text-primary)] group-hover:text-[var(--accent-primary)] transition-colors">
+                  {config.title}
+                </h3>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">
+                  {config.description}
+                </p>
+              </div>
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-[var(--accent-primary)] transition-colors mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Emergency Resources */}
+      <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+        <h3 className="font-semibold text-red-700 dark:text-red-400 mb-2 flex items-center gap-2">
+          <span>🚨</span> Emergency Resources
+        </h3>
+        <p className="text-sm text-red-600 dark:text-red-300 mb-2">
+          If you're experiencing a mental health crisis:
+        </p>
+        <ul className="text-sm text-red-600 dark:text-red-300 space-y-1 ml-4">
+          <li>• <strong>Emergency:</strong> 911 (US) or local emergency</li>
+          <li>• <strong>Suicide Prevention (US):</strong> 988</li>
+          <li>• <strong>Crisis Text Line (US):</strong> Text HOME to 741741</li>
+        </ul>
+        <p className="text-xs text-red-500 dark:text-red-400 mt-3 font-medium">
+          This app is not a substitute for professional mental health care.
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderContactForm = () => {
+    if (!selectedCategory) return null;
+
+    const config = CONTACT_CONFIG[selectedCategory];
+    const showScreenshotHint = config.encourageScreenshot;
+
+    return (
+      <div className="space-y-4">
+        {/* Category Header */}
+        <div className="text-center pb-4 border-b border-[var(--card-border)]">
+          <span className="text-4xl mb-2 block">{config.icon}</span>
+          <h3 className="text-xl font-medium text-[var(--text-primary)]">{config.title}</h3>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">{config.responseTime}</p>
+        </div>
+
+        {/* Message Input */}
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
+            Your Message
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={config.placeholder}
+            rows={6}
+            className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl p-4 text-[var(--text-primary)] placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition-all resize-none"
+            autoFocus
+          />
+        </div>
+
+        {/* Screenshot Hint for Bugs/Support */}
+        {showScreenshotHint && (
+          <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+            <span className="text-xl">📸</span>
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Screenshots help!
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                After sending, consider replying with screenshots showing the issue. This helps us understand and resolve it faster.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Device Info Toggle for Bugs/Support */}
+        {(selectedCategory === 'bugs' || selectedCategory === 'support') && (
+          <label className="flex items-center gap-3 p-3 bg-[var(--input-bg)] border border-[var(--card-border)] rounded-lg cursor-pointer hover:bg-[var(--card-bg-secondary)] transition-colors">
+            <input
+              type="checkbox"
+              checked={includeDeviceInfo}
+              onChange={(e) => setIncludeDeviceInfo(e.target.checked)}
+              className="w-5 h-5 accent-[var(--accent-primary)]"
+            />
+            <div>
+              <p className="text-sm font-medium text-[var(--text-primary)]">
+                Include device information
+              </p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Helps us troubleshoot (browser, screen size, etc.)
+              </p>
+            </div>
+          </label>
+        )}
+
+        {/* Send Button */}
+        <button
+          onClick={handleSendEmail}
+          disabled={!message.trim()}
+          className="w-full py-3 rounded-xl bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          Open in Email App
+        </button>
+
+        <p className="text-xs text-center text-[var(--text-secondary)]">
+          This will open your default email app with the message pre-filled
+        </p>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -23,23 +262,60 @@ export function ContactUs({ isOpen, onClose }: ContactUsProps) {
             transform: scale(1);
           }
         }
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
         .animate-fade-in {
           animation: fadeIn 0.2s ease-out;
         }
         .animate-scale-in {
           animation: scaleIn 0.3s ease-out;
         }
+        .animate-slide-in {
+          animation: slideIn 0.3s ease-out;
+        }
       `}</style>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-        <div className="relative w-full max-w-3xl max-h-[90vh] mx-4 bg-[var(--card-bg)] rounded-2xl shadow-2xl overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
-          {/* Header with Close Button */}
+
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+        onClick={handleClose}
+      >
+        <div
+          className="relative w-full max-w-lg max-h-[90vh] mx-4 bg-[var(--card-bg)] rounded-2xl shadow-2xl overflow-hidden animate-scale-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
           <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-light text-[var(--text-primary)]">Contact Us</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">We're here to help</p>
+            <div className="flex items-center gap-3">
+              {selectedCategory && (
+                <button
+                  onClick={handleBack}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label="Back"
+                >
+                  <svg className="w-5 h-5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              )}
+              <div>
+                <h2 className="text-xl font-light text-[var(--text-primary)]">
+                  {selectedCategory ? 'Compose Message' : 'Contact Us'}
+                </h2>
+                {!selectedCategory && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">We're here to help</p>
+                )}
+              </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
               aria-label="Close"
             >
@@ -54,209 +330,14 @@ export function ContactUs({ isOpen, onClose }: ContactUsProps) {
             </button>
           </div>
 
-          {/* Content - Scrollable */}
-          <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6 contact-content">
-
-          <div className="contact-intro">
-            <p>
-              We'd love to hear from you! Whether you have questions, feedback, or need support,
-              please don't hesitate to reach out.
-            </p>
-          </div>
-
-          <div className="contact-methods">
-            <div className="contact-method">
-              <div className="icon">📧</div>
-              <h3>Email</h3>
-              <p className="method-description">
-                For general inquiries, support, or feedback
-              </p>
-              <a href="mailto:support@identityreset.app" className="contact-link">
-                support@identityreset.app
-              </a>
-              <p className="response-time">We typically respond within 24-48 hours</p>
+          {/* Content */}
+          <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6">
+            <div className={selectedCategory ? 'animate-slide-in' : ''}>
+              {selectedCategory ? renderContactForm() : renderCategoryList()}
             </div>
-
-            <div className="contact-method">
-              <div className="icon">🔒</div>
-              <h3>Privacy Concerns</h3>
-              <p className="method-description">
-                For data privacy or security questions
-              </p>
-              <a href="mailto:privacy@identityreset.app" className="contact-link">
-                privacy@identityreset.app
-              </a>
-            </div>
-
-            <div className="contact-method">
-              <div className="icon">🐛</div>
-              <h3>Bug Reports</h3>
-              <p className="method-description">
-                Found a bug? Help us improve the app!
-              </p>
-              <p className="method-info">
-                Please include:
-              </p>
-              <ul className="bug-info">
-                <li>What you were doing when the bug occurred</li>
-                <li>Your device and browser information</li>
-                <li>Screenshots if possible</li>
-              </ul>
-              <a href="mailto:bugs@identityreset.app" className="contact-link">
-                bugs@identityreset.app
-              </a>
-            </div>
-          </div>
-
-          <div className="contact-note">
-            <h3>Emergency Resources</h3>
-            <p>
-              If you're experiencing a mental health crisis, please contact:
-            </p>
-            <ul>
-              <li><strong>Emergency Services:</strong> 911 (US) or your local emergency number</li>
-              <li><strong>National Suicide Prevention Lifeline (US):</strong> 988</li>
-              <li><strong>Crisis Text Line (US):</strong> Text HOME to 741741</li>
-              <li><strong>International Association for Suicide Prevention:</strong> <a href="https://www.iasp.info/resources/Crisis_Centres/" target="_blank" rel="noopener noreferrer">Find resources worldwide</a></li>
-            </ul>
-            <p className="warning-text">
-              This app is not a substitute for professional mental health care.
-            </p>
           </div>
         </div>
       </div>
-    </div>
-
-    <style>{`
-      .contact-intro {
-        color: var(--text-secondary);
-        margin-bottom: 2rem;
-        text-align: center;
-        font-size: 1rem;
-        line-height: 1.6;
-      }
-
-      .contact-methods {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-      }
-
-      .contact-method {
-        padding: 1.5rem;
-        background: var(--card-bg-secondary);
-        border: 1px solid var(--card-border);
-        border-radius: 12px;
-        text-align: center;
-      }
-
-      .contact-method .icon {
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
-      }
-
-      .contact-method h3 {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 0.5rem;
-      }
-
-      .method-description {
-        color: var(--text-secondary);
-        margin-bottom: 1rem;
-        font-size: 0.95rem;
-      }
-
-      .contact-link {
-        display: inline-block;
-        color: var(--accent-primary);
-        text-decoration: none;
-        font-weight: 500;
-        padding: 0.5rem 1rem;
-        background: rgba(99, 102, 241, 0.1);
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        transition: all 0.2s;
-      }
-
-      .contact-link:hover {
-        background: rgba(99, 102, 241, 0.2);
-        transform: translateY(-1px);
-      }
-
-      .response-time {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        margin-top: 0.5rem;
-        font-style: italic;
-      }
-
-      .method-info {
-        font-size: 0.9rem;
-        color: var(--text-secondary);
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-      }
-
-      .bug-info {
-        list-style: disc;
-        text-align: left;
-        margin-left: 2rem;
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-        line-height: 1.6;
-      }
-
-      .bug-info li {
-        margin-bottom: 0.25rem;
-      }
-
-      .contact-note {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-top: 2rem;
-      }
-
-      .contact-note h3 {
-        color: #ef4444;
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-      }
-
-      .contact-note p {
-        color: var(--text-secondary);
-        margin-bottom: 0.75rem;
-        font-size: 0.95rem;
-      }
-
-      .contact-note ul {
-        list-style: disc;
-        margin-left: 1.5rem;
-        color: var(--text-secondary);
-        line-height: 1.8;
-        font-size: 0.9rem;
-      }
-
-      .contact-note ul li {
-        margin-bottom: 0.5rem;
-      }
-
-      .contact-note a {
-        color: var(--accent-primary);
-        text-decoration: underline;
-      }
-
-      .warning-text {
-        font-weight: 600;
-        color: #ef4444;
-        margin-top: 1rem;
-      }
-    `}</style>
-  </>
+    </>
   );
 }
