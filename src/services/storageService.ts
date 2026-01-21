@@ -44,6 +44,9 @@ export interface StorageService {
   // Utility
   clearAll(): Promise<void>;
 
+  // Clear only 90-day journey data (preserves mood and flip journals)
+  clearJourneyData(): Promise<void>;
+
   // Optional: Set user ID for encryption (only applicable to LocalStorageService)
   setUserId?(userId: string | undefined): void;
 }

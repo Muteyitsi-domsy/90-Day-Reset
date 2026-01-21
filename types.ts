@@ -61,6 +61,7 @@ export interface UserProfile {
   month_count: number; // Added for monthly summary tracking
   lastMilestoneDayCompleted: number;
   journeyCompleted?: boolean;
+  journeyCompletedDate?: string; // ISO date when journey completed (for keepsake window)
   streak: number;
   lastEntryDate: string;
   isPaused?: boolean;

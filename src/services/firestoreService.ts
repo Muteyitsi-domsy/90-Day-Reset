@@ -347,6 +347,28 @@ export class FirestoreService implements StorageService {
   }
 
   /**
+   * Clear only 90-day journey data (journal entries including reports)
+   * Preserves: mood entries, flip entries, user profile, settings
+   */
+  async clearJourneyData(): Promise<void> {
+    try {
+      const batch = writeBatch(db);
+
+      // Delete all journal entries (daily entries, weekly reports, monthly reports)
+      const entriesCollectionRef = collection(db, 'users', this.userId, 'journalEntries');
+      const entriesSnapshot = await getDocs(entriesCollectionRef);
+      entriesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Error clearing journey data from Firestore:', error);
+      throw new Error('Failed to clear journey data from cloud');
+    }
+  }
+
+  /**
    * Batch upload multiple entries (useful for migration)
    */
   async batchSaveEntries(entries: JournalEntry[]): Promise<void> {

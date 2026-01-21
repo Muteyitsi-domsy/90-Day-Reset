@@ -8,6 +8,8 @@ import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
 import { safeRequestNotificationPermission, scheduleDailyReminder, scheduleEveningReminder } from './utils/notifications';
 import CelebrationScreen from './components/CelebrationScreen';
+import KeepsakeWindow from './components/KeepsakeWindow';
+import NewJourneyChoiceModal from './components/NewJourneyChoiceModal';
 import JournalView from './components/JournalView';
 import { detectCrisis, CrisisSeverity } from './utils/crisisDetector';
 import CrisisModal from './components/CrisisModal';
@@ -52,6 +54,24 @@ const getLocalDateString = (date: Date = new Date()): string => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+// Helper function to calculate days remaining in keepsake window (5 days)
+const KEEPSAKE_WINDOW_DAYS = 5;
+const getKeepsakeWindowDaysRemaining = (journeyCompletedDate: string | undefined): number => {
+  if (!journeyCompletedDate) return KEEPSAKE_WINDOW_DAYS;
+
+  const completedDate = new Date(journeyCompletedDate);
+  const today = new Date();
+
+  // Reset times to compare just dates
+  completedDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const daysSinceCompletion = Math.floor((today.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = KEEPSAKE_WINDOW_DAYS - daysSinceCompletion;
+
+  return Math.max(0, daysRemaining);
 };
 
 // Helper function to remove duplicate weekly/monthly reports
@@ -147,6 +167,10 @@ const App: React.FC = () => {
   const [monthlySummaryData, setMonthlySummaryData] = useState<MonthlySummaryData | null>(null);
   const [annualRecapData, setAnnualRecapData] = useState<AnnualRecapData | null>(null);
   const [canRedownloadAnnual, setCanRedownloadAnnual] = useState(false);
+
+  // New journey state (for post-completion flow)
+  const [showNewJourneyModal, setShowNewJourneyModal] = useState(false);
+  const [newJourneyOptions, setNewJourneyOptions] = useState<{ keepManifesto: boolean; keepIntentions: boolean } | null>(null);
 
   // Firebase auth state and storage service
   const { user, loading: authLoading } = useAuth();
@@ -1424,7 +1448,7 @@ const App: React.FC = () => {
     if (!userProfile) return;
 
     setIsLoading(true);
-    
+
     try {
         const dailyHistory = journalEntries.filter(e => e.type === 'daily');
         // Filter hunches based on settings
@@ -1434,13 +1458,17 @@ const App: React.FC = () => {
 
         const summaryText = await generateFinalSummary(userProfile, dailyHistory, hunchHistory);
         setFinalSummaryText(summaryText);
-        setUserProfile(prev => ({ ...prev!, journeyCompleted: true }));
+        // Set both journeyCompleted and journeyCompletedDate (only if not already set)
+        const completedDate = userProfile.journeyCompletedDate || new Date().toISOString();
+        setUserProfile(prev => ({ ...prev!, journeyCompleted: true, journeyCompletedDate: completedDate }));
         setIsJourneyOver(true);
     } catch (error) {
         console.error("Error generating final summary:", error);
         const fallbackSummary = "**Your 90-Day Evolution**\n\nThe journey may be over, but the growth continues. Thank you for showing up for yourself.";
         setFinalSummaryText(fallbackSummary);
-        setUserProfile(prev => ({ ...prev!, journeyCompleted: true }));
+        // Set both journeyCompleted and journeyCompletedDate (only if not already set)
+        const completedDate = userProfile.journeyCompletedDate || new Date().toISOString();
+        setUserProfile(prev => ({ ...prev!, journeyCompleted: true, journeyCompletedDate: completedDate }));
         setIsJourneyOver(true);
     } finally {
         setIsLoading(false);
@@ -1508,14 +1536,53 @@ const App: React.FC = () => {
   }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
 
   const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'name' | 'intentions'>) => {
-    setUserProfile({ ...profile, name: userName, intentions: '', month_count: 1 });
-    setAppState('intention_setting');
+    // Check if this is a new journey with preserved data
+    if (newJourneyOptions && userProfile) {
+      // Update arc from onboarding, preserve other data as configured
+      const updatedProfile = {
+        ...userProfile,
+        arc: profile.arc,
+        startDate: new Date().toISOString(),
+        week_count: 1,
+        month_count: 1,
+        lastMilestoneDayCompleted: 0,
+        journeyCompleted: false,
+        journeyCompletedDate: undefined,
+        streak: 0,
+        lastEntryDate: '',
+      };
+      setUserProfile(updatedProfile);
+
+      // Determine next step based on what's being kept
+      if (newJourneyOptions.keepIntentions && newJourneyOptions.keepManifesto) {
+        // Both kept - skip to completion
+        setAppState('onboarding_completion');
+      } else if (newJourneyOptions.keepIntentions) {
+        // Only intentions kept - need new manifesto
+        setAppState('scripting');
+      } else if (newJourneyOptions.keepManifesto) {
+        // Only manifesto kept - need new intentions
+        setAppState('intention_setting');
+      } else {
+        // Neither kept - full flow
+        setAppState('intention_setting');
+      }
+    } else {
+      // First-time user flow
+      setUserProfile({ ...profile, name: userName, intentions: '', month_count: 1 });
+      setAppState('intention_setting');
+    }
   }
-  
+
   const handleIntentionSettingComplete = (intentions: string) => {
     if (userProfile) {
-        setUserProfile(prev => ({...prev!, intentions}));
+      setUserProfile(prev => ({...prev!, intentions}));
+      // Check if we should skip scripting (manifesto already exists)
+      if (newJourneyOptions?.keepManifesto && userProfile.idealSelfManifesto) {
+        setAppState('onboarding_completion');
+      } else {
         setAppState('scripting');
+      }
     }
   }
 
@@ -1523,25 +1590,105 @@ const App: React.FC = () => {
     if (userProfile) {
         setUserProfile(prev => ({...prev!, idealSelfManifesto: manifesto}));
         setAppState('onboarding_completion');
+        // Clear new journey options after completing the flow
+        setNewJourneyOptions(null);
     }
   }
 
   const handleOnboardingCompletion = async (newSettings: { dailyAnalysis: boolean; weeklyReports: boolean; monthlyReports: boolean }) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
     setAppState('journal');
+    // Clear new journey options after completing the flow
+    setNewJourneyOptions(null);
     const permissionGranted = await safeRequestNotificationPermission();
     if (permissionGranted) {
         scheduleDailyReminder();
     }
   };
 
-  const restartJourney = () => {
-    if (window.confirm("Are you sure you want to restart? All data will be cleared.")) {
-        localStorage.removeItem('userProfile');
-        localStorage.removeItem('journalEntries');
-        localStorage.removeItem('settings');
-        window.location.reload();
+  // Opens the new journey choice modal
+  const handleStartNewJourney = () => {
+    setShowNewJourneyModal(true);
+  };
+
+  // Handles the user's choice from the new journey modal
+  const handleNewJourneyConfirm = async (keepManifesto: boolean, keepIntentions: boolean) => {
+    setShowNewJourneyModal(false);
+    setIsLoading(true);
+
+    try {
+      // Clear only journey data (preserves mood and flip journals)
+      await storageService.clearJourneyData();
+
+      // Store the options for the onboarding flow
+      setNewJourneyOptions({ keepManifesto, keepIntentions });
+
+      // Reset journey-related state
+      setJournalEntries([]);
+      setIsJourneyOver(false);
+      setFinalSummaryText('');
+      setDailyPrompt(null);
+
+      // Prepare the new profile
+      if (userProfile) {
+        const newProfile: UserProfile = {
+          name: userProfile.name,
+          arc: userProfile.arc, // Will be updated during onboarding
+          startDate: new Date().toISOString(),
+          intentions: keepIntentions ? userProfile.intentions : '',
+          idealSelfManifesto: keepManifesto ? userProfile.idealSelfManifesto : '',
+          week_count: 1,
+          month_count: 1,
+          lastMilestoneDayCompleted: 0,
+          journeyCompleted: false,
+          journeyCompletedDate: undefined,
+          streak: 0,
+          lastEntryDate: '',
+          moodStreak: userProfile.moodStreak, // Preserve mood streak
+          lastMoodEntryDate: userProfile.lastMoodEntryDate, // Preserve mood data
+          moodSummaryState: userProfile.moodSummaryState, // Preserve mood summary state
+        };
+
+        // Save the new profile
+        await storageService.saveUserProfile(newProfile);
+        setUserProfile(newProfile);
+
+        // Reset daily completions in settings
+        const updatedSettings = {
+          ...settings,
+          dailyCompletions: [],
+          ritualCompletedToday: false,
+          lastRitualDate: undefined,
+        };
+        await storageService.saveSettings(updatedSettings);
+        setSettings(updatedSettings);
+
+        // Determine next step based on what user is keeping
+        if (keepManifesto && keepIntentions) {
+          // Skip to onboarding (arc selection only), then completion
+          setAppState('onboarding');
+        } else if (keepManifesto) {
+          // Need new intentions, skip to intention setting
+          setAppState('onboarding');
+        } else if (keepIntentions) {
+          // Need new manifesto, go through arc selection and scripting
+          setAppState('onboarding');
+        } else {
+          // Full onboarding
+          setAppState('onboarding');
+        }
+      }
+    } catch (error) {
+      console.error('Error starting new journey:', error);
+      alert('There was an error starting your new journey. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Legacy restart (for backward compatibility, now uses new flow)
+  const restartJourney = () => {
+    handleStartNewJourney();
   };
 
   const exportData = () => {
@@ -1663,15 +1810,27 @@ const App: React.FC = () => {
     }
 
     if (isJourneyOver && finalSummaryText && userProfile) {
+      const daysRemaining = getKeepsakeWindowDaysRemaining(userProfile.journeyCompletedDate);
+
       return (
-        <CelebrationScreen
-          completionSummary={finalSummaryText}
-          userProfile={userProfile}
-          journalEntries={journalEntries}
-          settings={settings}
-          onRestart={restartJourney}
-          onExport={exportData}
-        />
+        <>
+          <KeepsakeWindow
+            completionSummary={finalSummaryText}
+            userProfile={userProfile}
+            journalEntries={journalEntries}
+            settings={settings}
+            daysRemaining={daysRemaining}
+            onStartNewJourney={handleStartNewJourney}
+            onExport={exportData}
+          />
+          <NewJourneyChoiceModal
+            isOpen={showNewJourneyModal}
+            onClose={() => setShowNewJourneyModal(false)}
+            onConfirm={handleNewJourneyConfirm}
+            hasManifesto={!!userProfile.idealSelfManifesto}
+            hasIntentions={!!userProfile.intentions}
+          />
+        </>
       );
     }
 

@@ -357,6 +357,19 @@ export class LocalStorageService implements StorageService {
     }
   }
 
+  /**
+   * Clear only 90-day journey data (journal entries including reports)
+   * Preserves: mood entries, flip entries, settings
+   */
+  async clearJourneyData(): Promise<void> {
+    try {
+      localStorage.removeItem(this.KEYS.JOURNAL_ENTRIES);
+    } catch (error) {
+      console.error('Error clearing journey data from localStorage:', error);
+      throw new Error('Failed to clear journey data');
+    }
+  }
+
   // Private helper to save all entries
   private async _saveAllEntries(entries: JournalEntry[]): Promise<void> {
     try {
