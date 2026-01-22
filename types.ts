@@ -237,3 +237,44 @@ export interface AnnualRecapData {
   mostActiveMonth: string;
   moodsByCategory: Record<MoodContext, CategoryMoodData>; // Top 3 moods per category
 }
+
+// Subscription Types
+export type SubscriptionTier = 'free' | 'trial' | 'monthly' | 'yearly' | 'beta';
+
+export type SubscriptionStatus =
+  | 'active'           // Paid and active
+  | 'trial'            // In free trial period
+  | 'expired'          // Subscription expired
+  | 'cancelled'        // Cancelled but still active until end of period
+  | 'grace_period'     // Payment failed, in grace period
+  | 'none';            // Never subscribed
+
+export interface SubscriptionState {
+  status: SubscriptionStatus;
+  tier: SubscriptionTier;
+  isActive: boolean;           // Whether user has full access
+  expirationDate: string | null;
+  trialEndDate: string | null;
+  isBetaUser: boolean;
+  betaCodeUsed: string | null;
+  willRenew: boolean;
+  productId: string | null;
+}
+
+export interface SubscriptionProduct {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  priceAmount: number;
+  currency: string;
+  period: 'monthly' | 'yearly';
+  trialDays: number;
+}
+
+export interface SubscriptionOffering {
+  identifier: string;
+  serverDescription: string;
+  monthly: SubscriptionProduct | null;
+  yearly: SubscriptionProduct | null;
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Renew90</string>
+    <string name="title_activity_main">Renew90</string>
+    <string name="package_name">app.renew90.journal</string>
+    <string name="custom_url_scheme">app.renew90.journal</string>
+</resources>
