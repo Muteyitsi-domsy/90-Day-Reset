@@ -417,8 +417,8 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
         <div className="max-w-3xl w-full mx-auto mt-12">
           {renderProgressBar()}
         </div>
-        <main className="flex-1 overflow-y-auto flex items-center justify-center">
-          <div className={`max-w-3xl w-full ${step === 'journal' ? 'h-full flex flex-col pt-0' : ''}`}>
+        <main className={`flex-1 overflow-y-auto flex justify-center ${step === 'journal' ? 'items-center' : 'items-start pt-4'}`}>
+          <div className={`max-w-3xl w-full pb-8 ${step === 'journal' ? 'h-full flex flex-col pt-0' : ''}`}>
             {renderContent()}
           </div>
         </main>
