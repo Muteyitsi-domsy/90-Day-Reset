@@ -36,7 +36,7 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
           <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-light text-[var(--text-primary)]">Terms of Service</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: January 2025</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: January 22, 2026</p>
             </div>
             <button
               onClick={onClose}
@@ -120,15 +120,23 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
 
           <div className="terms-section">
             <h2>6. AI-Generated Content</h2>
+            <p className="warning">
+              <strong>IMPORTANT: AI CAN MAKE MISTAKES AND IS NOT ALWAYS ACCURATE</strong>
+            </p>
             <p>
-              The App uses Google Gemini AI to analyze your journal entries and generate insights. Please note:
+              The App uses Google Gemini AI to analyze your journal entries and generate insights, reports, and prompts.
             </p>
             <ul>
-              <li>AI-generated insights are suggestions, not professional advice</li>
-              <li>The App is not a substitute for professional mental health care</li>
-              <li>AI responses may not always be accurate or appropriate</li>
-              <li>You should use your own judgment when considering AI insights</li>
+              <li><strong>Verify all AI content:</strong> AI-generated insights, reports, and suggestions should be independently verified before relying on them</li>
+              <li><strong>Not professional advice:</strong> AI content is NOT medical, psychological, therapeutic, or professional advice of any kind</li>
+              <li><strong>Accuracy not guaranteed:</strong> AI may contain errors, inaccuracies, or inappropriate suggestions</li>
+              <li><strong>Interpretation errors:</strong> AI may misinterpret context, tone, cultural nuances, or meaning</li>
+              <li><strong>Your responsibility:</strong> You are solely responsible for evaluating and acting on AI-generated content</li>
+              <li><strong>Optional feature:</strong> You can disable AI analysis in Settings</li>
             </ul>
+            <p className="note">
+              AI-generated content is provided "AS IS" without warranty. We make no guarantees about accuracy, completeness, or appropriateness of AI insights.
+            </p>
           </div>
 
           <div className="terms-section">
@@ -210,10 +218,21 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
           </div>
 
           <div className="terms-section">
-            <h2>14. Governing Law</h2>
+            <h2>14. Governing Law & Dispute Resolution</h2>
             <p>
-              These Terms are governed by the laws of [Your Jurisdiction]. Any disputes shall be resolved in
-              the courts of [Your Jurisdiction].
+              These Terms are governed by the laws of the Republic of Kenya.
+            </p>
+            <h3>Arbitration</h3>
+            <ul>
+              <li>Disputes shall be resolved through binding arbitration</li>
+              <li>Arbitration conducted under the <strong>Arbitration Act, 1995 (Cap 49, Laws of Kenya)</strong></li>
+              <li>Administered by the <strong>Nairobi Centre for International Arbitration (NCIA)</strong></li>
+              <li>Seat of arbitration: <strong>Nairobi, Kenya</strong></li>
+              <li>Language of proceedings: <strong>English</strong></li>
+            </ul>
+            <h3>USA Users</h3>
+            <p>
+              For US residents, applicable federal and state consumer protection laws also apply. You agree to resolve disputes on an individual basis and waive any right to participate in class action lawsuits.
             </p>
           </div>
 
@@ -285,6 +304,14 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
         margin: 1rem 0;
         border-radius: 4px;
         font-weight: 500;
+      }
+
+      .terms-section .note {
+        background: rgba(99, 102, 241, 0.1);
+        border-left: 4px solid var(--accent-color);
+        padding: 0.75rem;
+        margin: 1rem 0;
+        border-radius: 4px;
       }
     `}</style>
   </>

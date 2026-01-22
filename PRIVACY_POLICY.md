@@ -1,18 +1,18 @@
 # Privacy Policy
 
-**90-Day Identity Reset App**
-**Effective Date:** January 16, 2026
-**Last Updated:** January 16, 2026
+**90-Day Identity Reset App (Renew90)**
+**Effective Date:** January 22, 2026
+**Last Updated:** January 22, 2026
 
 ---
 
 ## Introduction
 
-Welcome to the 90-Day Identity Reset App ("we," "our," or "us"). We are committed to protecting your privacy and the confidentiality of your personal information, including your journal entries, mood data, and personal reflections.
+Welcome to the 90-Day Identity Reset App ("Renew90," "the App," "we," "our," or "us"). We respect your privacy and are committed to protecting your personal data, including your journal entries, mood data, and personal reflections.
 
-This Privacy Policy explains how we collect, use, store, and protect your information when you use our mental health journaling application.
+This Privacy Policy explains how we collect, use, store, and protect your information when you use our journaling application. By using the App, you consent to the practices described in this policy.
 
-**Important:** This app handles highly sensitive personal health information. We have implemented enterprise-grade security measures to protect your data.
+**Important:** This app handles sensitive personal information. We have implemented enterprise-grade security measures to protect your data. Creating an account is **completely optional**—you can use the app entirely offline with local storage without providing any personal information.
 
 ---
 
@@ -20,15 +20,18 @@ This Privacy Policy explains how we collect, use, store, and protect your inform
 
 1. [Information We Collect](#information-we-collect)
 2. [How We Use Your Information](#how-we-use-your-information)
-3. [Data Security Measures](#data-security-measures)
-4. [Data Storage and Encryption](#data-storage-and-encryption)
-5. [Third-Party Services](#third-party-services)
-6. [Data Retention](#data-retention)
-7. [Your Rights and Choices](#your-rights-and-choices)
-8. [Children's Privacy](#childrens-privacy)
-9. [International Data Transfers](#international-data-transfers)
-10. [Changes to This Policy](#changes-to-this-policy)
-11. [Contact Us](#contact-us)
+3. [AI-Generated Content and Limitations](#ai-generated-content-and-limitations)
+4. [Data Security Measures](#data-security-measures)
+5. [Data Storage and Encryption](#data-storage-and-encryption)
+6. [Third-Party Services](#third-party-services)
+7. [Admin Access](#admin-access)
+8. [Data Retention](#data-retention)
+9. [Your Rights and Choices](#your-rights-and-choices)
+10. [USA Privacy Compliance](#usa-privacy-compliance)
+11. [Children's Privacy](#childrens-privacy)
+12. [International Data Transfers](#international-data-transfers)
+13. [Changes to This Policy](#changes-to-this-policy)
+14. [Contact Us](#contact-us)
 
 ---
 
@@ -75,9 +78,10 @@ This Privacy Policy explains how we collect, use, store, and protect your inform
 
 ### Primary Uses
 1. **Journaling Service** - To provide core journaling and reflection features
-2. **AI Analysis** - To generate personalized insights and summaries
-3. **Progress Tracking** - To track your 90-day journey and streaks
+2. **AI Analysis** - To generate personalized insights and summaries using Google Gemini AI
+3. **Progress Tracking** - To track your 90-day journey, streaks, and milestones
 4. **Crisis Detection** - To identify concerning language and provide mental health resources
+5. **App Improvement** - To improve the app using aggregate, anonymized data only
 
 ### Security Uses
 1. **Authentication** - To verify your identity and secure your account
@@ -87,7 +91,8 @@ This Privacy Policy explains how we collect, use, store, and protect your inform
 
 ### Communication (Optional)
 1. **PIN Recovery** - To send recovery codes via email if you enable PIN lock
-2. **Important Updates** - To notify you of critical security or service changes
+2. **Password Reset** - To send password reset emails if requested
+3. **Important Updates** - To notify you of critical security or service changes
 
 **We will NEVER:**
 - ❌ Sell your personal data to third parties
@@ -95,6 +100,43 @@ This Privacy Policy explains how we collect, use, store, and protect your inform
 - ❌ Share your mood data with advertisers
 - ❌ Analyze your data for purposes other than providing the service
 - ❌ Share your information without your explicit consent (except as required by law)
+- ❌ Rent or trade your personal information
+
+---
+
+## AI-Generated Content and Limitations
+
+### Important AI Disclaimer
+
+**The App uses Google Gemini AI to analyze your journal entries and generate insights, reports, and prompts. You acknowledge and agree that:**
+
+⚠️ **AI CAN MAKE MISTAKES** - Artificial intelligence technology, while advanced, is not infallible. AI-generated content may contain errors, inaccuracies, or inappropriate suggestions.
+
+⚠️ **VERIFY ALL INFORMATION** - Any insights, patterns, suggestions, or analysis provided by AI features should be independently verified. Do not rely solely on AI-generated reports or recommendations for important decisions.
+
+⚠️ **NOT PROFESSIONAL ADVICE** - AI-generated content is NOT medical, psychological, therapeutic, or professional advice of any kind. The insights are algorithmic interpretations and should be used for personal reflection only.
+
+⚠️ **LIMITATIONS OF AI ANALYSIS** - AI may:
+- Misinterpret context, tone, or meaning in your entries
+- Generate insights that are not relevant to your situation
+- Fail to detect important patterns or concerns
+- Produce inconsistent results for similar content
+- Not understand cultural, personal, or situational nuances
+
+⚠️ **YOUR RESPONSIBILITY** - You are solely responsible for:
+- Evaluating the accuracy and appropriateness of AI-generated content
+- Deciding whether to act on any AI suggestions
+- Seeking professional help when needed (AI is not a substitute)
+- Using your own judgment when interpreting insights
+
+### How AI Analysis Works
+1. Your journal entry text is sent to Google Gemini API for analysis
+2. The API processes patterns, themes, and emotional content
+3. Generated insights are returned and displayed to you
+4. Your prompts are processed securely and are not used for AI model training
+
+### Opting Out
+You may disable AI analysis at any time in Settings → Insight Frequency → None. When disabled, no journal content is sent to external AI services.
 
 ---
 
@@ -237,6 +279,18 @@ We use the following trusted third-party services to provide our application:
 
 ---
 
+## Admin Access
+
+If you use cloud backup, project administrators can technically access data for debugging and support purposes. However:
+- We do not actively read your journal entries
+- Access is only used for legitimate support and technical purposes
+- All admin access is logged and monitored
+- Access requires documented justification
+
+**Note:** If you prefer complete privacy, use the app without creating an account (local storage only mode).
+
+---
+
 ## Data Retention
 
 ### Active Account Data
@@ -249,6 +303,10 @@ We use the following trusted third-party services to provide our application:
 - **Audit logs:** Retained for 90 days, then automatically deleted
 - **Authentication logs:** Retained for 90 days
 - **Error logs (Sentry):** Retained for 90 days
+
+### Local Storage Data
+- Data stored locally can be cleared via browser settings or the app's delete function
+- Local data is never automatically transmitted to our servers without your action
 
 ### Account Deletion
 When you delete your account:
@@ -267,7 +325,7 @@ When you delete your account:
 3. **Retained for up to 90 days** (legal/security):
    - Critical security logs (if required by law or ongoing investigation)
 
-**Right to erasure:** You can request complete data deletion at any time by emailing [your contact email].
+**Right to erasure:** You can request complete data deletion at any time by emailing privacy@renew90.app.
 
 ---
 
@@ -313,11 +371,67 @@ You have the following rights regarding your personal data:
 
 ---
 
+## USA Privacy Compliance
+
+We comply with applicable United States federal and state privacy laws.
+
+### California Consumer Privacy Act (CCPA) / California Privacy Rights Act (CPRA)
+
+If you are a California resident, you have specific rights under the CCPA/CPRA:
+
+**Your Rights:**
+1. **Right to Know** - Request disclosure of personal information collected, used, and shared
+2. **Right to Delete** - Request deletion of your personal information
+3. **Right to Correct** - Request correction of inaccurate personal information
+4. **Right to Opt-Out** - Opt out of the sale or sharing of personal information
+5. **Right to Non-Discrimination** - Not be discriminated against for exercising your rights
+6. **Right to Limit Use** - Limit use of sensitive personal information
+
+**Our Practices:**
+- We do **NOT** sell your personal information
+- We do **NOT** share your personal information for cross-context behavioral advertising
+- We do **NOT** use sensitive personal information for purposes other than providing the service
+
+**To Exercise Your Rights:** Email privacy@renew90.app with subject "California Privacy Request" or use the in-app data management features.
+
+### Virginia Consumer Data Protection Act (VCDPA)
+
+Virginia residents have similar rights including access, correction, deletion, data portability, and opt-out rights.
+
+### Colorado Privacy Act (CPA)
+
+Colorado residents have rights to access, correct, delete, and obtain a portable copy of their data.
+
+### Connecticut Data Privacy Act (CTDPA)
+
+Connecticut residents have rights including access, correction, deletion, portability, and opt-out of targeted advertising.
+
+### Utah Consumer Privacy Act (UCPA)
+
+Utah residents have rights to access, delete, and obtain a portable copy of their data.
+
+### Other State Laws
+
+We monitor and comply with emerging state privacy laws. Regardless of your state of residence, we provide all users with:
+- Access to their data via in-app export features
+- Ability to delete their data at any time
+- Transparency about data collection and use
+- Choice regarding optional features like AI analysis
+
+### Federal Compliance
+
+We comply with applicable federal laws including:
+- **FTC Act Section 5** - Unfair or deceptive practices
+- **COPPA** - We do not knowingly collect data from children under 13
+- **ECPA** - Electronic Communications Privacy Act protections
+
+---
+
 ## Children's Privacy
 
 The 90-Day Identity Reset App is **not intended for children under 18 years of age.**
 
-We do not knowingly collect personal information from children under 18. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately at [your contact email], and we will delete the information.
+We do not knowingly collect personal information from children under 13 (as required by COPPA) or children under 18 (our service restriction). If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately at privacy@renew90.app, and we will delete the information.
 
 **Age Verification:** By using this app, you confirm you are 18 years or older.
 
@@ -362,12 +476,15 @@ We encourage you to review this Privacy Policy periodically.
 
 If you have questions, concerns, or requests regarding this Privacy Policy or your personal data:
 
-**Email:** [Your Contact Email]
-**Subject Line:** "Privacy Policy Question"
+**Privacy Inquiries:** privacy@renew90.app
+**General Administration:** admin@renew90.app
+**General Support:** support@renew90.app
 
-**Security Issues:** If you discover a security vulnerability, please report it immediately to [your security contact email] with subject "Security Issue - URGENT"
+**Security Issues:** If you discover a security vulnerability, please report it immediately to security@renew90.app with subject "Security Issue - URGENT"
 
 **Response Time:** We aim to respond to all privacy inquiries within 7 business days.
+
+You can also reach us through the app's Contact page in the Menu.
 
 ---
 
@@ -375,14 +492,16 @@ If you have questions, concerns, or requests regarding this Privacy Policy or yo
 
 ✅ **Your data is encrypted** - AES-256 encryption for local storage, TLS for transmission
 ✅ **Strong authentication** - 12+ character passwords, optional PIN lock, optional MFA
-✅ **You own your data** - Export or delete anytime
+✅ **You own your data** - Export or delete anytime (Menu → Data & Privacy)
 ✅ **No selling of data** - We never sell your personal information
 ✅ **Transparent third parties** - All service providers disclosed
 ✅ **Security-first design** - Enterprise-grade security measures
-✅ **Your rights protected** - GDPR and CCPA compliant
+✅ **Your rights protected** - GDPR, CCPA, and state privacy laws compliant
 ✅ **Privacy-preserving AI** - Your journal entries used only for your insights
+✅ **AI limitations disclosed** - AI can make mistakes; verify all information
 ✅ **Audit trail** - Complete visibility into security events
 ✅ **Crisis detection privacy** - Analysis happens locally, not shared externally
+✅ **Optional cloud** - Use entirely offline with local storage only
 
 ---
 
@@ -401,4 +520,5 @@ You may withdraw consent at any time for optional features.
 
 **By using the 90-Day Identity Reset App, you acknowledge that you have read and understood this Privacy Policy and agree to its terms.**
 
-Last Updated: January 16, 2026
+Last Updated: January 22, 2026
+Version: 2.0.0

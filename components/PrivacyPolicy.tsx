@@ -36,7 +36,7 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-light text-[var(--text-primary)]">Privacy Policy</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: January 2025</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: January 22, 2026</p>
             </div>
             <button
               onClick={onClose}
@@ -109,17 +109,32 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           </div>
 
           <div className="policy-section">
-            <h2>5. Third-Party Services</h2>
+            <h2>5. AI-Generated Content Disclaimer</h2>
+            <p className="warning">
+              <strong>IMPORTANT:</strong> This App uses Google Gemini AI to generate insights, reports, and prompts. AI can make mistakes and is not always accurate.
+            </p>
+            <ul>
+              <li><strong>Verify all AI content:</strong> AI-generated insights, reports, and suggestions should be independently verified before relying on them</li>
+              <li><strong>Not professional advice:</strong> AI content is NOT medical, psychological, therapeutic, or professional advice of any kind</li>
+              <li><strong>Interpretation errors:</strong> AI may misinterpret context, tone, cultural nuances, or the meaning of your entries</li>
+              <li><strong>Your responsibility:</strong> You are solely responsible for evaluating and acting on AI-generated content</li>
+              <li><strong>Optional feature:</strong> You can disable AI analysis in Settings → Insight Frequency → None</li>
+            </ul>
+          </div>
+
+          <div className="policy-section">
+            <h2>6. Third-Party Services</h2>
             <ul>
               <li><strong>Firebase (Google):</strong> Cloud storage, authentication, and hosting</li>
               <li><strong>Google Gemini AI:</strong> Analyzes journal entries to generate insights (processed securely, not used for AI training)</li>
               <li><strong>Sentry:</strong> Error monitoring and performance tracking (no journal content logged)</li>
               <li><strong>Vercel:</strong> Application hosting</li>
+              <li><strong>EmailJS:</strong> Sending PIN recovery codes (optional feature)</li>
             </ul>
           </div>
 
           <div className="policy-section">
-            <h2>6. Admin Access</h2>
+            <h2>7. Admin Access</h2>
             <p>
               If you use cloud backup, project administrators can technically access data for debugging and support purposes.
               However:
@@ -135,7 +150,7 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           </div>
 
           <div className="policy-section">
-            <h2>7. Your Rights</h2>
+            <h2>8. Your Rights</h2>
             <p>You have the right to:</p>
             <ul>
               <li><strong>Export:</strong> Download all your data as JSON (Menu → Data & Privacy → Download All Data)</li>
@@ -143,10 +158,16 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
               <li><strong>Access:</strong> View all your stored data within the app</li>
               <li><strong>Opt-out:</strong> Use the app entirely offline without an account</li>
             </ul>
+            <h3>USA Privacy Rights:</h3>
+            <ul>
+              <li><strong>California (CCPA/CPRA):</strong> Right to know, delete, correct, and opt-out</li>
+              <li><strong>Virginia, Colorado, Connecticut, Utah:</strong> Similar state privacy rights apply</li>
+              <li><strong>We do NOT sell your personal information</strong></li>
+            </ul>
           </div>
 
           <div className="policy-section">
-            <h2>8. Data Retention</h2>
+            <h2>9. Data Retention</h2>
             <ul>
               <li>Data stored as long as your account is active</li>
               <li>Deleted data removed immediately from production database</li>
@@ -156,14 +177,14 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           </div>
 
           <div className="policy-section">
-            <h2>9. Children's Privacy</h2>
+            <h2>10. Children's Privacy</h2>
             <p>
-              This app is not intended for children under 13. We do not knowingly collect data from children under 13.
+              This app is not intended for children under 18. We do not knowingly collect data from children under 13 (COPPA) or under 18 (our policy).
             </p>
           </div>
 
           <div className="policy-section">
-            <h2>10. Changes to This Policy</h2>
+            <h2>11. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will notify users of material changes via the app
               or email (if you have an account).
@@ -171,7 +192,7 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           </div>
 
           <div className="policy-section">
-            <h2>11. Contact Us</h2>
+            <h2>12. Contact Us</h2>
             <p>
               For privacy concerns or questions, please contact us:
             </p>
@@ -236,6 +257,15 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
       .policy-section .highlight {
         background: rgba(16, 185, 129, 0.1);
         border-left: 4px solid #10b981;
+        padding: 0.75rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+        font-weight: 500;
+      }
+
+      .policy-section .warning {
+        background: rgba(239, 68, 68, 0.1);
+        border-left: 4px solid #ef4444;
         padding: 0.75rem;
         margin: 1rem 0;
         border-radius: 4px;
