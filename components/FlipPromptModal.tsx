@@ -4,13 +4,77 @@ interface FlipPromptModalProps {
   onAccept: () => void;
   onDecline: () => void;
   remainingFlips: number;
+  isExhausted?: boolean; // When true, shows exhausted message instead of prompt
 }
 
 const FlipPromptModal: React.FC<FlipPromptModalProps> = ({
   onAccept,
   onDecline,
   remainingFlips,
+  isExhausted = false,
 }) => {
+  // Show exhausted message when no flips remaining
+  if (isExhausted) {
+    return (
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="flip-exhausted-title"
+      >
+        <div className="bg-[var(--card-bg)] rounded-2xl shadow-2xl border border-[var(--card-border)] max-w-md w-full p-6 animate-scale-in">
+          {/* Icon */}
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-3">
+              <span className="text-3xl">✨</span>
+            </div>
+            <h2
+              id="flip-exhausted-title"
+              className="text-xl font-semibold text-[var(--text-primary)]"
+            >
+              Great Journaling Today!
+            </h2>
+          </div>
+
+          {/* Description */}
+          <p className="text-[var(--text-secondary)] text-center mb-4 leading-relaxed">
+            You've used all 3 of your daily thought flips. Your reflections have been saved.
+          </p>
+
+          <p className="text-[var(--text-secondary)] text-center mb-6 leading-relaxed">
+            Come back tomorrow for 3 fresh opportunities to flip your thoughts into new perspectives! 🌅
+          </p>
+
+          {/* Single dismiss button */}
+          <button
+            onClick={onDecline}
+            className="w-full py-3 px-4 rounded-lg bg-[var(--accent-primary)] text-white font-medium hover:bg-[var(--accent-primary-hover)] transition-colors"
+          >
+            Got It
+          </button>
+        </div>
+
+        <style>{`
+          @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes scale-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.2s ease-out;
+          }
+          .animate-scale-in {
+            animation: scale-in 0.2s ease-out;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Regular flip prompt when flips are available
   return (
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"

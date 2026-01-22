@@ -160,6 +160,7 @@ const App: React.FC = () => {
   const [isSavingFlipEntry, setIsSavingFlipEntry] = useState(false);
   const [pendingFlipMoodEntry, setPendingFlipMoodEntry] = useState<MoodJournalEntry | null>(null);
   const [showFlipPrompt, setShowFlipPrompt] = useState(false);
+  const [flipsExhausted, setFlipsExhausted] = useState(false);
 
   // Mood summary state
   const [showMonthlySummaryModal, setShowMonthlySummaryModal] = useState(false);
@@ -926,11 +927,11 @@ const App: React.FC = () => {
       // Check if user can flip this entry (daily limit is 3)
       const today = getFlipLocalDateString();
       const todayFlipCount = flipEntries.filter(e => e.date === today).length;
-      if (todayFlipCount < 3) {
-        // Show flip prompt
-        setPendingFlipMoodEntry(newEntry);
-        setShowFlipPrompt(true);
-      }
+
+      // Always show prompt after mood entry - either to flip or to inform about exhausted flips
+      setPendingFlipMoodEntry(newEntry);
+      setShowFlipPrompt(true);
+      setFlipsExhausted(todayFlipCount >= 3);
     } catch (error) {
       console.error('Error saving mood entry:', error);
       alert('Failed to save mood entry. Please try again.');
@@ -1165,12 +1166,14 @@ const App: React.FC = () => {
   // Flip prompt handlers (after mood entry save)
   const handleAcceptFlipPrompt = () => {
     setShowFlipPrompt(false);
+    setFlipsExhausted(false);
     // Open flip modal with the mood entry's journal text as initial challenge
     setShowFlipInputModal(true);
   };
 
   const handleDeclineFlipPrompt = () => {
     setShowFlipPrompt(false);
+    setFlipsExhausted(false);
     // Keep pendingFlipMoodEntry so user can flip later from MoodJournalView
     // It will be cleared when a flip is actually saved or when a new mood entry is created
   };
@@ -2156,6 +2159,7 @@ const App: React.FC = () => {
           onAccept={handleAcceptFlipPrompt}
           onDecline={handleDeclineFlipPrompt}
           remainingFlips={3 - flipEntries.filter(e => e.date === getFlipLocalDateString()).length}
+          isExhausted={flipsExhausted}
         />
       )}
       {showMonthlySummaryModal && monthlySummaryData && (
