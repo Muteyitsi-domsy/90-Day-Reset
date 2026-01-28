@@ -26,9 +26,9 @@ export const CONTEXT_LABELS: Record<MoodContext, string> = {
 
 // Intensity modifiers for prompts
 const INTENSITY_PREFIXES: Record<MoodIntensity, string> = {
-  low: 'You\'re feeling a subtle sense of',
-  medium: 'You\'re experiencing',
-  high: 'You\'re deeply feeling',
+  low: 'You\'re feeling slightly',
+  medium: 'You\'re feeling',
+  high: 'You\'re feeling deeply',
 };
 
 // Mood prompts database: emotion -> context -> array of prompts
