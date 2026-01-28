@@ -318,6 +318,7 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
       { id: 'physical_health', label: 'Physical Health', icon: '💪' },
       { id: 'mental_health', label: 'Mental Health', icon: '🧠' },
       { id: 'spirituality', label: 'Spirituality', icon: '✨' },
+      { id: 'finances', label: 'Finances', icon: '💰' },
     ];
 
     return (

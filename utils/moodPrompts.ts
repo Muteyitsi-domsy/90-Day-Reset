@@ -21,6 +21,7 @@ export const CONTEXT_LABELS: Record<MoodContext, string> = {
   physical_health: 'Physical Health',
   mental_health: 'Mental Health',
   spirituality: 'Spirituality',
+  finances: 'Finances',
 };
 
 // Intensity modifiers for prompts
@@ -77,6 +78,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What are you feeling grateful for in your spiritual journey?',
       'How does this joyful feeling connect to your sense of purpose?',
     ],
+    finances: [
+      'What recent financial win is making you feel proud today?',
+      'Describe a moment when you felt in control of your money situation.',
+      'What financial goal or milestone has brought you satisfaction recently?',
+      'How has improving your financial situation contributed to this joyful feeling?',
+    ],
   },
   calm: {
     career: [
@@ -120,6 +127,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe a moment of spiritual peace you\'ve experienced recently.',
       'How does your spiritual practice help you feel grounded?',
       'What gives you a sense of trust or surrender today?',
+    ],
+    finances: [
+      'What about your financial situation allows you to feel peaceful right now?',
+      'Describe a financial decision that brought you a sense of relief.',
+      'What boundary or system have you set up that gives you financial calm?',
+      'How has creating financial stability contributed to your peace of mind?',
     ],
   },
   energized: {
@@ -165,6 +178,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What feels aligned and vibrant in your spiritual journey?',
       'How is your spiritual energy showing up in your daily life?',
     ],
+    finances: [
+      'What financial opportunity or goal is exciting you right now?',
+      'Describe what\'s fueling your motivation to improve your financial situation.',
+      'What new financial possibility is giving you energy?',
+      'How are you channeling this energized feeling into building wealth or security?',
+    ],
   },
   anxious: {
     career: [
@@ -208,6 +227,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe what feels uncertain in your sense of meaning or purpose.',
       'What are you anxious about in your spiritual journey?',
       'What spiritual grounding do you need in this moment?',
+    ],
+    finances: [
+      'What financial situation is weighing on your mind right now?',
+      'Describe what you\'re worried might happen with your money.',
+      'What aspect of your finances feels uncertain or stressful?',
+      'What do you need to feel more secure about your financial future?',
     ],
   },
   sad: {
@@ -253,6 +278,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What are you grieving in your spiritual journey?',
       'What sense of purpose or connection are you longing for?',
     ],
+    finances: [
+      'What financial disappointment is affecting you today?',
+      'Describe what feels discouraging about your money situation.',
+      'What financial loss or setback are you processing?',
+      'What do you wish was different about your financial circumstances?',
+    ],
   },
   angry: {
     career: [
@@ -296,6 +327,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe what feels unjust in your spiritual experience.',
       'What belief or expectation was violated?',
       'What truth or change are you demanding right now?',
+    ],
+    finances: [
+      'What financial situation feels unjust or frustrating right now?',
+      'Describe what makes you angry about your current money circumstances.',
+      'What financial boundary was crossed or expectation unmet?',
+      'What change or accountability do you need regarding your finances?',
     ],
   },
   overwhelmed: {
@@ -341,6 +378,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What expectation or confusion is weighing you down?',
       'What simplicity or clarity do you need spiritually?',
     ],
+    finances: [
+      'What financial responsibilities feel like too much right now?',
+      'Describe what\'s making you feel stretched too thin financially.',
+      'What bills, debts, or money demands are draining your energy?',
+      'What support or change would help you feel less financially overwhelmed?',
+    ],
   },
   grateful: {
     career: [
@@ -384,6 +427,12 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe a moment of spiritual connection or peace.',
       'What has deepened your sense of meaning or purpose?',
       'How has your spiritual practice enriched your life?',
+    ],
+    finances: [
+      'What financial blessing are you thankful for today?',
+      'Describe a financial opportunity or support you received.',
+      'What about your money situation deserves your gratitude?',
+      'How has your financial journey taught you something valuable?',
     ],
   },
 };

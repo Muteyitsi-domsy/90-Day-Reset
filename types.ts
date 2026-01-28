@@ -13,7 +13,8 @@ export type MoodContext =
   | 'friendships'
   | 'physical_health'
   | 'mental_health'
-  | 'spirituality';
+  | 'spirituality'
+  | 'finances';
 
 export type DefaultEmotion =
   | 'joyful'
