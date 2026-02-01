@@ -1193,12 +1193,25 @@ const App: React.FC = () => {
 
   // Check for mood summaries after mood entries are loaded
   useEffect(() => {
-    if (!userProfile || moodEntries.length === 0 || isLoading) return;
+    // Debug logging for mood summary
+    console.log('📊 Mood Summary Check:', {
+      hasUserProfile: !!userProfile,
+      moodEntriesCount: moodEntries.length,
+      isLoading,
+      moodSummaryState: userProfile?.moodSummaryState,
+    });
+
+    if (!userProfile || moodEntries.length === 0 || isLoading) {
+      console.log('📊 Mood Summary: Skipping check - conditions not met');
+      return;
+    }
 
     const customEmotions = settings.customEmotions || [];
 
     // Check monthly summary
     const monthlyCheck = shouldShowMonthlySummary(userProfile.moodSummaryState, moodEntries);
+    console.log('📊 Monthly Summary Check Result:', monthlyCheck);
+
     if (monthlyCheck.shouldShow) {
       const summaryData = calculateMonthlySummary(moodEntries, monthlyCheck.month, monthlyCheck.year, customEmotions);
       if (summaryData) {
