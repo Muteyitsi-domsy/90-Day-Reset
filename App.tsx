@@ -2170,12 +2170,14 @@ const App: React.FC = () => {
         <MonthlySummaryModal
           data={monthlySummaryData}
           onClose={handleMonthlySummaryClose}
+          userName={userProfile?.name}
         />
       )}
       {showAnnualRecapModal && annualRecapData && (
         <AnnualRecapModal
           data={annualRecapData}
           onClose={handleAnnualRecapClose}
+          userName={userProfile?.name}
         />
       )}
       <PrivacyPolicy

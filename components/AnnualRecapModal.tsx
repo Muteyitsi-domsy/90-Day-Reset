@@ -30,9 +30,10 @@ type ViewMode = 'overview' | MoodContext;
 interface AnnualRecapModalProps {
   data: AnnualRecapData;
   onClose: (downloaded: boolean) => void;
+  userName?: string;
 }
 
-const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose }) => {
+const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose, userName }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [downloadedViews, setDownloadedViews] = useState<Set<ViewMode>>(new Set());
@@ -48,11 +49,11 @@ const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose }) =>
       let filename: string;
 
       if (viewMode === 'overview') {
-        blob = await generateAnnualRecapImage(data);
+        blob = await generateAnnualRecapImage(data, userName);
         filename = getAnnualRecapFilename(data.year);
       } else {
         const categoryData = data.moodsByCategory[viewMode];
-        blob = await generateCategoryRecapImage(data.year, viewMode, categoryData, data.totalEntries);
+        blob = await generateCategoryRecapImage(data.year, viewMode, categoryData, data.totalEntries, userName);
         filename = getCategoryRecapFilename(data.year, viewMode);
       }
 
@@ -94,7 +95,10 @@ const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose }) =>
           )}
         </div>
         <p className="text-sm text-[#5a6c5a] mb-1">
-          {viewMode === 'overview' ? 'Year in Review' : `${CATEGORY_LABELS[viewMode]} - Year in Review`}
+          {viewMode === 'overview'
+            ? (userName ? `${userName}'s Year in Review` : 'Year in Review')
+            : (userName ? `${userName}'s ${CATEGORY_LABELS[viewMode]} - Year in Review` : `${CATEGORY_LABELS[viewMode]} - Year in Review`)
+          }
         </p>
         <h2 id="recap-title" className="text-3xl font-bold text-[#344e41] mb-4">
           {data.year}

@@ -11,16 +11,17 @@ const MONTH_NAMES = [
 interface MonthlySummaryModalProps {
   data: MonthlySummaryData;
   onClose: (downloaded: boolean) => void;
+  userName?: string;
 }
 
-const MonthlySummaryModal: React.FC<MonthlySummaryModalProps> = ({ data, onClose }) => {
+const MonthlySummaryModal: React.FC<MonthlySummaryModalProps> = ({ data, onClose, userName }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const blob = await generateMonthlySummaryImage(data);
+      const blob = await generateMonthlySummaryImage(data, userName);
       downloadImage(blob, getMonthlySummaryFilename(data.month, data.year));
       setDownloadSuccess(true);
       setIsDownloading(false);
@@ -43,7 +44,7 @@ const MonthlySummaryModal: React.FC<MonthlySummaryModalProps> = ({ data, onClose
     >
       <div className="bg-gradient-to-b from-[#fdfbf7] to-[#e8f5e9] rounded-2xl shadow-lg max-w-md w-full p-6 text-center">
         {/* Header */}
-        <p className="text-sm text-[#5a6c5a] mb-1">Monthly Mood Summary</p>
+        <p className="text-sm text-[#5a6c5a] mb-1">{userName ? `${userName}'s Mood Summary` : 'Monthly Mood Summary'}</p>
         <h2 id="summary-title" className="text-2xl font-semibold text-[#344e41] mb-6">
           {MONTH_NAMES[data.month]} {data.year}
         </h2>

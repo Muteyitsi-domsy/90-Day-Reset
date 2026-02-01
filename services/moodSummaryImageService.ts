@@ -94,7 +94,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 }
 
 // Generate monthly summary image
-export async function generateMonthlySummaryImage(data: MonthlySummaryData): Promise<Blob> {
+export async function generateMonthlySummaryImage(data: MonthlySummaryData, userName?: string): Promise<Blob> {
   const canvas = document.createElement('canvas');
   const width = 600;
   const height = 800;
@@ -105,11 +105,12 @@ export async function generateMonthlySummaryImage(data: MonthlySummaryData): Pro
   // Background gradient
   createGradientBackground(ctx, width, height);
 
-  // Header section
+  // Header section - personalized with user's name
   ctx.fillStyle = PALETTE.textSecondary;
   ctx.font = '18px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Monthly Mood Summary', width / 2, 50);
+  const headerText = userName ? `${userName}'s Mood Summary` : 'Monthly Mood Summary';
+  ctx.fillText(headerText, width / 2, 50);
 
   // Month/Year title
   ctx.fillStyle = PALETTE.textPrimary;
@@ -168,7 +169,7 @@ export async function generateMonthlySummaryImage(data: MonthlySummaryData): Pro
 }
 
 // Generate annual recap image
-export async function generateAnnualRecapImage(data: AnnualRecapData): Promise<Blob> {
+export async function generateAnnualRecapImage(data: AnnualRecapData, userName?: string): Promise<Blob> {
   const canvas = document.createElement('canvas');
   const width = 600;
   const height = 900;
@@ -184,9 +185,11 @@ export async function generateAnnualRecapImage(data: AnnualRecapData): Promise<B
   ctx.textAlign = 'center';
   ctx.fillText('🎉', width / 2, 60);
 
+  // Personalized header with user's name
   ctx.fillStyle = PALETTE.textSecondary;
   ctx.font = '18px system-ui, -apple-system, sans-serif';
-  ctx.fillText('Year in Review', width / 2, 100);
+  const headerText = userName ? `${userName}'s Year in Review` : 'Year in Review';
+  ctx.fillText(headerText, width / 2, 100);
 
   // Year title
   ctx.fillStyle = PALETTE.textPrimary;
@@ -344,7 +347,8 @@ export async function generateCategoryRecapImage(
   year: number,
   category: MoodContext,
   categoryData: CategoryMoodData,
-  totalYearEntries: number
+  totalYearEntries: number,
+  userName?: string
 ): Promise<Blob> {
   const canvas = document.createElement('canvas');
   const width = 600;
@@ -361,10 +365,13 @@ export async function generateCategoryRecapImage(
   ctx.textAlign = 'center';
   ctx.fillText(CATEGORY_ICONS[category], width / 2, 60);
 
-  // Category label
+  // Category label - personalized with user's name
   ctx.fillStyle = PALETTE.textSecondary;
   ctx.font = '18px system-ui, -apple-system, sans-serif';
-  ctx.fillText(`${CATEGORY_LABELS[category]} - Year in Review`, width / 2, 100);
+  const headerText = userName
+    ? `${userName}'s ${CATEGORY_LABELS[category]} - Year in Review`
+    : `${CATEGORY_LABELS[category]} - Year in Review`;
+  ctx.fillText(headerText, width / 2, 100);
 
   // Year title
   ctx.fillStyle = PALETTE.textPrimary;
