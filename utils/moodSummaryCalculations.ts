@@ -55,18 +55,14 @@ export function shouldShowMonthlySummary(
     } else {
       return { shouldShow: false, month: 0, year: 0 };
     }
-  } else if (currentDay === 1) {
-    // 1st of any other month: show previous month
+  } else if (currentDay <= 7) {
+    // First 7 days of any month: show previous month's summary
     targetMonth = currentMonth - 1;
     targetYear = currentYear;
     if (targetMonth < 0) {
       targetMonth = 11;
       targetYear = currentYear - 1;
     }
-  } else if (currentDay <= 7 && currentMonth === 0) {
-    // First week of January: allow showing December summary
-    targetMonth = 11;
-    targetYear = currentYear - 1;
   } else {
     return { shouldShow: false, month: 0, year: 0 };
   }

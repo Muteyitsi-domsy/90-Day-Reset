@@ -96,31 +96,56 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
-      // User's mood entries subcollection
+      // User's mood journal entries subcollection
       match /moodEntries/{entryId} {
         // Read: User must own the parent document
         allow read: if isOwner(userId);
 
-        // Create: Validate mood entry structure
+        // Create: Validate mood journal entry structure
         allow create: if isOwner(userId) &&
-          hasRequiredFields(['id', 'mood', 'day', 'createdAt']) &&
-          hasOnlyAllowedFields(['id', 'mood', 'energy', 'notes', 'day', 'createdAt', 'updatedAt']) &&
-          isString('mood') &&
-          request.resource.data.mood in ['terrible', 'bad', 'okay', 'good', 'great'] &&
-          (request.resource.data.energy == null ||
-           (isNumber('energy') && request.resource.data.energy >= 1 && request.resource.data.energy <= 5)) &&
-          (request.resource.data.notes == null || stringLength('notes', 0, 1000)) &&
-          isNumber('day') &&
-          request.resource.data.day >= 1 && request.resource.data.day <= 90 &&
+          hasRequiredFields(['id', 'date', 'timestamp', 'emotion', 'intensity', 'context', 'prompt', 'journalText', 'isCustomEmotion', 'createdAt']) &&
+          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'emotion', 'intensity', 'context', 'prompt', 'journalText', 'isCustomEmotion', 'customEmotionEmoji', 'createdAt', 'updatedAt']) &&
+          isString('emotion') &&
+          isString('intensity') &&
+          request.resource.data.intensity in ['low', 'medium', 'high'] &&
+          isString('context') &&
+          request.resource.data.context in ['career', 'family', 'romantic', 'friendships', 'physical_health', 'mental_health', 'spirituality', 'finances'] &&
+          stringLength('journalText', 0, 10000) &&
           isTimestamp('createdAt') &&
-          isWithinSizeLimit(5000); // 5KB max per mood entry
+          isWithinSizeLimit(20000); // 20KB max per mood journal entry
 
         // Update: Can update entry but not change id or createdAt
         allow update: if isOwner(userId) &&
-          hasOnlyAllowedFields(['id', 'mood', 'energy', 'notes', 'day', 'createdAt', 'updatedAt']) &&
+          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'emotion', 'intensity', 'context', 'prompt', 'journalText', 'isCustomEmotion', 'customEmotionEmoji', 'createdAt', 'updatedAt']) &&
           request.resource.data.id == resource.data.id &&
           request.resource.data.createdAt == resource.data.createdAt &&
-          isWithinSizeLimit(5000);
+          isWithinSizeLimit(20000);
+
+        // Delete: User can delete their own entries
+        allow delete: if isOwner(userId);
+      }
+
+      // User's flip journal entries subcollection
+      match /flipJournalEntries/{entryId} {
+        // Read: User must own the parent document
+        allow read: if isOwner(userId);
+
+        // Create: Validate flip journal entry structure
+        allow create: if isOwner(userId) &&
+          hasRequiredFields(['id', 'date', 'timestamp', 'challenge', 'reframingQuestion', 'reframedPerspective', 'createdAt']) &&
+          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'challenge', 'reframingQuestion', 'reframedPerspective', 'linkedMoodEntryId', 'createdAt', 'updatedAt']) &&
+          stringLength('challenge', 1, 500) &&
+          stringLength('reframingQuestion', 1, 500) &&
+          stringLength('reframedPerspective', 1, 800) &&
+          isTimestamp('createdAt') &&
+          isWithinSizeLimit(10000); // 10KB max per flip entry
+
+        // Update: Can update entry but not change id or createdAt
+        allow update: if isOwner(userId) &&
+          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'challenge', 'reframingQuestion', 'reframedPerspective', 'linkedMoodEntryId', 'createdAt', 'updatedAt']) &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          isWithinSizeLimit(10000);
 
         // Delete: User can delete their own entries
         allow delete: if isOwner(userId);
