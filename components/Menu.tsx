@@ -982,7 +982,7 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
                     <div className="px-4 pb-4 text-center text-xs text-gray-400">
-                        90-Day Identity Reset V1.2
+                        Renew90 v1.2
                     </div>
                 </div>
             </div>
