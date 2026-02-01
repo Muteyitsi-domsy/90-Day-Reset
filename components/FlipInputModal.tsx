@@ -259,7 +259,79 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
     </div>
   );
 
+  // Edit mode: shows challenge and question as read-only context, only perspective is editable
+  const renderEditMode = () => (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="text-center mb-4">
+        <div className="text-4xl mb-2">
+          <span role="img" aria-label="edit">✏️</span>
+        </div>
+        <h2 className="text-xl md:text-2xl font-light text-[var(--text-primary)]">
+          Edit Your Response
+        </h2>
+      </div>
+
+      {/* Read-only Challenge */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide mb-1">
+          Your Challenge
+        </p>
+        <div className="bg-[var(--card-bg)]/50 border border-[var(--card-border)] rounded-lg p-3">
+          <p className="text-[var(--text-primary)] text-sm font-light">
+            {challenge}
+          </p>
+        </div>
+      </div>
+
+      {/* Read-only Reframing Question */}
+      <div className="mb-4">
+        <p className="text-xs font-medium text-[var(--accent-primary)] uppercase tracking-wide mb-1">
+          From Your Wiser Self
+        </p>
+        <div className="bg-gradient-to-r from-[var(--accent-primary)]/5 to-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 rounded-lg p-3">
+          <p className="text-[var(--text-primary)] text-sm italic">
+            "{reframingQuestion}"
+          </p>
+        </div>
+      </div>
+
+      {/* Editable Response */}
+      <div className="flex-1 flex flex-col">
+        <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide mb-1">
+          Your Response (editable)
+        </p>
+        <textarea
+          value={reframedPerspective}
+          onChange={(e) => setReframedPerspective(e.target.value.slice(0, PERSPECTIVE_MAX_LENGTH))}
+          placeholder="Looking back, I can see... / What I know now is... / The truth I've discovered is..."
+          className="w-full flex-1 min-h-[120px] max-h-[200px] bg-[var(--card-bg)] backdrop-blur-sm border border-[var(--card-border)] rounded-xl p-4 text-[var(--text-primary)] placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] transition-all resize-none text-base font-light leading-relaxed"
+          autoFocus
+        />
+
+        <div className="flex justify-between items-center mt-2 mb-4">
+          <span className={`text-sm ${reframedPerspective.length > PERSPECTIVE_MAX_LENGTH * 0.9 ? 'text-amber-500' : 'text-[var(--text-secondary)]'}`}>
+            {reframedPerspective.length}/{PERSPECTIVE_MAX_LENGTH}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={handlePerspectiveSubmit}
+        disabled={isSaving || !reframedPerspective.trim()}
+        className="w-full py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
+      >
+        {isSaving ? 'Updating...' : 'Update Response'}
+      </button>
+    </div>
+  );
+
   const renderContent = () => {
+    // Use dedicated edit mode UI when editing
+    if (isEditing) {
+      return renderEditMode();
+    }
+
     switch (step) {
       case 'challenge':
         return renderChallengeStep();
@@ -275,7 +347,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] z-40 animate-fade-in-fast" role="dialog" aria-modal="true">
       <div className="absolute top-4 right-4 flex items-center gap-2">
-        {step !== 'challenge' && !isGeneratingQuestion && (
+        {!isEditing && step !== 'challenge' && !isGeneratingQuestion && (
           <button
             onClick={handleBack}
             className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
@@ -294,11 +366,13 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
       </div>
 
       <div className="flex flex-col h-full p-4 md:p-8">
-        <div className="max-w-3xl w-full mx-auto mt-12">
-          {renderProgressBar()}
-        </div>
-        <main className="flex-1 overflow-y-auto flex items-center justify-center">
-          <div className={`max-w-3xl w-full ${step !== 'question' ? 'h-full flex flex-col pt-0' : ''}`}>
+        {!isEditing && (
+          <div className="max-w-3xl w-full mx-auto mt-12">
+            {renderProgressBar()}
+          </div>
+        )}
+        <main className={`flex-1 overflow-y-auto flex items-center justify-center ${isEditing ? 'mt-12' : ''}`}>
+          <div className={`max-w-3xl w-full ${(isEditing || step !== 'question') ? 'h-full flex flex-col pt-0' : ''}`}>
             {renderContent()}
           </div>
         </main>
