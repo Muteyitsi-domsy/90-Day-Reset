@@ -161,6 +161,7 @@ const App: React.FC = () => {
   const [pendingFlipMoodEntry, setPendingFlipMoodEntry] = useState<MoodJournalEntry | null>(null);
   const [showFlipPrompt, setShowFlipPrompt] = useState(false);
   const [flipsExhausted, setFlipsExhausted] = useState(false);
+  const [editingFlipEntry, setEditingFlipEntry] = useState<FlipJournalEntry | null>(null);
 
   // Mood summary state
   const [showMonthlySummaryModal, setShowMonthlySummaryModal] = useState(false);
@@ -1125,31 +1126,59 @@ const App: React.FC = () => {
     try {
       setIsSavingFlipEntry(true);
 
-      const newEntry: FlipJournalEntry = {
-        id: `flip-${Date.now()}`,
-        date: getFlipLocalDateString(),
-        timestamp: new Date().toISOString(),
-        challenge: entryData.challenge,
-        reframingQuestion: entryData.reframingQuestion,
-        reframedPerspective: entryData.reframedPerspective,
-        ...(entryData.linkedMoodEntryId && { linkedMoodEntryId: entryData.linkedMoodEntryId }),
-      };
+      if (editingFlipEntry) {
+        // Update existing entry
+        const updatedEntry: FlipJournalEntry = {
+          ...editingFlipEntry,
+          challenge: entryData.challenge,
+          reframingQuestion: entryData.reframingQuestion,
+          reframedPerspective: entryData.reframedPerspective,
+          ...(entryData.linkedMoodEntryId && { linkedMoodEntryId: entryData.linkedMoodEntryId }),
+        };
 
-      // Save to storage
-      await storageService.saveFlipEntry(newEntry);
+        await storageService.updateFlipEntry(updatedEntry);
 
-      // Update state (add to beginning for newest-first)
-      setFlipEntries(prev => [newEntry, ...prev]);
+        // Update state
+        setFlipEntries(prev => prev.map(entry =>
+          entry.id === editingFlipEntry.id ? updatedEntry : entry
+        ));
 
-      // Close modal and clear pending flip mood entry
-      setShowFlipInputModal(false);
-      setPendingFlipMoodEntry(null);
+        // Close modal and clear editing state
+        setShowFlipInputModal(false);
+        setEditingFlipEntry(null);
+      } else {
+        // Create new entry
+        const newEntry: FlipJournalEntry = {
+          id: `flip-${Date.now()}`,
+          date: getFlipLocalDateString(),
+          timestamp: new Date().toISOString(),
+          challenge: entryData.challenge,
+          reframingQuestion: entryData.reframingQuestion,
+          reframedPerspective: entryData.reframedPerspective,
+          ...(entryData.linkedMoodEntryId && { linkedMoodEntryId: entryData.linkedMoodEntryId }),
+        };
+
+        // Save to storage
+        await storageService.saveFlipEntry(newEntry);
+
+        // Update state (add to beginning for newest-first)
+        setFlipEntries(prev => [newEntry, ...prev]);
+
+        // Close modal and clear pending flip mood entry
+        setShowFlipInputModal(false);
+        setPendingFlipMoodEntry(null);
+      }
     } catch (error) {
       console.error('Error saving flip entry:', error);
-      alert('Failed to save flip entry. Please try again.');
+      alert(editingFlipEntry ? 'Failed to update flip entry. Please try again.' : 'Failed to save flip entry. Please try again.');
     } finally {
       setIsSavingFlipEntry(false);
     }
+  };
+
+  const handleEditFlipEntry = (entry: FlipJournalEntry) => {
+    setEditingFlipEntry(entry);
+    setShowFlipInputModal(true);
   };
 
   const handleDeleteFlipEntry = async (entryId: string) => {
@@ -1986,6 +2015,7 @@ const App: React.FC = () => {
               <FlipJournalView
                 flipEntries={flipEntries}
                 onNewEntry={() => setShowFlipInputModal(true)}
+                onEditEntry={handleEditFlipEntry}
                 onDeleteEntry={handleDeleteFlipEntry}
                 moodEntries={moodEntries}
               />
@@ -2151,11 +2181,13 @@ const App: React.FC = () => {
           onClose={() => {
             setShowFlipInputModal(false);
             setPendingFlipMoodEntry(null);
+            setEditingFlipEntry(null);
           }}
           isSaving={isSavingFlipEntry}
           onCrisisDetected={(severity) => handleCrisisDetected(severity, 'flip')}
           initialChallenge={pendingFlipMoodEntry?.journalText}
           linkedMoodEntryId={pendingFlipMoodEntry?.id}
+          editingEntry={editingFlipEntry || undefined}
         />
       )}
       {showFlipPrompt && pendingFlipMoodEntry && (

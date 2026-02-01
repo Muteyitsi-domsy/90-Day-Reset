@@ -29,6 +29,7 @@ export interface StorageService {
 
   // Flip Journal Entry operations
   saveFlipEntry(entry: FlipJournalEntry): Promise<void>;
+  updateFlipEntry(entry: FlipJournalEntry): Promise<void>;
   deleteFlipEntry(entryId: string): Promise<void>;
   getFlipEntries(): Promise<FlipJournalEntry[]>;
 

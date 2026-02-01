@@ -291,6 +291,11 @@ export class LocalStorageService implements StorageService {
     }
   }
 
+  async updateFlipEntry(entry: FlipJournalEntry): Promise<void> {
+    // saveFlipEntry already handles updates, so we can delegate to it
+    await this.saveFlipEntry(entry);
+  }
+
   async deleteFlipEntry(entryId: string): Promise<void> {
     try {
       const entries = await this.getFlipEntries();

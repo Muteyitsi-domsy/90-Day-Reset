@@ -256,6 +256,23 @@ export class FirestoreService implements StorageService {
     }
   }
 
+  async updateFlipEntry(entry: FlipJournalEntry): Promise<void> {
+    try {
+      const entryDocRef = doc(db, 'users', this.userId, 'flipJournalEntries', entry.id);
+
+      // Add updated timestamp
+      const entryWithTimestamp = {
+        ...entry,
+        updatedAt: serverTimestamp(),
+      };
+
+      await updateDoc(entryDocRef, entryWithTimestamp as any);
+    } catch (error) {
+      console.error('Error updating flip entry in Firestore:', error);
+      throw new Error('Failed to update flip entry in cloud');
+    }
+  }
+
   async deleteFlipEntry(entryId: string): Promise<void> {
     try {
       const entryDocRef = doc(db, 'users', this.userId, 'flipJournalEntries', entryId);

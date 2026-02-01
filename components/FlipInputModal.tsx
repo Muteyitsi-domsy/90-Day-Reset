@@ -19,6 +19,12 @@ interface FlipInputModalProps {
   onCrisisDetected: (severity: CrisisSeverity) => void;
   initialChallenge?: string;      // Pre-filled challenge from mood entry
   linkedMoodEntryId?: string;     // Reference to mood entry being flipped
+  editingEntry?: {                // Entry being edited (if in edit mode)
+    challenge: string;
+    reframingQuestion: string;
+    reframedPerspective: string;
+    linkedMoodEntryId?: string;
+  };
 }
 
 type Step = 'challenge' | 'question' | 'perspective';
@@ -42,11 +48,13 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
   onCrisisDetected,
   initialChallenge,
   linkedMoodEntryId,
+  editingEntry,
 }) => {
-  const [step, setStep] = useState<Step>('challenge');
-  const [challenge, setChallenge] = useState(initialChallenge || '');
-  const [reframingQuestion, setReframingQuestion] = useState('');
-  const [reframedPerspective, setReframedPerspective] = useState('');
+  const isEditing = !!editingEntry;
+  const [step, setStep] = useState<Step>(isEditing ? 'perspective' : 'challenge');
+  const [challenge, setChallenge] = useState(editingEntry?.challenge || initialChallenge || '');
+  const [reframingQuestion, setReframingQuestion] = useState(editingEntry?.reframingQuestion || '');
+  const [reframedPerspective, setReframedPerspective] = useState(editingEntry?.reframedPerspective || '');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [questionError, setQuestionError] = useState<string | null>(null);
 
@@ -95,7 +103,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
       challenge,
       reframingQuestion,
       reframedPerspective,
-      linkedMoodEntryId,
+      linkedMoodEntryId: linkedMoodEntryId || editingEntry?.linkedMoodEntryId,
     });
   };
 
@@ -246,7 +254,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
         disabled={isSaving || !reframedPerspective.trim()}
         className="w-full py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
-        {isSaving ? 'Saving...' : 'Save Flip Entry'}
+        {isSaving ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Flip Entry' : 'Save Flip Entry')}
       </button>
     </div>
   );
