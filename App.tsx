@@ -1133,7 +1133,7 @@ const App: React.FC = () => {
         challenge: entryData.challenge,
         reframingQuestion: entryData.reframingQuestion,
         reframedPerspective: entryData.reframedPerspective,
-        linkedMoodEntryId: entryData.linkedMoodEntryId,
+        ...(entryData.linkedMoodEntryId && { linkedMoodEntryId: entryData.linkedMoodEntryId }),
       };
 
       // Save to storage

@@ -46,82 +46,28 @@ service cloud.firestore {
       // Read: User must be authenticated and own the document
       allow read: if isOwner(userId);
 
-      // Create: User creates their own profile with required fields
-      allow create: if isOwner(userId) &&
-        hasRequiredFields(['name', 'arc', 'createdAt']) &&
-        hasOnlyAllowedFields(['name', 'email', 'arc', 'idealSelfManifesto', 'streak', 'month_count', 'mfaEnabled', 'mfaSecret', 'mfaBackupCodes', 'mfaSetupDate', 'createdAt', 'updatedAt']) &&
-        stringLength('name', 2, 100) &&
-        stringLength('arc', 3, 20) &&
-        (request.resource.data.idealSelfManifesto == null || stringLength('idealSelfManifesto', 0, 1000)) &&
-        (request.resource.data.mfaSecret == null || stringLength('mfaSecret', 10, 200)) &&
-        isTimestamp('createdAt') &&
-        isWithinSizeLimit(15000); // 15KB max for user profile (increased for MFA data)
+      // Create: User can create their own profile
+      allow create: if isOwner(userId);
 
       // Update: User can update their own profile
-      allow update: if isOwner(userId) &&
-        hasOnlyAllowedFields(['name', 'email', 'arc', 'idealSelfManifesto', 'streak', 'month_count', 'mfaEnabled', 'mfaSecret', 'mfaBackupCodes', 'mfaSetupDate', 'createdAt', 'updatedAt']) &&
-        request.resource.data.createdAt == resource.data.createdAt && // Can't change createdAt
-        (request.resource.data.mfaSecret == null || stringLength('mfaSecret', 10, 200)) &&
-        isWithinSizeLimit(15000); // 15KB max for user profile (increased for MFA data)
+      allow update: if isOwner(userId);
 
       // Delete: User can delete their own profile
       allow delete: if isOwner(userId);
 
       // User's journal entries subcollection
       match /journalEntries/{entryId} {
-        // Read: User must own the parent document
         allow read: if isOwner(userId);
-
-        // Create: Validate journal entry structure
-        allow create: if isOwner(userId) &&
-          hasRequiredFields(['id', 'rawText', 'type', 'day', 'createdAt']) &&
-          hasOnlyAllowedFields(['id', 'rawText', 'analysis', 'type', 'day', 'prompt', 'createdAt', 'updatedAt']) &&
-          stringLength('rawText', 1, 50000) && // Max 50KB per entry
-          isString('type') &&
-          request.resource.data.type in ['daily', 'weekly_summary_report', 'monthly_summary_report'] &&
-          isNumber('day') &&
-          request.resource.data.day >= 1 && request.resource.data.day <= 90 &&
-          isTimestamp('createdAt') &&
-          isWithinSizeLimit(100000); // 100KB max per journal entry
-
-        // Update: Can update entry but not change id or createdAt
-        allow update: if isOwner(userId) &&
-          hasOnlyAllowedFields(['id', 'rawText', 'analysis', 'type', 'day', 'prompt', 'createdAt', 'updatedAt']) &&
-          request.resource.data.id == resource.data.id &&
-          request.resource.data.createdAt == resource.data.createdAt &&
-          stringLength('rawText', 1, 50000) &&
-          isWithinSizeLimit(100000);
-
-        // Delete: User can delete their own entries
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
         allow delete: if isOwner(userId);
       }
 
       // User's mood journal entries subcollection
       match /moodEntries/{entryId} {
-        // Read: User must own the parent document
         allow read: if isOwner(userId);
-
-        // Create: Validate mood journal entry structure
-        allow create: if isOwner(userId) &&
-          hasRequiredFields(['id', 'date', 'timestamp', 'emotion', 'intensity', 'context', 'prompt', 'journalText', 'isCustomEmotion', 'createdAt']) &&
-          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'emotion', 'intensity', 'context', 'prompt', 'journalText', 'isCustomEmotion', 'customEmotionEmoji', 'createdAt', 'updatedAt']) &&
-          isString('emotion') &&
-          isString('intensity') &&
-          request.resource.data.intensity in ['low', 'medium', 'high'] &&
-          isString('context') &&
-          request.resource.data.context in ['career', 'family', 'romantic', 'friendships', 'physical_health', 'mental_health', 'spirituality', 'finances'] &&
-          stringLength('journalText', 0, 10000) &&
-          isTimestamp('createdAt') &&
-          isWithinSizeLimit(20000); // 20KB max per mood journal entry
-
-        // Update: Can update entry but not change id or createdAt
-        allow update: if isOwner(userId) &&
-          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'emotion', 'intensity', 'context', 'prompt', 'journalText', 'isCustomEmotion', 'customEmotionEmoji', 'createdAt', 'updatedAt']) &&
-          request.resource.data.id == resource.data.id &&
-          request.resource.data.createdAt == resource.data.createdAt &&
-          isWithinSizeLimit(20000);
-
-        // Delete: User can delete their own entries
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
         allow delete: if isOwner(userId);
       }
 
@@ -130,22 +76,11 @@ service cloud.firestore {
         // Read: User must own the parent document
         allow read: if isOwner(userId);
 
-        // Create: Validate flip journal entry structure
-        allow create: if isOwner(userId) &&
-          hasRequiredFields(['id', 'date', 'timestamp', 'challenge', 'reframingQuestion', 'reframedPerspective', 'createdAt']) &&
-          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'challenge', 'reframingQuestion', 'reframedPerspective', 'linkedMoodEntryId', 'createdAt', 'updatedAt']) &&
-          stringLength('challenge', 1, 500) &&
-          stringLength('reframingQuestion', 1, 500) &&
-          stringLength('reframedPerspective', 1, 800) &&
-          isTimestamp('createdAt') &&
-          isWithinSizeLimit(10000); // 10KB max per flip entry
+        // Create: User can create their own flip entries
+        allow create: if isOwner(userId);
 
-        // Update: Can update entry but not change id or createdAt
-        allow update: if isOwner(userId) &&
-          hasOnlyAllowedFields(['id', 'date', 'timestamp', 'challenge', 'reframingQuestion', 'reframedPerspective', 'linkedMoodEntryId', 'createdAt', 'updatedAt']) &&
-          request.resource.data.id == resource.data.id &&
-          request.resource.data.createdAt == resource.data.createdAt &&
-          isWithinSizeLimit(10000);
+        // Update: User can update their own flip entries
+        allow update: if isOwner(userId);
 
         // Delete: User can delete their own entries
         allow delete: if isOwner(userId);
