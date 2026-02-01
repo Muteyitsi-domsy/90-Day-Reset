@@ -1193,25 +1193,12 @@ const App: React.FC = () => {
 
   // Check for mood summaries after mood entries are loaded
   useEffect(() => {
-    // Debug logging for mood summary
-    console.log('📊 Mood Summary Check:', {
-      hasUserProfile: !!userProfile,
-      moodEntriesCount: moodEntries.length,
-      isLoading,
-      moodSummaryState: userProfile?.moodSummaryState,
-    });
-
-    if (!userProfile || moodEntries.length === 0 || isLoading) {
-      console.log('📊 Mood Summary: Skipping check - conditions not met');
-      return;
-    }
+    if (!userProfile || moodEntries.length === 0 || isLoading) return;
 
     const customEmotions = settings.customEmotions || [];
 
     // Check monthly summary
     const monthlyCheck = shouldShowMonthlySummary(userProfile.moodSummaryState, moodEntries);
-    console.log('📊 Monthly Summary Check Result:', monthlyCheck);
-
     if (monthlyCheck.shouldShow) {
       const summaryData = calculateMonthlySummary(moodEntries, monthlyCheck.month, monthlyCheck.year, customEmotions);
       if (summaryData) {
@@ -1240,22 +1227,6 @@ const App: React.FC = () => {
       }
     }
   }, [moodEntries, userProfile?.moodSummaryState, isLoading, settings.customEmotions]);
-
-  // Debug: Expose function to manually show monthly summary (can be called from console)
-  useEffect(() => {
-    (window as any).showMonthlySummary = (month: number, year: number) => {
-      const customEmotions = settings.customEmotions || [];
-      const summaryData = calculateMonthlySummary(moodEntries, month - 1, year, customEmotions); // month is 1-indexed for user
-      if (summaryData) {
-        setMonthlySummaryData(summaryData);
-        setShowMonthlySummaryModal(true);
-        console.log('📊 Showing summary for', summaryData);
-      } else {
-        console.log('❌ No entries found for', month, year);
-      }
-    };
-    console.log('💡 Tip: Run showMonthlySummary(1, 2026) in console to view January 2026 summary');
-  }, [moodEntries, settings.customEmotions]);
 
   // Handle monthly summary modal close
   const handleMonthlySummaryClose = (downloaded: boolean) => {
@@ -2005,6 +1976,14 @@ const App: React.FC = () => {
                 currentStreak={userProfile.moodStreak || 0}
                 onFlipEntry={handleFlipTodaysMoodEntry}
                 flipEntries={flipEntries}
+                onViewMonthlySummary={(month, year) => {
+                  const customEmotions = settings.customEmotions || [];
+                  const summaryData = calculateMonthlySummary(moodEntries, month - 1, year, customEmotions);
+                  if (summaryData) {
+                    setMonthlySummaryData(summaryData);
+                    setShowMonthlySummaryModal(true);
+                  }
+                }}
               />
             ) : (
               <FlipJournalView

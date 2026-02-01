@@ -12,6 +12,7 @@ interface MoodJournalViewProps {
   currentStreak?: number;
   onFlipEntry?: (entry: MoodJournalEntry) => void;
   flipEntries?: FlipJournalEntry[];
+  onViewMonthlySummary?: (month: number, year: number) => void;
 }
 
 const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -154,6 +155,7 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
   currentStreak = 0,
   onFlipEntry,
   flipEntries = [],
+  onViewMonthlySummary,
 }) => {
   // Check if user has already written today (using YYYY-MM-DD format to match stored date)
   const getLocalDateString = (date: Date = new Date()): string => {
@@ -267,23 +269,40 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
         {/* Entries grouped by month */}
         {monthKeys.length > 0 && (
           <div className="space-y-8">
-            {monthKeys.map((monthKey) => (
-              <div key={monthKey}>
-                <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4 sticky top-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] py-2 z-10">
-                  {monthKey}
-                </h2>
-                <div className="space-y-4">
-                  {entriesByMonth[monthKey].map((entry) => (
-                    <MoodEntryCard
-                      key={entry.id}
-                      entry={entry}
-                      onDelete={onDeleteEntry}
-                      onEdit={onEditEntry}
-                    />
-                  ))}
+            {monthKeys.map((monthKey) => {
+              // Parse month and year from the monthKey (e.g., "January 2026")
+              const firstEntry = entriesByMonth[monthKey][0];
+              const [year, month] = firstEntry.date.split('-').map(Number);
+
+              return (
+                <div key={monthKey}>
+                  <div className="flex items-center justify-between sticky top-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] py-2 z-10 mb-4">
+                    <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+                      {monthKey}
+                    </h2>
+                    {onViewMonthlySummary && (
+                      <button
+                        onClick={() => onViewMonthlySummary(month, year)}
+                        className="px-3 py-1.5 text-sm rounded-lg bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-colors flex items-center gap-1.5"
+                      >
+                        <span>📊</span>
+                        <span>View Summary</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    {entriesByMonth[monthKey].map((entry) => (
+                      <MoodEntryCard
+                        key={entry.id}
+                        entry={entry}
+                        onDelete={onDeleteEntry}
+                        onEdit={onEditEntry}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
