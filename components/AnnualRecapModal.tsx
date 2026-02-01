@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { AnnualRecapData, MoodContext } from '../types';
 import { generateAnnualRecapImage, generateCategoryRecapImage, downloadImage, getAnnualRecapFilename, getCategoryRecapFilename } from '../services/moodSummaryImageService';
-import { getDaysRemainingInWindow } from '../utils/moodSummaryCalculations';
 import { ANNUAL_MESSAGE } from '../utils/moodSummaryMessages';
 
 // Category labels for display
@@ -31,13 +30,12 @@ type ViewMode = 'overview' | MoodContext;
 interface AnnualRecapModalProps {
   data: AnnualRecapData;
   onClose: (downloaded: boolean) => void;
-  canRedownload: boolean;
 }
 
-const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose, canRedownload }) => {
+const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  const daysRemaining = getDaysRemainingInWindow();
+  const [downloadedViews, setDownloadedViews] = useState<Set<ViewMode>>(new Set());
 
   // Get categories that have entries
   const categoriesWithEntries = (Object.keys(data.moodsByCategory) as MoodContext[])
@@ -59,12 +57,8 @@ const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose, canR
       }
 
       downloadImage(blob, filename);
-      // Don't close on category downloads - user might want to download more
-      if (viewMode === 'overview') {
-        onClose(true);
-      } else {
-        setIsDownloading(false);
-      }
+      setDownloadedViews(prev => new Set(prev).add(viewMode));
+      setIsDownloading(false);
     } catch (error) {
       console.error('Failed to generate image:', error);
       setIsDownloading(false);
@@ -72,7 +66,7 @@ const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose, canR
   };
 
   const handleClose = () => {
-    onClose(false);
+    onClose(downloadedViews.size > 0);
   };
 
   const currentMoods = viewMode === 'overview'
@@ -210,12 +204,13 @@ const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose, canR
           </p>
         )}
 
-        {/* Days Remaining Indicator */}
-        {daysRemaining > 0 && viewMode === 'overview' && (
-          <p className="text-sm text-[#5a6c5a] mb-4">
-            {canRedownload ? 'Download available for ' : 'Image available for '}
-            <strong>{daysRemaining}</strong> more day{daysRemaining !== 1 ? 's' : ''}
-          </p>
+        {/* Download Success Message */}
+        {downloadedViews.has(viewMode) && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-green-800">
+              ✓ {viewMode === 'overview' ? 'Annual recap' : CATEGORY_LABELS[viewMode] + ' recap'} downloaded!
+            </p>
+          </div>
         )}
 
         {/* Buttons */}
@@ -239,8 +234,8 @@ const AnnualRecapModal: React.FC<AnnualRecapModalProps> = ({ data, onClose, canR
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 {viewMode === 'overview'
-                  ? (canRedownload ? 'Download Again' : 'Download Recap')
-                  : `Download ${CATEGORY_LABELS[viewMode]} Recap`
+                  ? (downloadedViews.has('overview') ? 'Download Again' : 'Download Recap')
+                  : (downloadedViews.has(viewMode) ? 'Download Again' : `Download ${CATEGORY_LABELS[viewMode]} Recap`)
                 }
               </>
             )}

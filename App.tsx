@@ -167,7 +167,6 @@ const App: React.FC = () => {
   const [showAnnualRecapModal, setShowAnnualRecapModal] = useState(false);
   const [monthlySummaryData, setMonthlySummaryData] = useState<MonthlySummaryData | null>(null);
   const [annualRecapData, setAnnualRecapData] = useState<AnnualRecapData | null>(null);
-  const [canRedownloadAnnual, setCanRedownloadAnnual] = useState(false);
 
   // New journey state (for post-completion flow)
   const [showNewJourneyModal, setShowNewJourneyModal] = useState(false);
@@ -1209,21 +1208,13 @@ const App: React.FC = () => {
     }
 
     // Check annual recap
+    // Check annual recap (only auto-show if not previously shown)
     const annualCheck = shouldShowAnnualRecap(userProfile.moodSummaryState, moodEntries);
     if (annualCheck.shouldShow) {
       const recapData = calculateAnnualRecap(moodEntries, annualCheck.year, customEmotions);
       if (recapData) {
         setAnnualRecapData(recapData);
-        setCanRedownloadAnnual(false);
         setShowAnnualRecapModal(true);
-      }
-    } else if (annualCheck.isWithinDownloadWindow && userProfile.moodSummaryState?.annualSummaryDownloaded) {
-      // User already saw modal but can re-download during window
-      const recapData = calculateAnnualRecap(moodEntries, annualCheck.year, customEmotions);
-      if (recapData) {
-        setAnnualRecapData(recapData);
-        setCanRedownloadAnnual(true);
-        // Don't auto-show modal, but data is ready if user wants to access it
       }
     }
   }, [moodEntries, userProfile?.moodSummaryState, isLoading, settings.customEmotions]);
@@ -1262,9 +1253,7 @@ const App: React.FC = () => {
     };
 
     setUserProfile(prev => prev ? { ...prev, moodSummaryState: updatedSummaryState } : null);
-    if (!canRedownloadAnnual) {
-      setAnnualRecapData(null);
-    }
+    setAnnualRecapData(null);
   };
 
   const handleGenerateWeeklySummary = async (weekToSummarize: number, newWeek: number, isRegeneration: boolean = false) => {
@@ -1984,6 +1973,14 @@ const App: React.FC = () => {
                     setShowMonthlySummaryModal(true);
                   }
                 }}
+                onViewAnnualRecap={(year) => {
+                  const customEmotions = settings.customEmotions || [];
+                  const recapData = calculateAnnualRecap(moodEntries, year, customEmotions);
+                  if (recapData) {
+                    setAnnualRecapData(recapData);
+                    setShowAnnualRecapModal(true);
+                  }
+                }}
               />
             ) : (
               <FlipJournalView
@@ -2110,7 +2107,6 @@ const App: React.FC = () => {
         }}
         onTestAnnualRecap={(data) => {
           setAnnualRecapData(data);
-          setCanRedownloadAnnual(true); // Allow re-download in test mode
           setShowAnnualRecapModal(true);
         }}
       />
@@ -2180,7 +2176,6 @@ const App: React.FC = () => {
         <AnnualRecapModal
           data={annualRecapData}
           onClose={handleAnnualRecapClose}
-          canRedownload={canRedownloadAnnual}
         />
       )}
       <PrivacyPolicy

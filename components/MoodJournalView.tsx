@@ -13,6 +13,7 @@ interface MoodJournalViewProps {
   onFlipEntry?: (entry: MoodJournalEntry) => void;
   flipEntries?: FlipJournalEntry[];
   onViewMonthlySummary?: (month: number, year: number) => void;
+  onViewAnnualRecap?: (year: number) => void;
 }
 
 const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -156,6 +157,7 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
   onFlipEntry,
   flipEntries = [],
   onViewMonthlySummary,
+  onViewAnnualRecap,
 }) => {
   // Check if user has already written today (using YYYY-MM-DD format to match stored date)
   const getLocalDateString = (date: Date = new Date()): string => {
@@ -182,6 +184,13 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
 
   const monthKeys = Object.keys(entriesByMonth);
 
+  // Get unique years from entries for annual recap buttons (only past/completed years)
+  const currentYear = new Date().getFullYear();
+  const yearsWithEntries = [...new Set(moodEntries.map(entry => {
+    const [year] = entry.date.split('-').map(Number);
+    return year;
+  }))].filter(year => year < currentYear).sort((a, b) => b - a); // Descending order, exclude current year
+
   return (
     <div className="w-full h-full overflow-y-auto px-4 md:px-8 pt-4 pb-24">
       <div className="max-w-4xl mx-auto">
@@ -199,6 +208,25 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
             {moodEntries.length} {moodEntries.length === 1 ? 'entry' : 'entries'}
           </p>
         </div>
+
+        {/* Annual Recap Buttons */}
+        {onViewAnnualRecap && yearsWithEntries.length > 0 && (
+          <div className="mb-6 p-4 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl">
+            <p className="text-sm text-[var(--text-secondary)] mb-3 text-center">View Annual Recaps</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {yearsWithEntries.map(year => (
+                <button
+                  key={year}
+                  onClick={() => onViewAnnualRecap(year)}
+                  className="px-4 py-2 text-sm rounded-lg bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-colors flex items-center gap-1.5"
+                >
+                  <span>🎉</span>
+                  <span>{year} Recap</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Write Entry Button */}
         {!hasWrittenToday && (
@@ -274,13 +302,17 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
               const firstEntry = entriesByMonth[monthKey][0];
               const [year, month] = firstEntry.date.split('-').map(Number);
 
+              // Check if this is the current month (don't show summary for incomplete months)
+              const now = new Date();
+              const isCurrentMonth = month === (now.getMonth() + 1) && year === now.getFullYear();
+
               return (
                 <div key={monthKey}>
                   <div className="flex items-center justify-between sticky top-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] py-2 z-10 mb-4">
                     <h2 className="text-xl font-semibold text-[var(--text-primary)]">
                       {monthKey}
                     </h2>
-                    {onViewMonthlySummary && (
+                    {onViewMonthlySummary && !isCurrentMonth && (
                       <button
                         onClick={() => onViewMonthlySummary(month, year)}
                         className="px-3 py-1.5 text-sm rounded-lg bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-colors flex items-center gap-1.5"

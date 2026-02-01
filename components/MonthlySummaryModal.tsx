@@ -15,26 +15,23 @@ interface MonthlySummaryModalProps {
 
 const MonthlySummaryModal: React.FC<MonthlySummaryModalProps> = ({ data, onClose }) => {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
       const blob = await generateMonthlySummaryImage(data);
       downloadImage(blob, getMonthlySummaryFilename(data.month, data.year));
-      onClose(true);
+      setDownloadSuccess(true);
+      setIsDownloading(false);
     } catch (error) {
       console.error('Failed to generate image:', error);
       setIsDownloading(false);
     }
   };
 
-  const handleCloseAttempt = () => {
-    if (!showWarning) {
-      setShowWarning(true);
-    } else {
-      onClose(false);
-    }
+  const handleClose = () => {
+    onClose(downloadSuccess);
   };
 
   return (
@@ -73,11 +70,11 @@ const MonthlySummaryModal: React.FC<MonthlySummaryModalProps> = ({ data, onClose
           "{data.encouragingMessage}"
         </p>
 
-        {/* Warning Message */}
-        {showWarning && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-            <p className="text-sm text-amber-800">
-              <strong>One-time opportunity:</strong> If you close without downloading, you won't be able to get this summary image again.
+        {/* Download Success Message */}
+        {downloadSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-green-800">
+              ✓ Summary downloaded! You can download again anytime from the Daily Journal.
             </p>
           </div>
         )}
@@ -102,16 +99,16 @@ const MonthlySummaryModal: React.FC<MonthlySummaryModalProps> = ({ data, onClose
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Download Summary
+                {downloadSuccess ? 'Download Again' : 'Download Summary'}
               </>
             )}
           </button>
 
           <button
-            onClick={handleCloseAttempt}
+            onClick={handleClose}
             className="w-full py-2 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
           >
-            {showWarning ? 'Close Anyway' : 'Close'}
+            Close
           </button>
         </div>
       </div>
