@@ -1241,6 +1241,22 @@ const App: React.FC = () => {
     }
   }, [moodEntries, userProfile?.moodSummaryState, isLoading, settings.customEmotions]);
 
+  // Debug: Expose function to manually show monthly summary (can be called from console)
+  useEffect(() => {
+    (window as any).showMonthlySummary = (month: number, year: number) => {
+      const customEmotions = settings.customEmotions || [];
+      const summaryData = calculateMonthlySummary(moodEntries, month - 1, year, customEmotions); // month is 1-indexed for user
+      if (summaryData) {
+        setMonthlySummaryData(summaryData);
+        setShowMonthlySummaryModal(true);
+        console.log('📊 Showing summary for', summaryData);
+      } else {
+        console.log('❌ No entries found for', month, year);
+      }
+    };
+    console.log('💡 Tip: Run showMonthlySummary(1, 2026) in console to view January 2026 summary');
+  }, [moodEntries, settings.customEmotions]);
+
   // Handle monthly summary modal close
   const handleMonthlySummaryClose = (downloaded: boolean) => {
     setShowMonthlySummaryModal(false);
