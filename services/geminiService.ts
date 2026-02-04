@@ -60,8 +60,10 @@ async function callVertexAI(
 }
 
 
+export type ReflectionReadiness = 'release_needed' | 'aware_not_now' | 'already_reflected';
+
 export interface OnboardingAnswers {
-  previousWork: string;
+  reflectionReadiness: ReflectionReadiness;
   currentEmotions: string;
   futureFeeling: string;
   readinessScale: number;
@@ -77,12 +79,19 @@ export interface IdealSelfAnswers {
 }
 
 export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Promise<OnboardingAnalysis> {
+    // Map reflection readiness to descriptive text for the prompt
+    const reflectionReadinessText = {
+      'release_needed': 'There are past experiences I\'d like to spend some time reflecting on and letting go of.',
+      'aware_not_now': 'I\'m aware of past experiences, but I\'d prefer not to focus on them right now.',
+      'already_reflected': 'I\'ve already reflected on the past and feel ready to focus on what\'s ahead.'
+    };
+
     const prompt = `
         You are an empathetic, mindful identity coach. Analyze the user's answers to the onboarding questions to determine their current arc in their personal transformation journey.
 
         The user's answers are:
-        1. Have you done inner emotional healing or reflection work before?
-           - "${answers.previousWork}"
+        1. How do you feel about reflecting on past experiences now?
+           - "${reflectionReadinessText[answers.reflectionReadiness]}"
         2. What emotions or patterns feel most present right now?
            - "${answers.currentEmotions}"
         3. In one word, how do you feel about the future?
@@ -92,15 +101,18 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
         5. Describe briefly what your Ideal Self might look or feel like.
            - "${answers.idealSelf}"
 
-        Based on these answers, classify their arc into one of three categories using the readiness scale (question 4) as a primary guide, but also considering the nuance of their written answers:
-        - release (Readiness score 0-5): The user is in the process of letting go of past hurt that no longer serves them. They may express feelings of being stuck, confused, or mention past unresolved issues that need releasing.
-        - reaffirm (Readiness score 6-7): The user is solidifying what they know is the true nature that was masked by past hurts. They have some clarity and are ready to reaffirm their authentic self with guidance and structure.
-        - reignition (Readiness score 8-10): The user is moving assuredly in their inner power, unhindered. They express excitement, readiness, a clear vision, and are actively creating their future self.
+        Based on these answers, classify their arc into one of three categories. The reflection readiness question (question 1) is the PRIMARY determinant for the Release arc:
+
+        - release: ONLY if the user selected "There are past experiences I'd like to spend some time reflecting on and letting go of" (release_needed). This user has indicated readiness to reflect on and release past experiences. The readiness scale can help determine intensity.
+        - reaffirm (Readiness score 6-7, AND user did NOT select release_needed): The user is solidifying what they know is the true nature that was masked by past hurts. They have some clarity and are ready to reaffirm their authentic self with guidance and structure.
+        - reignition (Readiness score 8-10, AND user did NOT select release_needed): The user is moving assuredly in their inner power, unhindered. They express excitement, readiness, a clear vision, and are actively creating their future self.
+
+        IMPORTANT: If the user selected "aware_not_now" or "already_reflected" for question 1, they should NOT be placed in the Release arc regardless of other answers. Use readiness scale to determine between Reaffirm and Reignition.
 
         Your response MUST be a JSON object with the following structure:
         {
           "phase": "release" | "reaffirm" | "reignition",
-          "summary": "A short, empathetic paragraph summarizing where the user is, based on their answers.",
+          "summary": "A short, empathetic paragraph summarizing where the user is, based on their answers. Reference their readiness to reflect on past experiences in a natural, non-clinical way.",
           "encouragement": "A single, gentle sentence of encouragement."
         }
     `;

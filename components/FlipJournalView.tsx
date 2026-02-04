@@ -256,7 +256,7 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
               Start Your Flip Journal
             </h2>
             <p className="text-[var(--text-secondary)] mb-6 max-w-md mx-auto">
-              Transform stuck thoughts by viewing them through the lens of your wiser, future self who has already overcome these challenges.
+              Reframe stuck thoughts by viewing them through the lens of your wiser, future self who has already overcome these challenges.
             </p>
             <button
               onClick={onNewEntry}
