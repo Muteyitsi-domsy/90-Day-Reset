@@ -524,15 +524,15 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
 
-                    {/* (b) Ideal Self Manifesto */}
+                    {/* (b) Personal North Star */}
                     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                         <button onClick={() => toggleSection('manifesto')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <span className="font-medium text-[var(--text-primary)]">Ideal Self Manifesto</span>
+                            <span className="font-medium text-[var(--text-primary)]">Personal North Star</span>
                             <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'manifesto' ? 'rotate-180' : ''}`} />
                         </button>
                         {openSection === 'manifesto' && (
                             <div className="p-4 bg-[var(--card-bg)] text-[var(--text-primary)] font-light whitespace-pre-wrap leading-relaxed border-t border-gray-200 dark:border-gray-700">
-                                {userProfile?.idealSelfManifesto || 'Manifesto not yet written.'}
+                                {userProfile?.idealSelfManifesto || 'Not yet written.'}
                             </div>
                         )}
                     </div>
