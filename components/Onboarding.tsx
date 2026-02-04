@@ -27,10 +27,10 @@ const reflectionOptions = [
 
 const questions = [
     { id: 'reflectionReadiness', label: 'How do you feel about reflecting on past experiences now?', type: 'radio', helperText: 'There\'s no right or wrong answer — choose what feels most comfortable for you right now.' },
-    { id: 'currentEmotions', label: 'What emotions or patterns feel most present right now?', type: 'textarea', rows: 4 },
-    { id: 'futureFeeling', label: 'In one word, how do you feel about the future?', type: 'text' },
+    { id: 'currentEmotions', label: 'What emotions or recurring themes feel most noticeable right now?', type: 'textarea', rows: 4 },
+    { id: 'futureFeeling', label: 'In one word, how does the future feel to you right now?', type: 'text' },
     { id: 'readinessScale', label: 'On a scale of 1–10, how ready do you feel to make changes in your daily focus or habits?', type: 'range' },
-    { id: 'idealSelf', label: 'Describe briefly what your Ideal Self might look or feel like.', type: 'textarea', rows: 4 },
+    { id: 'idealSelf', label: 'Describe what you\'d like to focus more on in your life over the coming months.', type: 'textarea', rows: 4 },
 ];
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {

@@ -92,13 +92,13 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
         The user's answers are:
         1. How do you feel about reflecting on past experiences now?
            - "${reflectionReadinessText[answers.reflectionReadiness]}"
-        2. What emotions or patterns feel most present right now?
+        2. What emotions or recurring themes feel most noticeable right now?
            - "${answers.currentEmotions}"
-        3. In one word, how do you feel about the future?
+        3. In one word, how does the future feel to you right now?
            - "${answers.futureFeeling}"
         4. On a scale of 1–10, how ready do you feel to make changes in your daily focus or habits?
            - ${answers.readinessScale}
-        5. Describe briefly what your Ideal Self might look or feel like.
+        5. Describe what you'd like to focus more on in your life over the coming months.
            - "${answers.idealSelf}"
 
         Based on these answers, classify their arc into one of three categories:
@@ -117,7 +117,7 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
         Your response MUST be a JSON object with the following structure:
         {
           "phase": "release" | "reaffirm" | "reignition",
-          "summary": "A short, empathetic paragraph summarizing where the user is, based on their answers. Reference their readiness to make changes in a natural, non-clinical way.",
+          "summary": "A short, empathetic paragraph summarizing where the user is, based on their answers. Reference their focus areas and readiness to make changes in a natural, non-clinical way. Avoid therapy language.",
           "encouragement": "A single, gentle sentence of encouragement."
         }
     `;
