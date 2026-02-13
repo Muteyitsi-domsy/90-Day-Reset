@@ -418,6 +418,33 @@ const App: React.FC = () => {
 
   // Migrate localStorage data to Firestore when user signs up
   useEffect(() => {
+    /**
+     * Safely reads a localStorage value that may be plain JSON or legacy encrypted.
+     * Tries JSON.parse first (plain), then safeRead with various userId fallbacks.
+     */
+    const readLocalData = (raw: string | null, userId?: string): string | null => {
+      if (!raw) return null;
+
+      // Try plain JSON first (post-migration or never-encrypted data)
+      if (!raw.startsWith('U2Fsd')) {
+        return raw;
+      }
+
+      // Legacy encrypted data — try safeRead with various key variants
+      const userIds = [undefined, userId, 'anonymous'];
+      for (const uid of userIds) {
+        try {
+          const result = safeRead(raw, uid);
+          if (result) return result;
+        } catch {
+          // Try next variant
+        }
+      }
+
+      console.error('Failed to decrypt local data with all key variants');
+      return null;
+    };
+
     const migrateData = async () => {
       if (!user || hasMigrated || authLoading) return;
 
@@ -433,8 +460,9 @@ const App: React.FC = () => {
       const localSettings = localStorage.getItem('settings');
       const localEntries = localStorage.getItem('journalEntries');
       const localMoodEntries = localStorage.getItem('moodEntries') || localStorage.getItem('moodJournalEntries');
+      const localFlipEntries = localStorage.getItem('flip_journal_entries');
 
-      if (!localProfile && !localSettings && !localEntries && !localMoodEntries) {
+      if (!localProfile && !localSettings && !localEntries && !localMoodEntries && !localFlipEntries) {
         // No data to migrate
         setHasMigrated(true);
         return;
@@ -446,46 +474,48 @@ const App: React.FC = () => {
         console.log('  - Settings:', !!localSettings);
         console.log('  - Journal Entries:', !!localEntries);
         console.log('  - Mood Entries:', !!localMoodEntries);
+        console.log('  - Flip Entries:', !!localFlipEntries);
 
         // Import FirestoreService directly for batch operations
         const { FirestoreService } = await import('./src/services/firestoreService');
         const firestoreService = new FirestoreService(user.uid);
 
-        if (localProfile) {
-          const decryptedProfile = safeRead(localProfile);
-          if (decryptedProfile) {
-            const profile = JSON.parse(decryptedProfile);
-            console.log('  ✓ Migrating profile...');
-            await firestoreService.saveUserProfile(profile);
+        const profileData = readLocalData(localProfile, user.uid);
+        if (profileData) {
+          const profile = JSON.parse(profileData);
+          console.log('  ✓ Migrating profile...');
+          await firestoreService.saveUserProfile(profile);
+        }
+
+        const settingsData = readLocalData(localSettings, user.uid);
+        if (settingsData) {
+          const settings = JSON.parse(settingsData);
+          console.log('  ✓ Migrating settings...');
+          await firestoreService.saveSettings(settings);
+        }
+
+        const entriesData = readLocalData(localEntries, user.uid);
+        if (entriesData) {
+          const entries = JSON.parse(entriesData);
+          console.log(`  ✓ Migrating ${entries.length} journal entries...`);
+          await firestoreService.batchSaveEntries(entries);
+        }
+
+        const moodData = readLocalData(localMoodEntries, user.uid);
+        if (moodData) {
+          const moodEntries = JSON.parse(moodData);
+          console.log(`  ✓ Migrating ${moodEntries.length} mood entries...`);
+          for (const entry of moodEntries) {
+            await firestoreService.saveMoodEntry(entry);
           }
         }
 
-        if (localSettings) {
-          const decryptedSettings = safeRead(localSettings);
-          if (decryptedSettings) {
-            const settings = JSON.parse(decryptedSettings);
-            console.log('  ✓ Migrating settings...');
-            await firestoreService.saveSettings(settings);
-          }
-        }
-
-        if (localEntries) {
-          const decryptedEntries = safeRead(localEntries);
-          if (decryptedEntries) {
-            const entries = JSON.parse(decryptedEntries);
-            console.log(`  ✓ Migrating ${entries.length} journal entries...`);
-            await firestoreService.batchSaveEntries(entries);
-          }
-        }
-
-        if (localMoodEntries) {
-          const decryptedMood = safeRead(localMoodEntries);
-          if (decryptedMood) {
-            const moodEntries = JSON.parse(decryptedMood);
-            console.log(`  ✓ Migrating ${moodEntries.length} mood entries...`);
-            for (const entry of moodEntries) {
-              await firestoreService.saveMoodEntry(entry);
-            }
+        const flipData = readLocalData(localFlipEntries, user.uid);
+        if (flipData) {
+          const flipEntries = JSON.parse(flipData);
+          console.log(`  ✓ Migrating ${flipEntries.length} flip entries...`);
+          for (const entry of flipEntries) {
+            await firestoreService.saveFlipEntry(entry);
           }
         }
 
@@ -500,6 +530,7 @@ const App: React.FC = () => {
         localStorage.removeItem('settings');
         localStorage.removeItem('moodEntries');
         localStorage.removeItem('moodJournalEntries');
+        localStorage.removeItem('flip_journal_entries');
 
         setHasMigrated(true);
 
@@ -1740,20 +1771,30 @@ const App: React.FC = () => {
     handleStartNewJourney();
   };
 
-  const exportData = () => {
-      const data = {
-          userProfile,
-          settings,
-          journalEntries
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `identity-reset-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
+  const exportData = async () => {
+      const { exportAllData, downloadJSON } = await import('./src/services/dataExportService');
+      const jsonString = await exportAllData(storageService);
+      downloadJSON(jsonString);
+  };
+
+  const importData = async () => {
+      if (!window.confirm('Importing data will overwrite your current data. Are you sure?')) return;
+      try {
+        const { handleFileImport, importAllData } = await import('./src/services/dataExportService');
+        const jsonString = await handleFileImport();
+        const result = await importAllData(jsonString, storageService);
+        if (result.success) {
+          alert('Data imported successfully! The app will reload.');
+          window.location.reload();
+        } else {
+          alert(`Import completed with errors:\n${result.errors.join('\n')}`);
+          window.location.reload();
+        }
+      } catch (e: any) {
+        if (e?.message !== 'No file selected') {
+          alert(`Import failed: ${e?.message || e}`);
+        }
+      }
   };
 
   const deleteData = () => {
@@ -1960,6 +2001,7 @@ const App: React.FC = () => {
                         onPauseJourney={handlePauseJourney}
                         onResumeJourney={handleResumeJourney}
                         onExportData={exportData}
+                        onImportData={importData}
                         onDeleteData={deleteData}
                         onViewReport={handleViewReport}
                         onLockApp={() => setIsLocked(true)}
@@ -2059,6 +2101,7 @@ const App: React.FC = () => {
                 onPauseJourney={handlePauseJourney}
                 onResumeJourney={handleResumeJourney}
                 onExportData={exportData}
+                onImportData={importData}
                 onDeleteData={deleteData}
                 onViewReport={handleViewReport}
                 onRegenerateReport={(weekOrMonth, type) => {
@@ -2072,8 +2115,30 @@ const App: React.FC = () => {
                 onSetupCloudBackup={() => setShowAuthModal(true)}
                 userEmail={user?.email}
                 onSignOut={async () => {
-                  const { signOut } = await import('./src/hooks/useAuth');
-                  // Get auth instance
+                  try {
+                    // Save cloud data to localStorage before signing out
+                    if (user) {
+                      const { FirestoreService } = await import('./src/services/firestoreService');
+                      const fs = new FirestoreService(user.uid);
+                      const cloudData = await fs.getAllData();
+                      const { LocalStorageService } = await import('./src/services/localStorageService');
+                      const ls = new LocalStorageService();
+
+                      if (cloudData.profile) await ls.saveUserProfile(cloudData.profile);
+                      if (cloudData.settings) await ls.saveSettings(cloudData.settings);
+                      for (const entry of cloudData.entries) await ls.saveJournalEntry(entry);
+                      for (const entry of cloudData.moodEntries) await ls.saveMoodEntry(entry);
+                      for (const entry of cloudData.flipEntries) await ls.saveFlipEntry(entry);
+
+                      // Clear migration flag so re-signing in can re-migrate
+                      localStorage.removeItem('migrationCompleted');
+                      localStorage.removeItem('migrationDate');
+                      console.log('✅ Cloud data saved to localStorage before sign-out');
+                    }
+                  } catch (e) {
+                    console.error('Failed to save cloud data locally before sign-out:', e);
+                  }
+
                   const { auth } = await import('./src/config/firebase');
                   const { signOut: firebaseSignOut } = await import('firebase/auth');
                   await firebaseSignOut(auth);

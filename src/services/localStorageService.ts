@@ -1,20 +1,13 @@
 import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
 import { StorageService } from './storageService';
-import {
-  encryptJSON,
-  decryptJSON,
-  safeRead,
-  isEncrypted,
-  migrateToEncrypted,
-  clearEncryptionKeys,
-} from '../utils/encryption';
+import { safeRead } from '../utils/encryption';
 
 /**
  * LocalStorage implementation of StorageService
  * Handles data persistence using browser's localStorage API
  *
- * SECURITY: Sensitive data (journal entries, user profile, mood entries) is encrypted
- * using AES-256 encryption. Settings are stored unencrypted as they're not sensitive.
+ * Data is stored as plain JSON. Legacy encrypted data (starting with 'U2Fsd')
+ * is automatically decrypted and re-saved as plain JSON on first read.
  */
 export class LocalStorageService implements StorageService {
   private readonly KEYS = {
@@ -25,23 +18,45 @@ export class LocalStorageService implements StorageService {
     FLIP_ENTRIES: 'flip_journal_entries',
   };
 
-  // Current user ID for encryption key derivation
+  // Kept for backward compatibility with StorageService interface
   private userId?: string;
 
-  /**
-   * Sets the current user ID for encryption
-   * Should be called after authentication
-   */
   setUserId(userId: string | undefined): void {
     this.userId = userId;
+  }
+
+  /**
+   * Reads a localStorage value, transparently migrating legacy encrypted data to plain JSON.
+   * If the value starts with 'U2Fsd' (CryptoJS encrypted marker), it attempts decryption
+   * via safeRead() and immediately re-saves as plain JSON.
+   */
+  private readAndMigrate(key: string): string | null {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+
+    // Legacy encrypted data starts with 'U2Fsd' (base64 for 'Salted__')
+    if (raw.startsWith('U2Fsd')) {
+      try {
+        const decrypted = safeRead(raw, this.userId);
+        if (decrypted) {
+          // Re-save as plain JSON to complete migration
+          localStorage.setItem(key, decrypted);
+          console.log(`✅ Migrated ${key} from encrypted to plain JSON`);
+          return decrypted;
+        }
+      } catch (e) {
+        console.error(`Failed to decrypt legacy data for ${key}:`, e);
+      }
+      return null;
+    }
+
+    return raw;
   }
 
   // User Profile operations
   async saveUserProfile(profile: UserProfile): Promise<void> {
     try {
-      // Encrypt profile data before saving
-      const encrypted = encryptJSON(profile, this.userId);
-      localStorage.setItem(this.KEYS.USER_PROFILE, encrypted);
+      localStorage.setItem(this.KEYS.USER_PROFILE, JSON.stringify(profile));
     } catch (error) {
       console.error('Error saving user profile to localStorage:', error);
       throw new Error('Failed to save user profile');
@@ -50,19 +65,10 @@ export class LocalStorageService implements StorageService {
 
   async getUserProfile(): Promise<UserProfile | null> {
     try {
-      const savedProfile = localStorage.getItem(this.KEYS.USER_PROFILE);
-      if (!savedProfile) return null;
+      const data = this.readAndMigrate(this.KEYS.USER_PROFILE);
+      if (!data) return null;
 
-      // Try to read data (handles both encrypted and unencrypted for migration)
-      const decryptedData = safeRead(savedProfile, this.userId);
-      if (!decryptedData) return null;
-
-      const profile: UserProfile = JSON.parse(decryptedData);
-
-      // If data wasn't encrypted, encrypt it now (migration)
-      if (!isEncrypted(savedProfile)) {
-        await this.saveUserProfile(profile);
-      }
+      const profile: UserProfile = JSON.parse(data);
 
       // Migration from 'stage' to 'arc'
       if ((profile as any).stage) {
@@ -181,20 +187,10 @@ export class LocalStorageService implements StorageService {
 
   async getJournalEntries(): Promise<JournalEntry[]> {
     try {
-      const savedEntries = localStorage.getItem(this.KEYS.JOURNAL_ENTRIES);
-      if (!savedEntries) return [];
+      const data = this.readAndMigrate(this.KEYS.JOURNAL_ENTRIES);
+      if (!data) return [];
 
-      // Decrypt entries (handles migration from unencrypted)
-      const decryptedData = safeRead(savedEntries, this.userId);
-      if (!decryptedData) return [];
-
-      const rawEntries: any[] = JSON.parse(decryptedData);
-
-      // If data wasn't encrypted, encrypt it now (migration)
-      if (!isEncrypted(savedEntries)) {
-        // Re-save with encryption
-        await this._saveAllEntries(rawEntries);
-      }
+      const rawEntries: any[] = JSON.parse(data);
 
       // Migration: Add `type` to entries that don't have it and parse summaryData
       const typedEntries = rawEntries.map(e => ({
@@ -251,20 +247,10 @@ export class LocalStorageService implements StorageService {
 
   async getMoodEntries(): Promise<MoodJournalEntry[]> {
     try {
-      const savedEntries = localStorage.getItem(this.KEYS.MOOD_ENTRIES);
-      if (!savedEntries) return [];
+      const data = this.readAndMigrate(this.KEYS.MOOD_ENTRIES);
+      if (!data) return [];
 
-      // Decrypt entries (handles migration from unencrypted)
-      const decryptedData = safeRead(savedEntries, this.userId);
-      if (!decryptedData) return [];
-
-      const entries: MoodJournalEntry[] = JSON.parse(decryptedData);
-
-      // If data wasn't encrypted, encrypt it now (migration)
-      if (!isEncrypted(savedEntries)) {
-        await this._saveAllMoodEntries(entries);
-      }
-
+      const entries: MoodJournalEntry[] = JSON.parse(data);
       return entries;
     } catch (error) {
       console.error('Error loading mood entries from localStorage:', error);
@@ -292,7 +278,6 @@ export class LocalStorageService implements StorageService {
   }
 
   async updateFlipEntry(entry: FlipJournalEntry): Promise<void> {
-    // saveFlipEntry already handles updates, so we can delegate to it
     await this.saveFlipEntry(entry);
   }
 
@@ -309,20 +294,10 @@ export class LocalStorageService implements StorageService {
 
   async getFlipEntries(): Promise<FlipJournalEntry[]> {
     try {
-      const savedEntries = localStorage.getItem(this.KEYS.FLIP_ENTRIES);
-      if (!savedEntries) return [];
+      const data = this.readAndMigrate(this.KEYS.FLIP_ENTRIES);
+      if (!data) return [];
 
-      // Decrypt entries (handles migration from unencrypted)
-      const decryptedData = safeRead(savedEntries, this.userId);
-      if (!decryptedData) return [];
-
-      const entries: FlipJournalEntry[] = JSON.parse(decryptedData);
-
-      // If data wasn't encrypted, encrypt it now (migration)
-      if (!isEncrypted(savedEntries)) {
-        await this._saveAllFlipEntries(entries);
-      }
-
+      const entries: FlipJournalEntry[] = JSON.parse(data);
       return entries;
     } catch (error) {
       console.error('Error loading flip entries from localStorage:', error);
@@ -353,9 +328,6 @@ export class LocalStorageService implements StorageService {
       localStorage.removeItem(this.KEYS.JOURNAL_ENTRIES);
       localStorage.removeItem(this.KEYS.MOOD_ENTRIES);
       localStorage.removeItem(this.KEYS.FLIP_ENTRIES);
-
-      // Clear encryption keys
-      clearEncryptionKeys();
     } catch (error) {
       console.error('Error clearing localStorage:', error);
       throw new Error('Failed to clear storage');
@@ -384,9 +356,7 @@ export class LocalStorageService implements StorageService {
         return rest;
       });
 
-      // Encrypt before saving
-      const encrypted = encryptJSON(entriesToSave, this.userId);
-      localStorage.setItem(this.KEYS.JOURNAL_ENTRIES, encrypted);
+      localStorage.setItem(this.KEYS.JOURNAL_ENTRIES, JSON.stringify(entriesToSave));
     } catch (error) {
       console.error('Error saving journal entries to localStorage:', error);
       throw new Error('Failed to save journal entries');
@@ -396,9 +366,7 @@ export class LocalStorageService implements StorageService {
   // Private helper to save all mood entries
   private async _saveAllMoodEntries(entries: MoodJournalEntry[]): Promise<void> {
     try {
-      // Encrypt before saving
-      const encrypted = encryptJSON(entries, this.userId);
-      localStorage.setItem(this.KEYS.MOOD_ENTRIES, encrypted);
+      localStorage.setItem(this.KEYS.MOOD_ENTRIES, JSON.stringify(entries));
     } catch (error) {
       console.error('Error saving mood entries to localStorage:', error);
       throw new Error('Failed to save mood entries');
@@ -408,9 +376,7 @@ export class LocalStorageService implements StorageService {
   // Private helper to save all flip entries
   private async _saveAllFlipEntries(entries: FlipJournalEntry[]): Promise<void> {
     try {
-      // Encrypt before saving
-      const encrypted = encryptJSON(entries, this.userId);
-      localStorage.setItem(this.KEYS.FLIP_ENTRIES, encrypted);
+      localStorage.setItem(this.KEYS.FLIP_ENTRIES, JSON.stringify(entries));
     } catch (error) {
       console.error('Error saving flip entries to localStorage:', error);
       throw new Error('Failed to save flip entries');

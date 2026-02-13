@@ -16,6 +16,7 @@ interface MenuProps {
     onPauseJourney: () => void;
     onResumeJourney: () => void;
     onExportData: () => void;
+    onImportData: () => void;
     onDeleteData: () => void;
     onViewReport: (report: JournalEntry) => void;
     onRegenerateReport?: (weekOrMonth: number, type: 'weekly' | 'monthly') => void;
@@ -45,7 +46,7 @@ const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
 const Menu: React.FC<MenuProps> = ({
     isOpen, onClose, userProfile, settings, reports,
     onUpdateSettings, onUpdateProfile, onPauseJourney, onResumeJourney,
-    onExportData, onDeleteData, onViewReport, onRegenerateReport, onLockApp,
+    onExportData, onImportData, onDeleteData, onViewReport, onRegenerateReport, onLockApp,
     onRitualComplete, onOpenCalendar, userEmail, onSignOut,
     onOpenPrivacyPolicy, onOpenTerms, onOpenContact, onSetupCloudBackup,
     activeView, onToggleView, calendarView, onToggleCalendarView, onOpenMoodJournal
@@ -931,10 +932,15 @@ const Menu: React.FC<MenuProps> = ({
                                         </button>
                                     </div>
                                 )}
-                                <button onClick={onExportData} className="w-full py-2 border border-[var(--text-primary)] text-[var(--text-primary)] rounded-md text-sm">
-                                    Download All Data (JSON)
-                                </button>
-                                
+                                <div className="flex gap-2">
+                                    <button onClick={onExportData} className="flex-1 py-2 border border-[var(--text-primary)] text-[var(--text-primary)] rounded-md text-sm">
+                                        Export Data
+                                    </button>
+                                    <button onClick={onImportData} className="flex-1 py-2 border border-[var(--text-primary)] text-[var(--text-primary)] rounded-md text-sm">
+                                        Import Data
+                                    </button>
+                                </div>
+
                                 {!showDeleteConfirm ? (
                                     <button onClick={() => setShowDeleteConfirm(true)} className="w-full py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">
                                         Delete All Data

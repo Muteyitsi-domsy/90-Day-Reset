@@ -1,6 +1,8 @@
 /**
- * Encryption utilities for localStorage data protection
- * Uses AES-256 encryption via crypto-js
+ * @deprecated LEGACY — Local encryption has been removed. Data is now stored as plain JSON.
+ * This file is kept only for backward compatibility: safeRead() is used during the
+ * one-time migration of existing encrypted data to plain JSON format.
+ * Do not use encryptJSON/encryptData for new code.
  */
 
 import CryptoJS from 'crypto-js';
