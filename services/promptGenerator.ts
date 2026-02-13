@@ -18,10 +18,13 @@ interface Prompt {
     category: PromptCategory;
 }
 
-// Persistent storage key for ALL prompts ever shown (permanent history)
+// Persistent storage key for ALL prompts actually ANSWERED (permanent history)
 const ALL_PROMPTS_HISTORY_KEY = 'allPromptsHistory';
 
-// Load all prompts ever shown from localStorage
+// Cache key for today's prompt (so it persists across sessions within the same day)
+const DAILY_PROMPT_CACHE_KEY = 'dailyPromptCache';
+
+// Load all prompts ever answered from localStorage
 const loadAllPromptsHistory = (): string[] => {
     try {
         const saved = localStorage.getItem(ALL_PROMPTS_HISTORY_KEY);
@@ -31,8 +34,11 @@ const loadAllPromptsHistory = (): string[] => {
     }
 };
 
-// Save prompt to permanent history
-const addToPromptsHistory = (prompt: string) => {
+/**
+ * Mark a prompt as answered — only call this when user actually saves a journal entry.
+ * This permanently retires the prompt so it won't be shown again.
+ */
+export const markPromptAsAnswered = (prompt: string) => {
     try {
         const history = loadAllPromptsHistory();
         if (!history.includes(prompt)) {
@@ -41,6 +47,33 @@ const addToPromptsHistory = (prompt: string) => {
         }
     } catch (e) {
         console.warn('Failed to save prompt history:', e);
+    }
+};
+
+/**
+ * Get the cached prompt for today, if one exists.
+ * Returns null if no cached prompt or if cached prompt is from a different day.
+ */
+const getCachedDailyPrompt = (dayIndex: number): string | null => {
+    try {
+        const cached = localStorage.getItem(DAILY_PROMPT_CACHE_KEY);
+        if (!cached) return null;
+        const { day, prompt } = JSON.parse(cached);
+        if (day === dayIndex && prompt) return prompt;
+        return null;
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * Cache a prompt for today so the same prompt is shown across sessions.
+ */
+const cacheDailyPrompt = (dayIndex: number, prompt: string) => {
+    try {
+        localStorage.setItem(DAILY_PROMPT_CACHE_KEY, JSON.stringify({ day: dayIndex, prompt }));
+    } catch (e) {
+        console.warn('Failed to cache daily prompt:', e);
     }
 };
 
@@ -408,6 +441,13 @@ const shuffle = <T,>(array: T[]): T[] => {
 export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journalEntries: JournalEntry[]): string {
     const { arc, intentions } = userProfile;
 
+    // Check if we already have a cached prompt for today — return it immediately
+    // This ensures the same prompt persists across sessions within the same day
+    const cachedPrompt = getCachedDailyPrompt(dayIndex);
+    if (cachedPrompt) {
+        return cachedPrompt;
+    }
+
     // Get Day 1 entry for "Then & Now" reflections
     const dayOneEntry = journalEntries.find(e => e.day === 1 && e.type === 'daily');
     const dayOneText = dayOneEntry?.rawText || null;
@@ -417,20 +457,20 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
     // Day 30: First "Then & Now" reflection
     if (dayIndex === 30 && dayOneText) {
         const milestonePrompt = `You've completed your first month. Here's what you wrote on Day 1:\n\n"${dayOneText.slice(0, 500)}${dayOneText.length > 500 ? '...' : ''}"\n\nThis was where you started. Reading this now, what do you notice? What would you tell that version of yourself?`;
-        addToPromptsHistory(milestonePrompt);
+        cacheDailyPrompt(dayIndex, milestonePrompt);
         return milestonePrompt;
     }
 
     if (dayIndex === 45 && intentions) {
         const milestonePrompt = `You've reached the halfway point of your journey. Your intention was:\n\n"${intentions}"\n\nTake a moment to reflect on this. How do you feel in relation to this intention today? Are you closer, further, or has the intention itself shifted?`;
-        addToPromptsHistory(milestonePrompt);
+        cacheDailyPrompt(dayIndex, milestonePrompt);
         return milestonePrompt;
     }
 
     // Day 60: Second "Then & Now" reflection
     if (dayIndex === 60 && dayOneText) {
         const milestonePrompt = `Two months in. Let's revisit where you began. On Day 1, you wrote:\n\n"${dayOneText.slice(0, 500)}${dayOneText.length > 500 ? '...' : ''}"\n\nHow has your relationship with these words changed? What growth do you see in the space between then and now?`;
-        addToPromptsHistory(milestonePrompt);
+        cacheDailyPrompt(dayIndex, milestonePrompt);
         return milestonePrompt;
     }
 
@@ -448,12 +488,12 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
 
         finalPrompt += `\n\nLooking back over the past 90 days, what has this journey meant to you? What wisdom would you offer to someone just beginning?`;
 
-        addToPromptsHistory(finalPrompt);
+        cacheDailyPrompt(dayIndex, finalPrompt);
         return finalPrompt;
     }
 
-    // Collect ALL used prompts from multiple sources:
-    // 1. From permanent history (localStorage)
+    // Collect ALL answered prompts from multiple sources:
+    // 1. From permanent history (only prompts the user actually answered)
     // 2. From existing journal entries (to catch any missed)
     const permanentHistory = loadAllPromptsHistory();
     const entryPrompts = journalEntries
@@ -533,19 +573,19 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
 
         for (const dynPrompt of dynamicPrompts) {
             if (!allUsedPrompts.has(dynPrompt)) {
-                addToPromptsHistory(dynPrompt);
+                cacheDailyPrompt(dayIndex, dynPrompt);
                 return dynPrompt;
             }
         }
 
         // Absolute last resort
         const lastResort = `Day ${dayIndex}: Take a moment to breathe and check in with yourself. What arises?`;
-        addToPromptsHistory(lastResort);
+        cacheDailyPrompt(dayIndex, lastResort);
         return lastResort;
     }
 
-    // Save to permanent history
-    addToPromptsHistory(selectedPrompt.text);
+    // Cache the selected prompt for today (persists across sessions)
+    cacheDailyPrompt(dayIndex, selectedPrompt.text);
 
     return selectedPrompt.text;
 }

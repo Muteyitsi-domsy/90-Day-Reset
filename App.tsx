@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
-import { getDailyPrompt } from './services/promptGenerator';
+import { getDailyPrompt, markPromptAsAnswered } from './services/promptGenerator';
 import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
@@ -697,6 +697,9 @@ const App: React.FC = () => {
       rawText: text,
       type: 'daily',
     };
+
+    // Mark this prompt as answered so it's permanently retired from the pool
+    markPromptAsAnswered(dailyPrompt.text);
 
     // Save the raw entry immediately, regardless of crisis level
     const updatedEntries = [...journalEntries, newEntry];
