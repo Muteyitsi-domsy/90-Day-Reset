@@ -40,6 +40,7 @@ import FlipInputModal from './components/FlipInputModal';
 import FlipJournalView from './components/FlipJournalView';
 import FlipPromptModal from './components/FlipPromptModal';
 import SuspendedAccountScreen from './components/SuspendedAccountScreen';
+import { checkForAppUpdate } from './utils/appUpdate';
 import MonthlySummaryModal from './components/MonthlySummaryModal';
 import AnnualRecapModal from './components/AnnualRecapModal';
 import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
@@ -312,6 +313,11 @@ const App: React.FC = () => {
 
     loadData();
   }, [storageService, authLoading]);
+
+  // Check for app updates on launch (Android only)
+  useEffect(() => {
+    checkForAppUpdate();
+  }, []);
 
   // Backfill completion data after journal entries are loaded
   useEffect(() => {
