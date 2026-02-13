@@ -1,20 +1,28 @@
 // This file manages the logic for daily reminder notifications.
+// Uses Capacitor Local Notifications on native Android, falls back to Web API for PWA.
+
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const REMINDER_TIME_HOUR = 9; // 9 AM
 const NOTIFICATION_SCHEDULED_KEY = 'dailyNotificationScheduledTime';
 const EVENING_REMINDER_KEY = 'eveningNotificationScheduledTime';
 
+// Stable IDs for native notifications so we can cancel/reschedule
+const DAILY_NOTIFICATION_ID = 1001;
+const EVENING_NOTIFICATION_ID = 1002;
+
 const messages = [
   {
-    title: "A New Day Awaits ☀️",
+    title: "A New Day Awaits",
     body: "It's time to check in and move closer to the best version of yourself."
   },
   {
-    title: "A Gift For Your Future Self 🌿",
+    title: "A Gift For Your Future Self",
     body: "Show up for yourself today. Your future self will thank you for it."
   },
   {
-    title: "Your Journey Continues...",
+    title: "Your Journey Continues",
     body: "A moment of reflection is a moment of growth. Let's begin."
   },
   {
@@ -23,7 +31,10 @@ const messages = [
   }
 ];
 
+const isNative = () => Capacitor.isNativePlatform();
+
 export function isMessagingSupported(): boolean {
+  if (isNative()) return true;
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
@@ -33,11 +44,25 @@ export function isMessagingSupported(): boolean {
 }
 
 /**
- * Safely requests permission from the user to show notifications,
- * after checking if the browser supports them.
- * @returns {Promise<boolean>} A promise that resolves to true if permission is granted, false otherwise.
+ * Requests permission to show notifications.
+ * On native Android 13+, this triggers the system permission dialog.
+ * On web, uses the Web Notification API.
  */
 export const safeRequestNotificationPermission = async (): Promise<boolean> => {
+  if (isNative()) {
+    try {
+      const status = await LocalNotifications.checkPermissions();
+      if (status.display === 'granted') return true;
+
+      const result = await LocalNotifications.requestPermissions();
+      return result.display === 'granted';
+    } catch (error) {
+      console.error('Error requesting native notification permission:', error);
+      return false;
+    }
+  }
+
+  // Web/PWA fallback
   if (!isMessagingSupported()) {
     console.info("Notifications not supported in this browser.");
     return false;
@@ -46,8 +71,7 @@ export const safeRequestNotificationPermission = async (): Promise<boolean> => {
 };
 
 /**
- * Requests permission from the user to show notifications.
- * @returns {Promise<boolean>} A promise that resolves to true if permission is granted, false otherwise.
+ * Web-only permission request (kept for PWA compatibility).
  */
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!('Notification' in window)) {
@@ -55,7 +79,6 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     return false;
   }
 
-  // Use a try-catch block for robustness, as some browsers might have issues.
   try {
     const permission = await Notification.requestPermission();
     return permission === 'granted';
@@ -67,12 +90,41 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 
 /**
  * Schedules a daily reminder notification for 9 AM.
- * This function is safe to call on every app load. It uses localStorage
- * to ensure that a notification is scheduled only once per day.
- * Note: This relies on setTimeout and will only fire if the browser is running.
- * A more robust solution for a production app would involve a Service Worker.
+ * On native: uses Capacitor Local Notifications with a repeating daily schedule.
+ * On web: uses setTimeout (only fires if browser/PWA is running).
  */
-export const scheduleDailyReminder = () => {
+export const scheduleDailyReminder = async () => {
+  if (isNative()) {
+    try {
+      // Cancel any existing daily reminder to avoid duplicates
+      await LocalNotifications.cancel({ notifications: [{ id: DAILY_NOTIFICATION_ID }] });
+
+      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: DAILY_NOTIFICATION_ID,
+            title: randomMessage.title,
+            body: randomMessage.body,
+            schedule: {
+              on: { hour: REMINDER_TIME_HOUR, minute: 0 },
+              every: 'day',
+              allowWhileIdle: true,
+            },
+            smallIcon: 'ic_launcher',
+            largeIcon: 'ic_launcher',
+          }
+        ]
+      });
+      console.log('Native daily reminder scheduled for 9 AM');
+    } catch (error) {
+      console.error('Error scheduling native daily reminder:', error);
+    }
+    return;
+  }
+
+  // Web/PWA fallback
   if (!('Notification' in window) || Notification.permission !== 'granted') {
     return;
   }
@@ -80,16 +132,13 @@ export const scheduleDailyReminder = () => {
   const lastScheduledTime = localStorage.getItem(NOTIFICATION_SCHEDULED_KEY);
   const now = new Date().getTime();
 
-  // If there's a future notification already scheduled, don't schedule another.
   if (lastScheduledTime && parseInt(lastScheduledTime, 10) > now) {
     return;
   }
 
-  // Calculate the next 9 AM
   const nextReminder = new Date();
   nextReminder.setHours(REMINDER_TIME_HOUR, 0, 0, 0);
 
-  // If it's already past 9 AM today, schedule for 9 AM tomorrow.
   if (nextReminder.getTime() <= now) {
     nextReminder.setDate(nextReminder.getDate() + 1);
   }
@@ -101,49 +150,79 @@ export const scheduleDailyReminder = () => {
     try {
       new Notification(randomMessage.title, {
         body: randomMessage.body,
-        icon: '/favicon.ico' // A default icon
+        icon: '/favicon.ico'
       });
     } catch (error) {
-        console.error("Error displaying notification:", error);
+      console.error("Error displaying notification:", error);
     }
-    // Clear the old schedule time so a new one can be set next time the app opens.
     localStorage.removeItem(NOTIFICATION_SCHEDULED_KEY);
   }, timeUntilNextReminder);
 
-  // Store the time of the scheduled notification to prevent rescheduling on subsequent app loads.
   localStorage.setItem(NOTIFICATION_SCHEDULED_KEY, nextReminder.getTime().toString());
 };
 
 /**
  * Schedules a one-off evening reminder 8 hours after a journal entry is saved.
+ * On native: uses Capacitor Local Notifications with a specific time.
+ * On web: uses setTimeout (only fires if browser/PWA is running).
  */
-export const scheduleEveningReminder = () => {
-    if (!('Notification' in window) || Notification.permission !== 'granted') {
-      return;
+export const scheduleEveningReminder = async () => {
+  const EIGHT_HOURS_IN_MS = 8 * 60 * 60 * 1000;
+
+  if (isNative()) {
+    try {
+      // Cancel any existing evening reminder to avoid duplicates
+      await LocalNotifications.cancel({ notifications: [{ id: EVENING_NOTIFICATION_ID }] });
+
+      const reminderTime = new Date(Date.now() + EIGHT_HOURS_IN_MS);
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: EVENING_NOTIFICATION_ID,
+            title: "Evening Check-in",
+            body: "How did your day align with your journey? Take a moment to reflect.",
+            schedule: {
+              at: reminderTime,
+              allowWhileIdle: true,
+            },
+            smallIcon: 'ic_launcher',
+            largeIcon: 'ic_launcher',
+          }
+        ]
+      });
+      console.log('Native evening reminder scheduled for', reminderTime.toLocaleTimeString());
+    } catch (error) {
+      console.error('Error scheduling native evening reminder:', error);
     }
+    return;
+  }
 
-    const lastScheduledTime = localStorage.getItem(EVENING_REMINDER_KEY);
-    const now = new Date().getTime();
+  // Web/PWA fallback
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    return;
+  }
 
-    // If there's a future evening notification already scheduled for today, don't schedule another.
-    if (lastScheduledTime && parseInt(lastScheduledTime, 10) > now) {
-      return;
+  const lastScheduledTime = localStorage.getItem(EVENING_REMINDER_KEY);
+  const now = new Date().getTime();
+
+  if (lastScheduledTime && parseInt(lastScheduledTime, 10) > now) {
+    return;
+  }
+
+  const reminderTime = new Date(now + EIGHT_HOURS_IN_MS);
+
+  setTimeout(() => {
+    try {
+      new Notification("Evening Check-in", {
+        body: "How did your day align with your journey? Take a moment to reflect.",
+        icon: '/favicon.ico'
+      });
+    } catch (error) {
+      console.error("Error displaying evening notification:", error);
     }
+    localStorage.removeItem(EVENING_REMINDER_KEY);
+  }, EIGHT_HOURS_IN_MS);
 
-    const EIGHT_HOURS_IN_MS = 8 * 60 * 60 * 1000;
-    const reminderTime = new Date(now + EIGHT_HOURS_IN_MS);
-
-    setTimeout(() => {
-      try {
-        new Notification("Evening Check-in 🌙", {
-          body: "How did your day align with your journey? Take a moment to reflect.",
-          icon: '/favicon.ico'
-        });
-      } catch (error) {
-          console.error("Error displaying evening notification:", error);
-      }
-      localStorage.removeItem(EVENING_REMINDER_KEY);
-    }, EIGHT_HOURS_IN_MS);
-
-    localStorage.setItem(EVENING_REMINDER_KEY, reminderTime.getTime().toString());
+  localStorage.setItem(EVENING_REMINDER_KEY, reminderTime.getTime().toString());
 };

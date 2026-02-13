@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, UserProfile } from '../types';
 
-type InsightFrequency = 'daily' | 'weekly' | 'none';
+type InsightOption = 'daily' | 'weekly' | 'monthly';
 
 interface SettingsModalProps {
     settings: Settings;
@@ -34,17 +34,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
         onSave({ ...settings, theme });
     };
 
-    const handleInsightChange = (frequency: InsightFrequency) => {
-        let updates: Partial<Settings> = {};
-        switch (frequency) {
+    const handleInsightToggle = (option: InsightOption) => {
+        const updates: Partial<Settings> = {};
+        switch (option) {
             case 'daily':
-                updates = { dailyAnalysis: true, weeklyReports: true, monthlyReports: true };
+                updates.dailyAnalysis = !settings.dailyAnalysis;
                 break;
             case 'weekly':
-                updates = { dailyAnalysis: false, weeklyReports: true, monthlyReports: true };
+                updates.weeklyReports = !settings.weeklyReports;
                 break;
-            case 'none':
-                updates = { dailyAnalysis: false, weeklyReports: false, monthlyReports: false };
+            case 'monthly':
+                updates.monthlyReports = !settings.monthlyReports;
                 break;
         }
         onSave({ ...settings, ...updates });
@@ -100,15 +100,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
     };
 
-    const getCurrentFrequency = (): InsightFrequency => {
-        if (settings.dailyAnalysis) return 'daily';
-        if (settings.weeklyReports) return 'weekly';
-        return 'none';
+    const isInsightActive = (option: InsightOption): boolean => {
+        switch (option) {
+            case 'daily': return settings.dailyAnalysis;
+            case 'weekly': return settings.weeklyReports;
+            case 'monthly': return settings.monthlyReports;
+        }
     };
 
-    const getInsightButtonClass = (frequency: InsightFrequency) => {
+    const getInsightButtonClass = (option: InsightOption) => {
         const base = "px-4 py-2 rounded-lg transition-colors text-sm font-medium";
-        if (getCurrentFrequency() === frequency) {
+        if (isInsightActive(option)) {
             return `${base} bg-[var(--accent-primary)] text-white`;
         }
         return `${base} bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600`;
@@ -156,11 +158,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, userProfile, on
                     {/* Insight Frequency Settings */}
                     <div>
                         <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3">Insight Frequency</h3>
-                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Choose how often you receive AI-powered reflections.</p>
+                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Toggle the AI-powered reflections you'd like to receive.</p>
                         <div className="flex justify-center space-x-2 p-1 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
-                           <button onClick={() => handleInsightChange('daily')} className={getInsightButtonClass('daily')}>Daily</button>
-                           <button onClick={() => handleInsightChange('weekly')} className={getInsightButtonClass('weekly')}>Weekly</button>
-                           <button onClick={() => handleInsightChange('none')} className={getInsightButtonClass('none')}>None</button>
+                           <button onClick={() => handleInsightToggle('daily')} className={getInsightButtonClass('daily')}>Daily</button>
+                           <button onClick={() => handleInsightToggle('weekly')} className={getInsightButtonClass('weekly')}>Weekly</button>
+                           <button onClick={() => handleInsightToggle('monthly')} className={getInsightButtonClass('monthly')}>Monthly</button>
                         </div>
                     </div>
                     

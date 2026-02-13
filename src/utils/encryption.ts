@@ -18,13 +18,27 @@ class EncryptionKeyManager {
    * The key is derived from a combination of:
    * 1. User's unique ID (if authenticated)
    * 2. A random salt (stored in localStorage)
-   * 3. A device fingerprint
    */
   static getEncryptionKey(userId?: string): string {
-    // Get or create a salt for this device
+    const salt = this.getOrCreateSalt();
+
+    // Create a passphrase combining user ID and device salt
+    // NOTE: userAgent was removed from key derivation because Android WebView
+    // updates change it, breaking decryption of all stored data.
+    const passphrase = [
+      userId || 'anonymous',
+      salt,
+    ].join('|');
+
+    return this.deriveKey(passphrase, salt);
+  }
+
+  /**
+   * Gets or creates the encryption salt
+   */
+  static getOrCreateSalt(): string {
     let salt = localStorage.getItem(this.STORAGE_KEY);
     if (!salt) {
-      // Generate a random salt using crypto API
       const randomBytes = new Uint8Array(32);
       crypto.getRandomValues(randomBytes);
       salt = Array.from(randomBytes)
@@ -32,24 +46,46 @@ class EncryptionKeyManager {
         .join('');
       localStorage.setItem(this.STORAGE_KEY, salt);
     }
+    return salt;
+  }
 
-    // Create a passphrase combining:
-    // - User ID (or 'anonymous' if not logged in)
-    // - Device salt
-    // - User agent (device fingerprint)
-    const passphrase = [
+  /**
+   * Derives a key from a passphrase and salt using PBKDF2
+   */
+  static deriveKey(passphrase: string, salt: string): string {
+    const key = CryptoJS.PBKDF2(passphrase, salt, {
+      keySize: this.KEY_SIZE / 32,
+      iterations: 1000,
+    });
+    return key.toString();
+  }
+
+  /**
+   * Gets legacy encryption key variants for fallback decryption.
+   * Used to recover data encrypted with the old key format that included userAgent.
+   */
+  static getLegacyKeys(userId?: string): string[] {
+    const salt = this.getOrCreateSalt();
+    const keys: string[] = [];
+
+    // Legacy key format: userId|salt|userAgent
+    const legacyPassphrase = [
       userId || 'anonymous',
       salt,
       navigator.userAgent,
     ].join('|');
+    keys.push(this.deriveKey(legacyPassphrase, salt));
 
-    // Derive a key using PBKDF2
-    const key = CryptoJS.PBKDF2(passphrase, salt, {
-      keySize: this.KEY_SIZE / 32, // CryptoJS uses word size (32 bits)
-      iterations: 1000,
-    });
+    // If userId is set, also try with 'anonymous' (in case auth state changed)
+    if (userId) {
+      const anonPassphrase = ['anonymous', salt].join('|');
+      keys.push(this.deriveKey(anonPassphrase, salt));
 
-    return key.toString();
+      const anonLegacyPassphrase = ['anonymous', salt, navigator.userAgent].join('|');
+      keys.push(this.deriveKey(anonLegacyPassphrase, salt));
+    }
+
+    return keys;
   }
 
   /**
@@ -177,24 +213,35 @@ export function safeRead(data: string | null, userId?: string): string | null {
     return null;
   }
 
-  try {
-    // Check if encrypted
-    if (isEncrypted(data)) {
-      // Decrypt it
-      return decryptData(data, userId);
-    } else {
-      // Plain data - return as-is (will be encrypted on next save)
-      return data;
-    }
-  } catch (error) {
-    console.error('Error reading data:', error);
-    // If decryption fails, might be corrupted encrypted data
-    // Try returning as plain text as fallback
-    if (isEncrypted(data)) {
-      throw new Error('Data is encrypted but decryption failed - wrong key or corrupted data');
-    }
+  // Not encrypted - return as-is
+  if (!isEncrypted(data)) {
     return data;
   }
+
+  // Try decryption with current key first
+  try {
+    return decryptData(data, userId);
+  } catch {
+    // Current key failed - try legacy keys
+  }
+
+  // Try fallback keys (legacy format with userAgent, anonymous variants)
+  const legacyKeys = EncryptionKeyManager.getLegacyKeys(userId);
+  for (const legacyKey of legacyKeys) {
+    try {
+      const decrypted = CryptoJS.AES.decrypt(data, legacyKey);
+      const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+      if (decryptedString) {
+        console.log('✅ Recovered data using legacy encryption key - will re-encrypt on next save');
+        return decryptedString;
+      }
+    } catch {
+      // This key didn't work, try next
+    }
+  }
+
+  console.error('Failed to decrypt data with all key variants');
+  throw new Error('Data is encrypted but decryption failed - wrong key or corrupted data');
 }
 
 /**

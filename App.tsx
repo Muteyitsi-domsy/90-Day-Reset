@@ -28,6 +28,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { useAuth } from './src/hooks/useAuth';
 import { getStorageService } from './src/services/storageService';
 import { AuthModal } from './components/AuthModal';
+import { safeRead } from './src/utils/encryption';
 import { CloudSyncBanner } from './components/CloudSyncBanner';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
@@ -202,6 +203,14 @@ const App: React.FC = () => {
         // Wait for auth to load
         if (authLoading) return;
 
+        // Safety timeout: if data loading takes too long (e.g. Firestore hanging due to no network),
+        // fall back to defaults so the app doesn't get stuck on the loading spinner
+        const loadingTimeout = setTimeout(() => {
+          console.warn('⚠️ Data loading timed out after 15 seconds - falling back to defaults');
+          setIsLoading(false);
+          setHasLoadedSettings(true);
+        }, 15000);
+
         const defaultSettings: Settings = {
           theme: 'default',
           themeMode: 'system',
@@ -293,12 +302,10 @@ const App: React.FC = () => {
         }
       } catch (e) {
         console.error('Error loading from storage:', e);
-        // On error, fall back to localStorage
-        try {
-          localStorage.clear();
-        } catch {}
+        // Don't clear localStorage - data might be recoverable with updated keys
         setIsLocked(false);
       } finally {
+        clearTimeout(loadingTimeout);
         setIsLoading(false);
       }
     };
@@ -419,7 +426,7 @@ const App: React.FC = () => {
       const localProfile = localStorage.getItem('userProfile');
       const localSettings = localStorage.getItem('settings');
       const localEntries = localStorage.getItem('journalEntries');
-      const localMoodEntries = localStorage.getItem('moodJournalEntries');
+      const localMoodEntries = localStorage.getItem('moodEntries') || localStorage.getItem('moodJournalEntries');
 
       if (!localProfile && !localSettings && !localEntries && !localMoodEntries) {
         // No data to migrate
@@ -439,29 +446,40 @@ const App: React.FC = () => {
         const firestoreService = new FirestoreService(user.uid);
 
         if (localProfile) {
-          const profile = JSON.parse(localProfile);
-          console.log('  ✓ Migrating profile...');
-          await firestoreService.saveUserProfile(profile);
+          const decryptedProfile = safeRead(localProfile);
+          if (decryptedProfile) {
+            const profile = JSON.parse(decryptedProfile);
+            console.log('  ✓ Migrating profile...');
+            await firestoreService.saveUserProfile(profile);
+          }
         }
 
         if (localSettings) {
-          const settings = JSON.parse(localSettings);
-          console.log('  ✓ Migrating settings...');
-          await firestoreService.saveSettings(settings);
+          const decryptedSettings = safeRead(localSettings);
+          if (decryptedSettings) {
+            const settings = JSON.parse(decryptedSettings);
+            console.log('  ✓ Migrating settings...');
+            await firestoreService.saveSettings(settings);
+          }
         }
 
         if (localEntries) {
-          const entries = JSON.parse(localEntries);
-          console.log(`  ✓ Migrating ${entries.length} journal entries...`);
-          // Use batch save for efficiency
-          await firestoreService.batchSaveEntries(entries);
+          const decryptedEntries = safeRead(localEntries);
+          if (decryptedEntries) {
+            const entries = JSON.parse(decryptedEntries);
+            console.log(`  ✓ Migrating ${entries.length} journal entries...`);
+            await firestoreService.batchSaveEntries(entries);
+          }
         }
 
         if (localMoodEntries) {
-          const moodEntries = JSON.parse(localMoodEntries);
-          console.log(`  ✓ Migrating ${moodEntries.length} mood entries...`);
-          for (const entry of moodEntries) {
-            await firestoreService.saveMoodEntry(entry);
+          const decryptedMood = safeRead(localMoodEntries);
+          if (decryptedMood) {
+            const moodEntries = JSON.parse(decryptedMood);
+            console.log(`  ✓ Migrating ${moodEntries.length} mood entries...`);
+            for (const entry of moodEntries) {
+              await firestoreService.saveMoodEntry(entry);
+            }
           }
         }
 
@@ -474,6 +492,7 @@ const App: React.FC = () => {
         localStorage.removeItem('userProfile');
         localStorage.removeItem('journalEntries');
         localStorage.removeItem('settings');
+        localStorage.removeItem('moodEntries');
         localStorage.removeItem('moodJournalEntries');
 
         setHasMigrated(true);

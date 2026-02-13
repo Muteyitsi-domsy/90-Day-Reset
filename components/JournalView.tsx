@@ -52,15 +52,16 @@ const CheckinDetailsView: React.FC<{ checkin: EveningCheckin }> = ({ checkin }) 
 );
 
 
-const EntryCard: React.FC<{ 
-    entry: JournalEntry; 
-    isToday?: boolean; 
-    isMostRecentDaily?: boolean; 
+const EntryCard: React.FC<{
+    entry: JournalEntry;
+    isToday?: boolean;
+    isMostRecentDaily?: boolean;
     onEdit?: (entry: JournalEntry) => void;
     onDelete?: (entry: JournalEntry) => void;
     isDeleting?: boolean;
     onStartCheckin?: () => void;
-}> = ({ entry, isToday = false, isMostRecentDaily = false, onEdit, onDelete, isDeleting = false, onStartCheckin }) => {
+    dailyAnalysisEnabled?: boolean;
+}> = ({ entry, isToday = false, isMostRecentDaily = false, onEdit, onDelete, isDeleting = false, onStartCheckin, dailyAnalysisEnabled = true }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const isHunch = entry.type === 'hunch';
     const isSummary = entry.type === 'weekly_summary' || entry.type === 'weekly_summary_report' || entry.type === 'monthly_summary_report';
@@ -129,10 +130,10 @@ const EntryCard: React.FC<{
             ) : entry.crisisFlagged ? (
               null // Crisis-flagged entries: no analysis shown, evening check-in still available below
             ) : (
-              isToday && entry.type === 'daily' && <div className="mt-4"><LoadingSpinner/></div>
+              isToday && entry.type === 'daily' && dailyAnalysisEnabled && <div className="mt-4"><LoadingSpinner/></div>
             )}
             
-            {isToday && (entry.analysis || entry.crisisFlagged) && !entry.eveningCheckin && onStartCheckin && (
+            {isToday && (entry.analysis || entry.crisisFlagged || (entry.type === 'daily' && !dailyAnalysisEnabled)) && !entry.eveningCheckin && onStartCheckin && (
                 <div className="mt-6 pt-6 border-t border-gray-300/50 dark:border-gray-700/50">
                     <h3 className="text-lg font-light text-center text-[var(--text-secondary)] mb-3">Ready to reflect on your day?</h3>
                     <button
@@ -353,6 +354,7 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
                         onDelete={handleDeleteClick}
                         isDeleting={entry.id === deletingEntryId}
                         onStartCheckin={isToday ? handleStartCheckin : undefined}
+                        dailyAnalysisEnabled={settings.dailyAnalysis}
                     />
                     )
                 })}
