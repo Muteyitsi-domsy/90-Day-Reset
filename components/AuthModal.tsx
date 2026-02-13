@@ -384,7 +384,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
 
         .auth-modal-subtitle {
           font-size: 0.95rem;
-          color: var(--text-muted);
+          color: var(--text-primary);
           margin-bottom: 1.5rem;
           text-align: center;
         }
@@ -499,7 +499,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, defaultMode = 'signup' }
 
         .auth-mode-toggle p {
           font-size: 0.9rem;
-          color: var(--text-muted);
+          color: var(--text-primary);
         }
 
         .link-button {
