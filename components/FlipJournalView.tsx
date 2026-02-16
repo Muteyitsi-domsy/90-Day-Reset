@@ -6,6 +6,7 @@ import {
   getRemainingEntriesToday,
   canCreateEntryToday,
 } from '../utils/flipPrompts';
+import StreakDisplay from './StreakDisplay';
 
 interface FlipJournalViewProps {
   flipEntries: FlipJournalEntry[];
@@ -13,6 +14,8 @@ interface FlipJournalViewProps {
   onEditEntry?: (entry: FlipJournalEntry) => void;
   onDeleteEntry?: (entryId: string) => void;
   moodEntries?: MoodJournalEntry[];
+  currentStreak?: number;
+  streakEnabled?: boolean;
 }
 
 const TrashIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -179,6 +182,8 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
   onEditEntry,
   onDeleteEntry,
   moodEntries = [],
+  currentStreak = 0,
+  streakEnabled = true,
 }) => {
   const canCreate = canCreateEntryToday(flipEntries);
   const remainingToday = getRemainingEntriesToday(flipEntries);
@@ -216,6 +221,11 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
           <h1 className="text-3xl md:text-4xl font-light text-[var(--text-primary)] mb-2">
             Flip Journal
           </h1>
+          {streakEnabled && currentStreak > 0 && (
+            <div className="flex justify-center text-lg mb-1">
+              <StreakDisplay streak={currentStreak} label="day streak" enabled={streakEnabled} />
+            </div>
+          )}
           <p className="text-[var(--text-secondary)] max-w-md mx-auto">
             Reframe challenges through the eyes of your wiser, future self.
           </p>

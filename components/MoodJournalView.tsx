@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { MoodJournalEntry, CustomEmotion, Settings, FlipJournalEntry } from '../types';
 import { getEmotionEmoji, CONTEXT_LABELS } from '../utils/moodPrompts';
+import StreakDisplay from './StreakDisplay';
 
 interface MoodJournalViewProps {
   moodEntries: MoodJournalEntry[];
@@ -199,11 +200,9 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
           <h1 className="text-3xl md:text-4xl font-light text-[var(--text-primary)] mb-2">
             Daily Journal
           </h1>
-          {settings.moodStreakEnabled && currentStreak > 0 && (
-            <p className="text-lg text-[var(--text-secondary)]">
-              🔥 {currentStreak} day streak
-            </p>
-          )}
+          <div className="flex justify-center">
+            <StreakDisplay streak={currentStreak || 0} label="day streak" enabled={settings.moodStreakEnabled !== false} />
+          </div>
           <p className="text-sm text-[var(--text-secondary)] mt-2">
             {moodEntries.length} {moodEntries.length === 1 ? 'entry' : 'entries'}
           </p>

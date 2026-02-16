@@ -1,6 +1,7 @@
 
 import React from 'react';
 import DailyCompletionCircle from './DailyCompletionCircle';
+import StreakDisplay from './StreakDisplay';
 
 interface HeaderProps {
   streak?: number;
@@ -46,10 +47,7 @@ const Header: React.FC<HeaderProps> = ({
           size="small"
         />
         {streak && streak > 0 ? (
-          <div className="flex items-center justify-end text-lg text-[var(--accent-primary)] dark:text-[var(--accent-secondary)]" title={`${streak}-day streak`}>
-            <span className="font-semibold">{streak}</span>
-            <span role="img" aria-label="streak flame">🔥</span>
-          </div>
+          <StreakDisplay streak={streak} />
         ) : <div className="w-6 h-6"></div>}
       </div>
     </header>

@@ -87,6 +87,12 @@ export class LocalStorageService implements StorageService {
       // Initialize month_count if missing
       if (!profile.month_count) profile.month_count = 1;
 
+      // Initialize streak fields if missing
+      if (profile.flipStreak === undefined) profile.flipStreak = 0;
+      if (profile.lastFlipEntryDate === undefined) profile.lastFlipEntryDate = '';
+      if (profile.overallStreak === undefined) profile.overallStreak = 0;
+      if (profile.lastOverallEntryDate === undefined) profile.lastOverallEntryDate = '';
+
       return profile;
     } catch (error) {
       console.error('Error loading user profile from localStorage:', error);

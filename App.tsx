@@ -41,6 +41,7 @@ import FlipJournalView from './components/FlipJournalView';
 import FlipPromptModal from './components/FlipPromptModal';
 import SuspendedAccountScreen from './components/SuspendedAccountScreen';
 import { checkForAppUpdate } from './utils/appUpdate';
+import { calculateUpdatedStreak, recalculateStreakFromDates } from './services/streakService';
 import MonthlySummaryModal from './components/MonthlySummaryModal';
 import AnnualRecapModal from './components/AnnualRecapModal';
 import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
@@ -737,32 +738,20 @@ const App: React.FC = () => {
     setJournalEntries(updatedEntries);
 
     // --- Streak Logic ---
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let newStreak = userProfile.streak || 0;
-    let lastEntryDate = userProfile.lastEntryDate ? new Date(userProfile.lastEntryDate) : null;
-    if(lastEntryDate) {
-      lastEntryDate.setHours(0, 0, 0, 0);
-    }
-
-    if (lastEntryDate) {
-      const diffTime = today.getTime() - lastEntryDate.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) { // Consecutive day
-        newStreak++;
-      } else if (diffDays > 1) { // Streak broken
-        newStreak = 1;
-      }
-    } else { // First entry ever
-      newStreak = 1;
-    }
+    const todayStr = getLocalDateString();
+    const journeyStreak = calculateUpdatedStreak(
+      userProfile.streak || 0, userProfile.lastEntryDate || undefined, todayStr
+    );
+    const overallStreak = calculateUpdatedStreak(
+      userProfile.overallStreak || 0, userProfile.lastOverallEntryDate || undefined, todayStr
+    );
 
     setUserProfile(prev => ({
       ...prev!,
-      streak: newStreak,
-      lastEntryDate: today.toISOString()
+      streak: journeyStreak.newStreak,
+      lastEntryDate: new Date().toISOString(), // Keep ISO format for pause/resume compatibility
+      overallStreak: overallStreak.newStreak,
+      lastOverallEntryDate: overallStreak.lastEntryDate,
     }));
     // --- End of Streak Logic ---
 
@@ -1084,40 +1073,23 @@ const App: React.FC = () => {
   const updateMoodStreak = (entryDate: string) => {
     if (!userProfile) return;
 
-    const today = getLocalDateString();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = getLocalDateString(yesterday);
-
-    // Sort entries by date (most recent first)
-    const sortedEntries = [...moodEntries].sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-
-    // Calculate streak
-    let streak = 0;
-    let checkDate = new Date();
-
-    // Include the new entry in the calculation
-    const allDates = [entryDate, ...sortedEntries.map(e => e.date)];
+    // Include the new entry date and deduplicate, sorted most-recent-first
+    const allDates = [entryDate, ...moodEntries.map(e => e.date)];
     const uniqueDates = [...new Set(allDates)].sort((a, b) =>
       new Date(b).getTime() - new Date(a).getTime()
     );
 
-    for (const date of uniqueDates) {
-      const checkDateStr = getLocalDateString(checkDate);
-      if (date === checkDateStr) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
+    const moodStreak = recalculateStreakFromDates(uniqueDates);
+    const overallStreak = calculateUpdatedStreak(
+      userProfile.overallStreak || 0, userProfile.lastOverallEntryDate || undefined, entryDate
+    );
 
     setUserProfile(prev => prev ? {
       ...prev,
-      moodStreak: streak,
+      moodStreak,
       lastMoodEntryDate: entryDate,
+      overallStreak: overallStreak.newStreak,
+      lastOverallEntryDate: overallStreak.lastEntryDate,
     } : null);
   };
 
@@ -1222,6 +1194,23 @@ const App: React.FC = () => {
 
         // Update state (add to beginning for newest-first)
         setFlipEntries(prev => [newEntry, ...prev]);
+
+        // Update flip streak + overall streak
+        if (userProfile) {
+          const flipStreak = calculateUpdatedStreak(
+            userProfile.flipStreak || 0, userProfile.lastFlipEntryDate || undefined, newEntry.date
+          );
+          const overallStreak = calculateUpdatedStreak(
+            userProfile.overallStreak || 0, userProfile.lastOverallEntryDate || undefined, newEntry.date
+          );
+          setUserProfile(prev => prev ? {
+            ...prev,
+            flipStreak: flipStreak.newStreak,
+            lastFlipEntryDate: flipStreak.lastEntryDate,
+            overallStreak: overallStreak.newStreak,
+            lastOverallEntryDate: overallStreak.lastEntryDate,
+          } : null);
+        }
 
         // Close modal and clear pending flip mood entry
         setShowFlipInputModal(false);
@@ -1726,6 +1715,10 @@ const App: React.FC = () => {
           lastEntryDate: '',
           moodStreak: userProfile.moodStreak, // Preserve mood streak
           lastMoodEntryDate: userProfile.lastMoodEntryDate, // Preserve mood data
+          flipStreak: userProfile.flipStreak, // Preserve flip streak
+          lastFlipEntryDate: userProfile.lastFlipEntryDate,
+          overallStreak: userProfile.overallStreak, // Preserve overall streak
+          lastOverallEntryDate: userProfile.lastOverallEntryDate,
           moodSummaryState: userProfile.moodSummaryState, // Preserve mood summary state
         };
 
@@ -2088,6 +2081,8 @@ const App: React.FC = () => {
                 onEditEntry={handleEditFlipEntry}
                 onDeleteEntry={handleDeleteFlipEntry}
                 moodEntries={moodEntries}
+                currentStreak={userProfile?.flipStreak || 0}
+                streakEnabled={settings.flipStreakEnabled !== false}
               />
             )}
              <Menu
