@@ -111,7 +111,11 @@ export class FirestoreService implements StorageService {
         updatedAt: serverTimestamp(),
       };
 
+      console.log("FIRESTORE PAYLOAD keys:", Object.keys(entryWithTimestamp));
+      console.log("FIRESTORE PAYLOAD full:", JSON.stringify(entryWithTimestamp, null, 2));
+      console.log("FIRESTORE PATH:", `users/${this.userId}/journalEntries/${entry.id}`);
       await setDoc(entryDocRef, entryWithTimestamp);
+      console.log("FIRESTORE WRITE SUCCESS");
     } catch (error) {
       console.error('Error saving journal entry to Firestore:', error);
       throw new Error('Failed to save journal entry to cloud');
