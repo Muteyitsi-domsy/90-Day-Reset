@@ -402,6 +402,7 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
         <EveningCheckinModal
             onSave={handleSaveCheckin}
             onClose={() => setIsCheckinModalOpen(false)}
+            dailyAnalysisEnabled={settings.dailyAnalysis}
         />
        )}
       <style>{`

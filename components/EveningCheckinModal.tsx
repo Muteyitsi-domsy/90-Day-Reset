@@ -4,6 +4,7 @@ import { EveningCheckin } from '../types';
 interface EveningCheckinModalProps {
     onSave: (data: EveningCheckin) => void;
     onClose: () => void;
+    dailyAnalysisEnabled: boolean;
 }
 
 const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -12,22 +13,23 @@ const CloseIcon: React.FC<{ className: string }> = ({ className }) => (
     </svg>
 );
 
-const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClose }) => {
+const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClose, dailyAnalysisEnabled }) => {
     const [completedMicroAction, setCompletedMicroAction] = useState<'yes' | 'no' | 'partially' | null>(null);
     const [alignmentReflection, setAlignmentReflection] = useState('');
     const [improvementReflection, setImprovementReflection] = useState('');
 
     const handleSave = () => {
-        if (completedMicroAction && alignmentReflection.trim() && improvementReflection.trim()) {
+        const microActionValid = dailyAnalysisEnabled ? !!completedMicroAction : true;
+        if (microActionValid && alignmentReflection.trim() && improvementReflection.trim()) {
             onSave({
-                completedMicroAction,
+                completedMicroAction: dailyAnalysisEnabled ? completedMicroAction! : 'no',
                 alignmentReflection,
                 improvementReflection
             });
         }
     };
 
-    const isSaveDisabled = !completedMicroAction || !alignmentReflection.trim() || !improvementReflection.trim();
+    const isSaveDisabled = (dailyAnalysisEnabled && !completedMicroAction) || !alignmentReflection.trim() || !improvementReflection.trim();
 
     const getRadioClass = (value: string) => {
         const base = "flex-1 text-center px-4 py-3 rounded-lg transition-colors text-md font-medium cursor-pointer";
@@ -50,6 +52,7 @@ const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClo
                 <h2 className="text-2xl font-light text-center text-[var(--text-secondary)] mb-6">Evening Check-in 🌙</h2>
                 
                 <div className="space-y-6 overflow-y-auto pr-2">
+                    {dailyAnalysisEnabled && (
                     <div>
                         <label className="block text-lg font-light text-[var(--text-primary)] mb-3">Did you complete your micro-action today?</label>
                         <div className="flex justify-center space-x-2 p-1 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
@@ -67,6 +70,7 @@ const EveningCheckinModal: React.FC<EveningCheckinModalProps> = ({ onSave, onClo
                             </label>
                         </div>
                     </div>
+                    )}
                     <div>
                         <label className="block text-lg font-light text-[var(--text-primary)] mb-3">Were your actions today aligned with your Ideal Self?</label>
                         <textarea
