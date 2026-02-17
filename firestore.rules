@@ -41,35 +41,150 @@ service cloud.firestore {
              request.resource.data[field].size() <= max;
     }
 
-    // Users can only read/write their own data
-    match /users/{userId} {
+       // Users can only read/write their own data
+      match /users/{userId} {
+
       // Read: User must be authenticated and own the document
-      allow read: if isOwner(userId);
+  allow read: if isOwner(userId);
 
-      // Create: User can create their own profile
-      allow create: if isOwner(userId);
+  // Create: Controlled structure validation
+  allow create: if isOwner(userId)
+    && hasOnlyAllowedFields([
+        'metadata',
+        'profile',
+        'settings',
+        'dailyCompletions',
+        'includeHunchesInFinalSummary',
+        'monthlyReports',
+        'pin',
+        'theme',
+        'themeMode',
+        'weeklyReports'
+       ])
+    && request.resource.data.metadata is map
+    && request.resource.data.profile is map
+    && request.resource.data.settings is map
+    && request.resource.data.dailyCompletions is list
+    && request.resource.data.includeHunchesInFinalSummary is bool
+    && request.resource.data.monthlyReports is bool
+    && request.resource.data.pin is string
+    && request.resource.data.theme is string
+    && request.resource.data.themeMode is string
+    && request.resource.data.weeklyReports is bool
+    && isWithinSizeLimit(200000);
 
-      // Update: User can update their own profile
-      allow update: if isOwner(userId);
+  // Update: Ownership + size control
+  allow update: if isOwner(userId)
+    && isWithinSizeLimit(200000);
 
-      // Delete: User can delete their own profile
-      allow delete: if isOwner(userId);
+  // Delete: User can delete their own profile
+  allow delete: if isOwner(userId);
+
 
       // User's journal entries subcollection
       match /journalEntries/{entryId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
-      }
+
+  allow read: if isOwner(userId);
+
+  allow create: if isOwner(userId)
+  && hasRequiredFields([
+      'createdAt',
+      'date',
+      'day',
+      'id',
+      'prompt',
+      'rawText',
+      'type',
+      'updatedAt',
+      'week'
+     ])
+  && hasOnlyAllowedFields([
+      'analysis',
+      'createdAt',
+      'date',
+      'day',
+      'eveningCheckin',
+      'hunchType',
+      'id',
+      'prompt',
+      'rawText',
+      'summaryData',
+      'type',
+      'updatedAt',
+      'week'
+     ])
+  && (!request.resource.data.keys().hasAny(['analysis']) || request.resource.data.analysis is map)
+  && (!request.resource.data.keys().hasAny(['summaryData']) || request.resource.data.summaryData is map)
+  && (!request.resource.data.keys().hasAny(['hunchType']) || isString('hunchType'))
+  && request.resource.data.day is number
+  && request.resource.data.week is number
+  && isString('rawText')
+  && isString('prompt')
+  && isString('type')
+  && isString('date')
+  && isTimestamp('createdAt')
+  && isTimestamp('updatedAt')
+  && stringLength('rawText', 0, 50000)
+  && isWithinSizeLimit(200000);
+
+  allow update: if isOwner(userId)
+    && isWithinSizeLimit(200000);
+
+  allow delete: if isOwner(userId);
+}
 
       // User's mood journal entries subcollection
-      match /moodEntries/{entryId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
-      }
+     match /moodEntries/{entryId} {
+
+  allow read: if isOwner(userId);
+
+  allow create: if isOwner(userId)
+    && hasRequiredFields([
+        'context',
+        'createdAt',
+        'date',
+        'emotion',
+        'id',
+        'intensity',
+        'isCustomEmotion',
+        'journalText',
+        'timestamp',
+        'updatedAt'
+       ])
+    && hasOnlyAllowedFields([
+        'context',
+        'createdAt',
+        'customEmotionEmoji',
+        'date',
+        'emotion',
+        'id',
+        'intensity',
+        'isCustomEmotion',
+        'journalText',
+        'prompt',
+        'timestamp',
+        'updatedAt'
+       ])
+    && isString('context')
+    && isTimestamp('createdAt')
+    && isString('date')
+    && isString('emotion')
+    && isString('id')
+    && isString('intensity')
+    && request.resource.data.isCustomEmotion is bool
+    && isString('journalText')
+    && isString('timestamp')
+    && isTimestamp('updatedAt')
+    && stringLength('journalText', 0, 10000)
+    && stringLength('emotion', 1, 50)
+    && stringLength('context', 1, 100)
+    && isWithinSizeLimit(50000);
+
+  allow update: if isOwner(userId)
+    && isWithinSizeLimit(50000);
+
+  allow delete: if isOwner(userId);
+}
 
       // User's flip journal entries subcollection
       match /flipJournalEntries/{entryId} {
@@ -110,6 +225,10 @@ service cloud.firestore {
       // Update and Delete: NOT ALLOWED (audit logs are immutable)
       allow update: if false;
       allow delete: if false;
+     }
+ // Explicit default deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
