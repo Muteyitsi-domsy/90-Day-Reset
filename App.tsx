@@ -409,10 +409,8 @@ const App: React.FC = () => {
           for (const entry of journalEntries) {
             await storageService.saveJournalEntry(entry);
           }
-        } catch (err) {
-          console.error("FIRESTORE SAVE FAILED:", err);
-          alert("SAVE FAILED - CHECK CONSOLE");
-          throw err;
+        } catch (error) {
+          console.error('Failed to save journal entries:', error);
         }
       };
       saveEntries();
@@ -982,10 +980,9 @@ const App: React.FC = () => {
       setPendingFlipMoodEntry(newEntry);
       setShowFlipPrompt(true);
       setFlipsExhausted(todayFlipCount >= 3);
-    } catch (err) {
-      console.error("FIRESTORE SAVE FAILED:", err);
-      alert("SAVE FAILED - CHECK CONSOLE");
-      throw err;
+    } catch (error) {
+      console.error('Error saving mood entry:', error);
+      alert('Failed to save mood entry. Please try again.');
     } finally {
       setIsSavingMoodEntry(false);
     }
@@ -1219,10 +1216,9 @@ const App: React.FC = () => {
         setShowFlipInputModal(false);
         setPendingFlipMoodEntry(null);
       }
-    } catch (err) {
-      console.error("FIRESTORE SAVE FAILED:", err);
-      alert("SAVE FAILED - CHECK CONSOLE");
-      throw err;
+    } catch (error) {
+      console.error('Error saving flip entry:', error);
+      alert(editingFlipEntry ? 'Failed to update flip entry. Please try again.' : 'Failed to save flip entry. Please try again.');
     } finally {
       setIsSavingFlipEntry(false);
     }
