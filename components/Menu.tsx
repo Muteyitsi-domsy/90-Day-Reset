@@ -35,6 +35,7 @@ interface MenuProps {
     calendarView?: 'journey' | 'mood';
     onToggleCalendarView?: (view: 'journey' | 'mood') => void;
     onOpenMoodJournal?: () => void;
+    onOpenBadges?: () => void;
 }
 
 const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
@@ -49,7 +50,7 @@ const Menu: React.FC<MenuProps> = ({
     onExportData, onImportData, onDeleteData, onViewReport, onRegenerateReport, onLockApp,
     onRitualComplete, onOpenCalendar, userEmail, onSignOut,
     onOpenPrivacyPolicy, onOpenTerms, onOpenContact, onSetupCloudBackup,
-    activeView, onToggleView, calendarView, onToggleCalendarView, onOpenMoodJournal
+    activeView, onToggleView, calendarView, onToggleCalendarView, onOpenMoodJournal, onOpenBadges
 }) => {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [pinInput, setPinInput] = useState('');
@@ -373,6 +374,28 @@ const Menu: React.FC<MenuProps> = ({
                                 </div>
                             </div>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    )}
+
+                    {/* Quick Access: Achievements */}
+                    {onOpenBadges && (
+                        <button
+                            onClick={() => {
+                                onOpenBadges();
+                                onClose();
+                            }}
+                            className="w-full p-4 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-primary)] rounded-lg flex items-center justify-between hover:shadow-lg transition-all transform hover:scale-[1.02]"
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">🏆</span>
+                                <div className="text-left">
+                                    <div className="font-semibold">Achievements</div>
+                                    <div className="text-xs text-[var(--text-secondary)]">View your milestone badges</div>
+                                </div>
+                            </div>
+                            <svg className="w-5 h-5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </button>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
 import { getDailyPrompt, markPromptAsAnswered } from './services/promptGenerator';
-import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry } from './types';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry, EarnedBadge } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
@@ -42,6 +42,9 @@ import FlipPromptModal from './components/FlipPromptModal';
 import SuspendedAccountScreen from './components/SuspendedAccountScreen';
 import { checkForAppUpdate } from './utils/appUpdate';
 import { calculateUpdatedStreak, recalculateStreakFromDates } from './services/streakService';
+import { checkForNewMilestones } from './services/milestoneService';
+import MilestoneCelebration from './components/MilestoneCelebration';
+import BadgeCollection from './components/BadgeCollection';
 import MonthlySummaryModal from './components/MonthlySummaryModal';
 import AnnualRecapModal from './components/AnnualRecapModal';
 import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
@@ -165,6 +168,10 @@ const App: React.FC = () => {
   const [showFlipPrompt, setShowFlipPrompt] = useState(false);
   const [flipsExhausted, setFlipsExhausted] = useState(false);
   const [editingFlipEntry, setEditingFlipEntry] = useState<FlipJournalEntry | null>(null);
+
+  // Milestone celebration queue
+  const [celebrationQueue, setCelebrationQueue] = useState<EarnedBadge[]>([]);
+  const [showBadgeCollection, setShowBadgeCollection] = useState(false);
 
   // Mood summary state
   const [showMonthlySummaryModal, setShowMonthlySummaryModal] = useState(false);
@@ -746,13 +753,28 @@ const App: React.FC = () => {
       userProfile.overallStreak || 0, userProfile.lastOverallEntryDate || undefined, todayStr
     );
 
+    // --- Milestone Detection ---
+    const existingBadges = userProfile.earnedBadges || [];
+    const journeyMilestones = checkForNewMilestones(
+      'journey', userProfile.streak || 0, journeyStreak.newStreak, existingBadges, todayStr
+    );
+    const overallMilestones = checkForNewMilestones(
+      'overall', userProfile.overallStreak || 0, overallStreak.newStreak, existingBadges, todayStr
+    );
+    const allNewBadges = [...journeyMilestones, ...overallMilestones];
+
     setUserProfile(prev => ({
       ...prev!,
       streak: journeyStreak.newStreak,
       lastEntryDate: new Date().toISOString(), // Keep ISO format for pause/resume compatibility
       overallStreak: overallStreak.newStreak,
       lastOverallEntryDate: overallStreak.lastEntryDate,
+      earnedBadges: [...(prev!.earnedBadges || []), ...allNewBadges],
     }));
+
+    if (allNewBadges.length > 0) {
+      setCelebrationQueue(prev => [...prev, ...allNewBadges]);
+    }
     // --- End of Streak Logic ---
 
     if (severity >= 2) {
@@ -1084,13 +1106,27 @@ const App: React.FC = () => {
       userProfile.overallStreak || 0, userProfile.lastOverallEntryDate || undefined, entryDate
     );
 
+    const existingBadges = userProfile.earnedBadges || [];
+    const moodMilestones = checkForNewMilestones(
+      'mood', userProfile.moodStreak || 0, moodStreak, existingBadges, entryDate
+    );
+    const overallMilestones = checkForNewMilestones(
+      'overall', userProfile.overallStreak || 0, overallStreak.newStreak, existingBadges, entryDate
+    );
+    const allNewBadges = [...moodMilestones, ...overallMilestones];
+
     setUserProfile(prev => prev ? {
       ...prev,
       moodStreak,
       lastMoodEntryDate: entryDate,
       overallStreak: overallStreak.newStreak,
       lastOverallEntryDate: overallStreak.lastEntryDate,
+      earnedBadges: [...(prev.earnedBadges || []), ...allNewBadges],
     } : null);
+
+    if (allNewBadges.length > 0) {
+      setCelebrationQueue(prev => [...prev, ...allNewBadges]);
+    }
   };
 
   // Crisis detection handler with high severity tracking
@@ -1203,13 +1239,28 @@ const App: React.FC = () => {
           const overallStreak = calculateUpdatedStreak(
             userProfile.overallStreak || 0, userProfile.lastOverallEntryDate || undefined, newEntry.date
           );
+
+          const existingBadges = userProfile.earnedBadges || [];
+          const flipMilestones = checkForNewMilestones(
+            'flip', userProfile.flipStreak || 0, flipStreak.newStreak, existingBadges, newEntry.date
+          );
+          const overallMilestones = checkForNewMilestones(
+            'overall', userProfile.overallStreak || 0, overallStreak.newStreak, existingBadges, newEntry.date
+          );
+          const allNewBadges = [...flipMilestones, ...overallMilestones];
+
           setUserProfile(prev => prev ? {
             ...prev,
             flipStreak: flipStreak.newStreak,
             lastFlipEntryDate: flipStreak.lastEntryDate,
             overallStreak: overallStreak.newStreak,
             lastOverallEntryDate: overallStreak.lastEntryDate,
+            earnedBadges: [...(prev.earnedBadges || []), ...allNewBadges],
           } : null);
+
+          if (allNewBadges.length > 0) {
+            setCelebrationQueue(prev => [...prev, ...allNewBadges]);
+          }
         }
 
         // Close modal and clear pending flip mood entry
@@ -1719,6 +1770,7 @@ const App: React.FC = () => {
           lastFlipEntryDate: userProfile.lastFlipEntryDate,
           overallStreak: userProfile.overallStreak, // Preserve overall streak
           lastOverallEntryDate: userProfile.lastOverallEntryDate,
+          earnedBadges: userProfile.earnedBadges, // Preserve milestone badges
           moodSummaryState: userProfile.moodSummaryState, // Preserve mood summary state
         };
 
@@ -2012,6 +2064,7 @@ const App: React.FC = () => {
                           setActiveView('mood');
                           setIsMenuOpen(false);
                         }}
+                        onOpenBadges={() => setShowBadgeCollection(true)}
                     />
                 </div>
             );
@@ -2153,6 +2206,7 @@ const App: React.FC = () => {
                   setActiveView('mood');
                   setIsMenuOpen(false);
                 }}
+                onOpenBadges={() => setShowBadgeCollection(true)}
             />
           </div>
         );
@@ -2168,6 +2222,33 @@ const App: React.FC = () => {
         <CrisisModal
           severity={crisisSeverity}
           onClose={() => setCrisisSeverity(0)}
+        />
+      )}
+      {showBadgeCollection && (
+        <BadgeCollection
+          earnedBadges={userProfile?.earnedBadges || []}
+          currentStreaks={{
+            journey: userProfile?.streak || 0,
+            mood: userProfile?.moodStreak || 0,
+            flip: userProfile?.flipStreak || 0,
+            overall: userProfile?.overallStreak || 0,
+          }}
+          onClose={() => setShowBadgeCollection(false)}
+        />
+      )}
+      {crisisSeverity === 0 && celebrationQueue.length > 0 && (
+        <MilestoneCelebration
+          badge={celebrationQueue[0]}
+          onDismiss={() => {
+            setCelebrationQueue(prev => prev.slice(1));
+            // Mark badge as celebrated in profile
+            setUserProfile(prev => prev ? {
+              ...prev,
+              earnedBadges: (prev.earnedBadges || []).map(b =>
+                b.id === celebrationQueue[0].id ? { ...b, celebrated: true } : b
+              ),
+            } : null);
+          }}
         />
       )}
       <ReportViewer

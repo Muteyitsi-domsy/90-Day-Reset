@@ -3,6 +3,17 @@ export type Arc = 'release' | 'reaffirm' | 'reignition';
 
 export type StreakJournalType = 'journey' | 'mood' | 'flip' | 'overall';
 
+export const MILESTONE_THRESHOLDS = [7, 14, 30, 60, 90] as const;
+export type MilestoneThreshold = typeof MILESTONE_THRESHOLDS[number];
+
+export interface EarnedBadge {
+  id: string;                      // e.g. "journey-7"
+  journalType: StreakJournalType;
+  threshold: MilestoneThreshold;
+  earnedDate: string;              // YYYY-MM-DD
+  celebrated: boolean;             // Has user seen the celebration modal?
+}
+
 export type HunchType = 'insight' | 'dream' | 'hunch';
 
 // Mood Journaling Types
@@ -82,6 +93,9 @@ export interface UserProfile {
   // Overall journaling streak (any journal entry of any type counts)
   overallStreak?: number;
   lastOverallEntryDate?: string;
+
+  // Milestone badges
+  earnedBadges?: EarnedBadge[];
 
   // Multi-Factor Authentication (MFA)
   mfaEnabled?: boolean; // Whether MFA is enabled for this user

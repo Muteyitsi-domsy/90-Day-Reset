@@ -92,6 +92,7 @@ export class LocalStorageService implements StorageService {
       if (profile.lastFlipEntryDate === undefined) profile.lastFlipEntryDate = '';
       if (profile.overallStreak === undefined) profile.overallStreak = 0;
       if (profile.lastOverallEntryDate === undefined) profile.lastOverallEntryDate = '';
+      if (!profile.earnedBadges) profile.earnedBadges = [];
 
       return profile;
     } catch (error) {
