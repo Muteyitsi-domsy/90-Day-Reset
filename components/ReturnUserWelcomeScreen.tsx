@@ -11,6 +11,7 @@ interface ReturnUserWelcomeScreenProps {
   userEmail?: string | null;
   // New props for mood journal focus
   isJourneyPaused?: boolean;
+  isJourneyCompleted?: boolean;
   todaysMoodEntry?: MoodJournalEntry | null;
 }
 
@@ -22,6 +23,7 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
   onSignIn,
   userEmail,
   isJourneyPaused = false,
+  isJourneyCompleted = false,
   todaysMoodEntry = null,
 }) => {
 
@@ -31,15 +33,20 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
   const isEveningTime = hour >= 16;
   const isMorning = hour < 12;
 
-  // Check if journey is active (started and not paused)
-  const isJourneyActive = userProfile.startDate && !isJourneyPaused;
+  // Check if journey is active (started, not paused, and not completed)
+  const isJourneyActive = userProfile.startDate && !isJourneyPaused && !isJourneyCompleted;
   const hasMoodEntryToday = !!todaysMoodEntry;
 
   let title = '';
   let subtitle = '';
   let cta = '';
 
-  if (isJourneyActive) {
+  if (isJourneyCompleted) {
+    // Journey finished — show completion-specific welcome
+    title = `Welcome back, ${userProfile.name}. 🌿`;
+    subtitle = "Your 90-day journey is complete. Your keepsake is ready — and your Daily Journal and Flip Journal continue whenever you are.";
+    cta = "View My Journey's End";
+  } else if (isJourneyActive) {
     // 90-day journey is active - show journey-focused messaging
     if (hasDoneMorning) {
       if (hasDoneEvening) {
@@ -92,7 +99,18 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
           {subtitle}
         </p>
 
-        {isJourneyActive ? (
+        {isJourneyCompleted ? (
+          // Journey complete — show a keepsake icon
+          <div className="flex justify-center mb-8">
+            <div className="flex flex-col items-center">
+              <div className="w-24 h-24 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+                <span className="text-5xl">🪞</span>
+              </div>
+              <p className="text-sm text-[var(--text-primary)] font-medium">90-day journey complete</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Keepsake ready to download</p>
+            </div>
+          </div>
+        ) : isJourneyActive ? (
           // Show Daily Completion Circle for active journey
           <div className="flex justify-center mb-8">
             <DailyCompletionCircle
@@ -108,14 +126,12 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
           <div className="flex justify-center mb-8">
             <div className="flex flex-col items-center">
               {hasMoodEntryToday ? (
-                // Journalled today - show tick
                 <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
                   <svg className="w-12 h-12 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               ) : (
-                // Not journalled - show mood icon
                 <div className="w-24 h-24 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center mb-3">
                   <span className="text-5xl">🌱</span>
                 </div>

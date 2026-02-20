@@ -51,7 +51,10 @@ const FlipEntryCard: React.FC<{
 
   const handleDelete = async () => {
     if (!onDelete) return;
-    if (window.confirm('Are you sure you want to delete this flip entry?')) {
+    const message = linkedMoodEntry
+      ? 'Delete this Flip entry?\n\nOnly this Flip entry will be removed. Your original Daily Journal entry will remain untouched.'
+      : 'Are you sure you want to delete this flip entry?';
+    if (window.confirm(message)) {
       setIsDeleting(true);
       try {
         await onDelete(entry.id);

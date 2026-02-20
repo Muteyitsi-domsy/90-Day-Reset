@@ -33,7 +33,8 @@ const MoodEntryCard: React.FC<{
   entry: MoodJournalEntry;
   onDelete?: (entryId: string) => void;
   onEdit?: (entry: MoodJournalEntry) => void;
-}> = ({ entry, onDelete, onEdit }) => {
+  hasLinkedFlip?: boolean;
+}> = ({ entry, onDelete, onEdit, hasLinkedFlip }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -53,7 +54,10 @@ const MoodEntryCard: React.FC<{
 
   const handleDelete = async () => {
     if (!onDelete) return;
-    if (window.confirm('Are you sure you want to delete this mood entry?')) {
+    const message = hasLinkedFlip
+      ? 'Delete this Daily Journal entry?\n\nOnly this entry will be removed. Your related Flip entry will remain untouched.'
+      : 'Are you sure you want to delete this mood entry?';
+    if (window.confirm(message)) {
       setIsDeleting(true);
       try {
         await onDelete(entry.id);
@@ -328,6 +332,7 @@ const MoodJournalView: React.FC<MoodJournalViewProps> = ({
                         entry={entry}
                         onDelete={onDeleteEntry}
                         onEdit={onEditEntry}
+                        hasLinkedFlip={flipEntries.some(f => f.linkedMoodEntryId === entry.id)}
                       />
                     ))}
                   </div>

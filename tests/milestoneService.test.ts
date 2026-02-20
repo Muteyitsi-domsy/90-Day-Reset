@@ -244,8 +244,8 @@ const badge7: EarnedBadge = {
 };
 
 const info = getBadgeDisplayInfo(badge7);
-assert(info.title === 'Week Warrior', 'title for 7-day badge');
-assert(info.icon === '🔥', 'icon for 7-day badge');
+assert(info.title === 'The First Lantern', 'title for 7-day badge');
+assert(info.icon === '🕯️', 'icon for 7-day badge');
 assert(info.typeLabel === 'Journey', 'type label for journey');
 
 const badge90: EarnedBadge = {
@@ -257,8 +257,8 @@ const badge90: EarnedBadge = {
 };
 
 const info90 = getBadgeDisplayInfo(badge90);
-assert(info90.title === 'Legendary', 'title for 90-day badge (non-journey)');
-assert(info90.icon === '💎', 'icon for 90-day badge (non-journey)');
+assert(info90.title === 'The One Who Returned', 'title for 90-day badge (non-journey)');
+assert(info90.icon === '🌟', 'icon for 90-day badge (non-journey)');
 assert(info90.typeLabel === 'Overall', 'type label for overall');
 
 const journey90: EarnedBadge = {

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface OnboardingCompletionProps {
     onComplete: (settings: { dailyAnalysis: boolean; weeklyReports: boolean; monthlyReports: boolean }) => void;
@@ -7,8 +7,19 @@ interface OnboardingCompletionProps {
 
 type FrequencyOption = 'daily' | 'weekly' | 'monthly';
 
+const featureItems = [
+    { icon: '🗓', label: '90-day structured journey', detail: 'Daily prompts personalised to your reset arc.' },
+    { icon: '📝', label: 'Daily Journal', detail: 'Capture moods and emotions with guided prompts.' },
+    { icon: '🔄', label: 'Flip Journal', detail: 'Reframe challenges through your future self\'s eyes.' },
+    { icon: '☰', label: 'Access both journals via the menu', detail: 'Tap the menu icon at the top left any time.' },
+];
+
 const OnboardingCompletion: React.FC<OnboardingCompletionProps> = ({ onComplete }) => {
     const [selected, setSelected] = useState<Set<FrequencyOption>>(new Set(['daily']));
+    const [showFeatureReveal, setShowFeatureReveal] = useState(false);
+    const [pendingSettings, setPendingSettings] = useState<{ dailyAnalysis: boolean; weeklyReports: boolean; monthlyReports: boolean } | null>(null);
+    const [visibleItems, setVisibleItems] = useState(0);
+    const [showCta, setShowCta] = useState(false);
 
     const options: Record<FrequencyOption, { title: string; description: string }> = {
         'daily': {
@@ -59,12 +70,31 @@ const OnboardingCompletion: React.FC<OnboardingCompletionProps> = ({ onComplete 
         return `${base} bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500`;
     };
 
+    useEffect(() => {
+        if (!showFeatureReveal) return;
+        let i = 0;
+        const interval = setInterval(() => {
+            i += 1;
+            setVisibleItems(i);
+            if (i >= featureItems.length) {
+                clearInterval(interval);
+                setTimeout(() => setShowCta(true), 400);
+            }
+        }, 500);
+        return () => clearInterval(interval);
+    }, [showFeatureReveal]);
+
     const handleComplete = () => {
-        onComplete({
+        setPendingSettings({
             dailyAnalysis: selected.has('daily'),
             weeklyReports: selected.has('weekly'),
             monthlyReports: selected.has('monthly'),
         });
+        setShowFeatureReveal(true);
+    };
+
+    const handleBegin = () => {
+        if (pendingSettings) onComplete(pendingSettings);
     };
 
     const CheckboxIcon: React.FC<{ checked: boolean }> = ({ checked }) => (
@@ -80,6 +110,61 @@ const OnboardingCompletion: React.FC<OnboardingCompletionProps> = ({ onComplete 
             )}
         </div>
     );
+
+    if (showFeatureReveal) {
+        return (
+            <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">
+                <div className="w-full max-w-lg bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] animate-fade-in">
+                    <div className="text-center mb-8">
+                        <p className="text-3xl mb-2">🌿</p>
+                        <h2 className="text-2xl font-light text-[var(--accent-primary)] dark:text-[var(--accent-secondary)] mb-1">
+                            Happy Journaling!
+                        </h2>
+                        <p className="text-[var(--text-secondary)] font-light">Here's what's waiting for you:</p>
+                    </div>
+
+                    <div className="space-y-4 mb-8">
+                        {featureItems.map((item, index) => (
+                            <div
+                                key={index}
+                                className="flex items-start gap-4 p-4 bg-[var(--card-bg-secondary)] rounded-xl border border-[var(--card-border)] transition-all duration-500"
+                                style={{
+                                    opacity: index < visibleItems ? 1 : 0,
+                                    transform: index < visibleItems ? 'translateY(0)' : 'translateY(12px)',
+                                }}
+                            >
+                                <span className="text-2xl mt-0.5">{item.icon}</span>
+                                <div>
+                                    <p className="font-medium text-[var(--text-primary)]">{item.label}</p>
+                                    <p className="text-sm text-[var(--text-secondary)]">{item.detail}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div
+                        className="transition-all duration-500"
+                        style={{ opacity: showCta ? 1 : 0, transform: showCta ? 'translateY(0)' : 'translateY(8px)' }}
+                    >
+                        <button
+                            onClick={handleBegin}
+                            disabled={!showCta}
+                            className="w-full py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 disabled:opacity-0"
+                        >
+                            Let's Begin 🌿
+                        </button>
+                    </div>
+                </div>
+                <style>{`
+                    @keyframes fade-in {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .animate-fade-in { animation: fade-in 0.5s ease-out; }
+                `}</style>
+            </div>
+        );
+    }
 
     return (
         <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">

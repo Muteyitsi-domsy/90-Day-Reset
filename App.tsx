@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
 import { getDailyPrompt, markPromptAsAnswered } from './services/promptGenerator';
-import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry, EarnedBadge } from './types';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry, EarnedBadge, StreakJournalType } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
@@ -190,6 +190,8 @@ const App: React.FC = () => {
   // Ref to track latest journalEntries for completion tracking
   const journalEntriesRef = React.useRef(journalEntries);
   const userProfileRef = React.useRef(userProfile);
+  // Guard: retroactive badge grant runs once per session
+  const retroactiveBadgesGrantedRef = React.useRef(false);
 
   // Update refs when state changes
   useEffect(() => {
@@ -1655,6 +1657,59 @@ const App: React.FC = () => {
     }
   }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
 
+  // Android hardware back button: push a history entry when on non-journey views
+  // so pressing back navigates to journey view instead of exiting the app.
+  useEffect(() => {
+    if (appState === 'journal' && activeView !== 'journey') {
+      window.history.pushState({ view: activeView }, '');
+    }
+  }, [activeView, appState]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (activeView !== 'journey') {
+        setActiveView('journey');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeView]);
+
+  // Retroactive badge grant — awards any milestones that were deserved but not yet recorded
+  // (e.g. badge system added after user had already built streaks, or streaks imported).
+  // Runs once per session. checkForNewMilestones is idempotent so it's safe to re-run.
+  useEffect(() => {
+    if (appState !== 'journal' || !userProfile || retroactiveBadgesGrantedRef.current) return;
+    retroactiveBadgesGrantedRef.current = true;
+
+    const today = getLocalDateString();
+    const existingBadges = userProfile.earnedBadges || [];
+
+    const streakMap: [StreakJournalType, number][] = [
+      ['journey', userProfile.streak || 0],
+      ['mood',    userProfile.moodStreak || 0],
+      ['flip',    userProfile.flipStreak || 0],
+      ['overall', userProfile.overallStreak || 0],
+    ];
+
+    const newBadges: EarnedBadge[] = [];
+    for (const [type, streak] of streakMap) {
+      if (streak >= 7) {
+        // Pass oldStreak=0 so all crossed thresholds up to current streak are considered
+        const milestones = checkForNewMilestones(type, 0, streak, existingBadges, today);
+        newBadges.push(...milestones);
+      }
+    }
+
+    if (newBadges.length > 0) {
+      setUserProfile(prev => prev ? {
+        ...prev,
+        earnedBadges: [...(prev.earnedBadges || []), ...newBadges],
+      } : null);
+      setCelebrationQueue(prev => [...prev, ...newBadges]);
+    }
+  }, [appState, userProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleOnboardingComplete = (profile: Omit<UserProfile, 'idealSelfManifesto' | 'name' | 'intentions'>) => {
     // Check if this is a new journey with preserved data
     if (newJourneyOptions && userProfile) {
@@ -1946,18 +2001,120 @@ const App: React.FC = () => {
 
     if (isJourneyOver && finalSummaryText && userProfile) {
       const daysRemaining = getKeepsakeWindowDaysRemaining(userProfile.journeyCompletedDate);
+      const todayCompletion = getTodayCompletion();
 
+      // Render a full app shell so the user can access the menu and switch to
+      // Mood Journal or Flip Journal while deciding whether to start a new journey.
+      // The 'journey' view shows the keepsake; mood/flip show their respective journals.
       return (
-        <>
-          <KeepsakeWindow
-            completionSummary={finalSummaryText}
-            userProfile={userProfile}
-            journalEntries={journalEntries}
-            settings={settings}
-            daysRemaining={daysRemaining}
-            onStartNewJourney={handleStartNewJourney}
-            onExport={exportData}
+        <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
+          <Header
+            streak={userProfile.streak}
+            onOpenMenu={() => setIsMenuOpen(true)}
+            ritualCompleted={todayCompletion.ritualCompleted}
+            morningEntryCompleted={todayCompletion.morningEntryCompleted}
+            eveningCheckinCompleted={todayCompletion.eveningCheckinCompleted}
           />
+
+          {activeView === 'mood' ? (
+            <MoodJournalView
+              moodEntries={moodEntries}
+              customEmotions={settings.customEmotions || []}
+              settings={settings}
+              onNewEntry={() => setShowMoodInputModal(true)}
+              onDeleteEntry={handleDeleteMoodEntry}
+              onEditEntry={handleEditMoodEntry}
+              currentStreak={userProfile.moodStreak || 0}
+              onFlipEntry={handleFlipTodaysMoodEntry}
+              flipEntries={flipEntries}
+              onViewMonthlySummary={(month, year) => {
+                const customEmotions = settings.customEmotions || [];
+                const summaryData = calculateMonthlySummary(moodEntries, month - 1, year, customEmotions);
+                if (summaryData) { setMonthlySummaryData(summaryData); setShowMonthlySummaryModal(true); }
+              }}
+              onViewAnnualRecap={(year) => {
+                const customEmotions = settings.customEmotions || [];
+                const recapData = calculateAnnualRecap(moodEntries, year, customEmotions);
+                if (recapData) { setAnnualRecapData(recapData); setShowAnnualRecapModal(true); }
+              }}
+            />
+          ) : activeView === 'flip' ? (
+            <FlipJournalView
+              flipEntries={flipEntries}
+              onNewEntry={() => setShowFlipInputModal(true)}
+              onEditEntry={handleEditFlipEntry}
+              onDeleteEntry={handleDeleteFlipEntry}
+              moodEntries={moodEntries}
+              currentStreak={userProfile.flipStreak || 0}
+              streakEnabled={settings.flipStreakEnabled !== false}
+            />
+          ) : (
+            <KeepsakeWindow
+              completionSummary={finalSummaryText}
+              userProfile={userProfile}
+              journalEntries={journalEntries}
+              settings={settings}
+              daysRemaining={daysRemaining}
+              onStartNewJourney={handleStartNewJourney}
+              onExport={exportData}
+            />
+          )}
+
+          <Menu
+            isOpen={isMenuOpen}
+            onClose={() => setIsMenuOpen(false)}
+            userProfile={userProfile}
+            settings={settings}
+            reports={reports}
+            onUpdateSettings={setSettings}
+            onUpdateProfile={setUserProfile}
+            onPauseJourney={handlePauseJourney}
+            onResumeJourney={handleResumeJourney}
+            onExportData={exportData}
+            onImportData={importData}
+            onDeleteData={deleteData}
+            onViewReport={handleViewReport}
+            onRegenerateReport={(weekOrMonth, type) => {
+              if (type === 'weekly') handleGenerateWeeklySummary(weekOrMonth, weekOrMonth, true);
+            }}
+            onLockApp={() => setIsLocked(true)}
+            onRitualComplete={updateDailyCompletion}
+            onOpenCalendar={() => setIsCalendarOpen(true)}
+            onSetupCloudBackup={() => setShowAuthModal(true)}
+            userEmail={user?.email}
+            onSignOut={async () => {
+              try {
+                if (user) {
+                  const { FirestoreService } = await import('./src/services/firestoreService');
+                  const fs = new FirestoreService(user.uid);
+                  const cloudData = await fs.getAllData();
+                  const { LocalStorageService } = await import('./src/services/localStorageService');
+                  const ls = new LocalStorageService();
+                  if (cloudData.profile) await ls.saveUserProfile(cloudData.profile);
+                  if (cloudData.settings) await ls.saveSettings(cloudData.settings);
+                  for (const entry of cloudData.entries) await ls.saveJournalEntry(entry);
+                  for (const entry of cloudData.moodEntries) await ls.saveMoodEntry(entry);
+                  for (const entry of cloudData.flipEntries) await ls.saveFlipEntry(entry);
+                  localStorage.removeItem('migrationCompleted');
+                  localStorage.removeItem('migrationDate');
+                }
+              } catch (e) { console.error('Failed to save cloud data locally before sign-out:', e); }
+              const { auth } = await import('./src/config/firebase');
+              const { signOut: firebaseSignOut } = await import('firebase/auth');
+              await firebaseSignOut(auth);
+              window.location.reload();
+            }}
+            onOpenPrivacyPolicy={() => setShowPrivacyPolicy(true)}
+            onOpenTerms={() => setShowTerms(true)}
+            onOpenContact={() => setShowContact(true)}
+            activeView={activeView}
+            onToggleView={(view) => { setActiveView(view); setIsMenuOpen(false); }}
+            calendarView={calendarView}
+            onToggleCalendarView={setCalendarView}
+            onOpenMoodJournal={() => { setActiveView('mood'); setIsMenuOpen(false); }}
+            onOpenBadges={() => setShowBadgeCollection(true)}
+          />
+
           <NewJourneyChoiceModal
             isOpen={showNewJourneyModal}
             onClose={() => setShowNewJourneyModal(false)}
@@ -1965,7 +2122,7 @@ const App: React.FC = () => {
             hasManifesto={!!userProfile.idealSelfManifesto}
             hasIntentions={!!userProfile.intentions}
           />
-        </>
+        </div>
       );
     }
 
@@ -1992,16 +2149,18 @@ const App: React.FC = () => {
             userProfile={userProfile}
             todaysEntry={todaysEntry}
             onContinue={() => {
-              // If paused, go to mood journal view; otherwise normal journal
+              // Paused → default to mood journal view
               if (userProfile.isPaused) {
                 setActiveView('mood');
               }
+              // Completed → stay on 'journey' activeView so KeepsakeWindow shows
               setAppState('journal');
             }}
             ritualCompleted={ritualCompleted}
             onSignIn={() => { setAuthModalMode('signin'); setShowAuthModal(true); }}
             userEmail={user?.email}
             isJourneyPaused={userProfile.isPaused}
+            isJourneyCompleted={!!userProfile.journeyCompleted}
             todaysMoodEntry={todaysMoodEntry}
           />;
         }

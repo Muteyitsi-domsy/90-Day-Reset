@@ -34,6 +34,7 @@ const questions = [
 ];
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+  const [showIntro, setShowIntro] = useState(true);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<OnboardingAnswers>({
     reflectionReadiness: '' as ReflectionReadiness,
@@ -225,6 +226,65 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     if (isAnalyzing) return renderInterstitial();
     return renderForm();
   };
+
+  if (showIntro) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">
+        <div className="w-full max-w-lg bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] animate-fade-in">
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-4">🌿</div>
+            <h2 className="text-2xl font-light text-[var(--text-secondary)] mb-3">
+              A moment before you begin
+            </h2>
+            <p className="text-[var(--text-primary)] font-light leading-relaxed">
+              This reflection works best when you have a quiet moment to yourself. You'll answer <strong>5 thoughtful questions</strong> that help us personalise your 90-day journey.
+            </p>
+          </div>
+
+          <div className="space-y-4 mb-8">
+            <div className="flex items-start gap-3 p-4 bg-[var(--card-bg-secondary)] rounded-xl border border-[var(--card-border)]">
+              <span className="text-xl mt-0.5">⏱</span>
+              <div>
+                <p className="font-medium text-[var(--text-primary)]">About 10–15 minutes</p>
+                <p className="text-sm text-[var(--text-secondary)]">Set aside enough time to reflect honestly — there are no right or wrong answers.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-4 bg-[var(--card-bg-secondary)] rounded-xl border border-[var(--card-border)]">
+              <span className="text-xl mt-0.5">🧘</span>
+              <div>
+                <p className="font-medium text-[var(--text-primary)]">Intentional reflection required</p>
+                <p className="text-sm text-[var(--text-secondary)]">This isn't a quick sign-up form — your answers shape your entire journey.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-4 bg-[var(--card-bg-secondary)] rounded-xl border border-[var(--card-border)]">
+              <span className="text-xl mt-0.5">💾</span>
+              <div>
+                <p className="font-medium text-[var(--text-primary)]">No rush — return any time</p>
+                <p className="text-sm text-[var(--text-secondary)]">If now isn't ideal, close the app and come back when you're ready.</p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowIntro(false)}
+            className="w-full py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300"
+          >
+            I'm ready, let's begin →
+          </button>
+          <p className="text-center text-sm text-[var(--text-secondary)] mt-4">
+            Not the right moment? Close the app and return when you have time.
+          </p>
+        </div>
+        <style>{`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fade-in { animation: fade-in 0.5s ease-out; }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">
