@@ -7,10 +7,18 @@
    ─────────────────────────────────────────────────────────────────── */
 
 /* Reusable utility: padding-top clears the notch / Dynamic Island.
-   max() ensures the value never drops below the original p-4 (1rem)
-   on platforms where env() is 0, preserving the Android/desktop layout. */
+   max() ensures the value never drops below the original spacing
+   on platforms where env() is 0, preserving the Android/desktop layout.
+   The @media block mirrors Tailwind's sm breakpoint (640px) so the
+   fallback matches p-4 (1rem) below sm and p-6 (1.5rem) at sm and above. */
 @utility safe-area-top {
   padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+@media (min-width: 640px) {
+  .safe-area-top {
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+  }
 }
 
 /* Push body content clear of left, right, and bottom hardware insets. */
