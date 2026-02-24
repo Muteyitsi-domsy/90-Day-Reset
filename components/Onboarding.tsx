@@ -229,7 +229,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   if (showIntro) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">
+      <div className="flex items-center justify-center min-h-screen px-4 pb-4 sm:px-6 sm:pb-6 safe-area-top">
         <div className="w-full max-w-lg bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] animate-fade-in">
           <div className="text-center mb-8">
             <div className="text-5xl mb-4">🌿</div>
@@ -287,7 +287,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 sm:p-6">
+    <div className="flex items-center justify-center min-h-screen px-4 pb-4 sm:px-6 sm:pb-6 safe-area-top">
       <div className="w-full max-w-lg bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] flex flex-col" style={{minHeight: '75vh'}}>
         <div className="mb-8">
             <h2 className="text-2xl font-light text-[var(--text-secondary)] mb-2 text-center">
