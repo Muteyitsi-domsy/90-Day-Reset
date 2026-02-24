@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Confetti from './Confetti';
 import { getBadgeDisplayInfo } from '../services/milestoneService';
 import type { EarnedBadge } from '../types';
@@ -11,14 +11,6 @@ interface MilestoneCelebrationProps {
 const MilestoneCelebration: React.FC<MilestoneCelebrationProps> = ({ badge, onDismiss }) => {
   const [visible, setVisible] = useState(true);
   const info = getBadgeDisplayInfo(badge);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setVisible(false);
-      setTimeout(onDismiss, 300); // Allow fade-out before unmount
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [onDismiss]);
 
   const handleClick = () => {
     setVisible(false);

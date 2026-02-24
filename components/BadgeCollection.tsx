@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { getMilestonesForType, getBadgeDisplayInfo } from '../services/milestoneService';
 import type { EarnedBadge, StreakJournalType } from '../types';
 
@@ -22,6 +22,7 @@ const JOURNAL_TYPES: { type: StreakJournalType; label: string; description: stri
 
 const BadgeCollection: React.FC<BadgeCollectionProps> = ({ earnedBadges, currentStreaks, onClose }) => {
   const totalEarned = earnedBadges.length;
+  const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center">
@@ -83,16 +84,12 @@ const BadgeCollection: React.FC<BadgeCollectionProps> = ({ earnedBadges, current
                   return (
                     <div
                       key={threshold}
+                      onClick={earned && badge ? () => setSelectedBadge(badge) : undefined}
                       className={`flex-1 text-center p-3 rounded-xl border transition-all duration-200 ${
                         earned
-                          ? 'bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]/30'
+                          ? 'bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]/30 cursor-pointer hover:bg-[var(--accent-primary)]/20'
                           : 'bg-[var(--card-bg)] border-[var(--card-border)] opacity-35'
                       }`}
-                      title={
-                        earned && info
-                          ? `${info.title}\n${info.description}`
-                          : `${threshold}-day streak needed`
-                      }
                     >
                       <div className="text-2xl mb-1">
                         {earned && info ? info.icon : '·'}
@@ -119,6 +116,46 @@ const BadgeCollection: React.FC<BadgeCollectionProps> = ({ earnedBadges, current
           Milestones are earned through consecutive daily entries within each journal.
         </p>
       </div>
+
+      {/* Badge detail overlay */}
+      {selectedBadge && (() => {
+        const detail = getBadgeDisplayInfo(selectedBadge);
+        const [year, month, day] = selectedBadge.earnedDate.split('-');
+        const dateLabel = new Date(Number(year), Number(month) - 1, Number(day))
+          .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        return (
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl"
+            onClick={() => setSelectedBadge(null)}
+          >
+            <div className="absolute inset-0 bg-black/60 rounded-2xl" />
+            <div
+              className="relative z-10 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-7 max-w-xs mx-4 text-center shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-5xl mb-4">{detail.icon}</div>
+              <h3 className={`font-semibold text-[var(--text-primary)] mb-1 ${detail.reflective ? 'text-lg font-light' : 'text-xl'}`}>
+                {detail.title}
+              </h3>
+              <p className="text-xs text-[var(--accent-primary)] font-medium mb-3">
+                {detail.typeLabel} &middot; {selectedBadge.threshold}-day streak
+              </p>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
+                {detail.description}
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] italic mb-5">
+                Earned {dateLabel}
+              </p>
+              <button
+                onClick={() => setSelectedBadge(null)}
+                className="px-5 py-2 rounded-lg bg-[var(--accent-primary)] text-white text-sm font-medium hover:bg-[var(--accent-primary-hover)] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
