@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+/* ── iOS safe-area support ──────────────────────────────────────────────
+   Requires viewport-fit=cover in the <meta name="viewport"> tag.
+   env(safe-area-inset-*) resolves to 0 on Android and desktop,
+   so none of these rules have any effect on those platforms.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* Reusable utility: padding-top clears the notch / Dynamic Island.
+   max() ensures the value never drops below the original p-4 (1rem)
+   on platforms where env() is 0, preserving the Android/desktop layout. */
+@utility safe-area-top {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+/* Push body content clear of left, right, and bottom hardware insets. */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}

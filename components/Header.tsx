@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({
   eveningCheckinCompleted = false
 }) => {
   return (
-    <header className="w-full flex items-center justify-between p-4 bg-[var(--bg-from)]/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
+    <header className="w-full flex items-center justify-between px-4 pb-4 safe-area-top bg-[var(--bg-from)]/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
       <div className="w-12 relative">
         <button onClick={onOpenMenu} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1" aria-label="Open menu">
           <MenuIcon className="w-8 h-8" />
