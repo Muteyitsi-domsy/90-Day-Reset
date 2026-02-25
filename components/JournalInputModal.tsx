@@ -127,14 +127,15 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
         <div className="fixed inset-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] z-40 animate-fade-in-fast" role="dialog" aria-modal="true">
             <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+                className="absolute right-4 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+                style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
                 aria-label="Close writing view"
             >
                 <CloseIcon className="w-8 h-8" />
             </button>
-            <div className="flex flex-col h-full p-4 md:p-8">
+            <div className="flex flex-col h-full px-4 pb-4 safe-area-top md:px-8 md:pb-8">
                 <main className="flex-1 overflow-y-auto flex items-center justify-center">
-                    <div className="max-w-3xl w-full h-full flex flex-col pt-12">
+                    <div className="max-w-3xl w-full h-full flex flex-col pt-10">
                         <h2 className="text-xl md:text-2xl font-light text-[var(--text-secondary)] mb-6 text-center whitespace-pre-wrap">{prompt || 'Loading...'}</h2>
                         {renderHunchTypeSelector()}
                         <textarea

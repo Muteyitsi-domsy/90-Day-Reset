@@ -395,7 +395,7 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] z-40 animate-fade-in-fast" role="dialog" aria-modal="true">
-      <div className="absolute top-4 right-4 flex items-center gap-2">
+      <div className="absolute right-4 flex items-center gap-2" style={{ top: 'max(1rem, env(safe-area-inset-top))' }}>
         {step !== 'emotion' && (
           <button
             onClick={handleBack}
@@ -414,8 +414,8 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
         </button>
       </div>
 
-      <div className="flex flex-col h-full p-4 md:p-8">
-        <div className="max-w-3xl w-full mx-auto mt-12">
+      <div className="flex flex-col h-full px-4 pb-4 safe-area-top md:px-8 md:pb-8">
+        <div className="max-w-3xl w-full mx-auto mt-10">
           {renderProgressBar()}
         </div>
         <main className={`flex-1 overflow-y-auto flex justify-center ${step === 'journal' ? 'items-center' : 'items-start pt-4'}`}>

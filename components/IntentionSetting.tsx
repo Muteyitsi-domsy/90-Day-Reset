@@ -16,7 +16,7 @@ const IntentionSetting: React.FC<IntentionSettingProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 font-sans">
+    <div className="min-h-screen flex items-center justify-center px-6 pb-6 safe-area-top font-sans">
       <div className="max-w-lg w-full bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] text-center animate-fade-in">
         <h1 className="text-3xl font-light text-[var(--text-secondary)] mb-4">Set Your Intention 🌟</h1>
         <p className="text-lg text-[var(--text-primary)] mb-8 leading-relaxed">
