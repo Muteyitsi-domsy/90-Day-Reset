@@ -55,6 +55,11 @@ const IdealSelfScripting: React.FC<IdealSelfScriptingProps> = ({ userProfile, on
   const currentQuestion = questions[step];
   const isLastStep = step === questions.length - 1;
 
+  const canProceed = () => {
+    const value = answers[currentQuestion.id as keyof IdealSelfAnswers];
+    return typeof value === 'string' ? value.trim() !== '' : false;
+  };
+
   const renderForm = () => (
     <div className="animate-fade-in space-y-8 flex flex-col flex-grow">
       <div className="flex-grow">
@@ -69,11 +74,11 @@ const IdealSelfScripting: React.FC<IdealSelfScriptingProps> = ({ userProfile, on
 
       <div className="space-y-3">
         {isLastStep ? (
-           <button onClick={handleSubmit} className="w-full py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 mt-4">
+           <button onClick={handleSubmit} disabled={!canProceed()} className={`w-full py-3 rounded-lg font-medium text-lg transition-colors duration-300 mt-4 ${canProceed() ? 'bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)]' : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}>
             Create My North Star
           </button>
         ) : (
-          <button onClick={nextStep} className="w-full py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300">
+          <button onClick={nextStep} disabled={!canProceed()} className={`w-full py-3 rounded-lg font-medium text-lg transition-colors duration-300 ${canProceed() ? 'bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)]' : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}>
             Next
           </button>
         )}

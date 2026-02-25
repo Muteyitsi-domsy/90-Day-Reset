@@ -245,7 +245,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             <div className="flex items-start gap-3 p-4 bg-[var(--card-bg-secondary)] rounded-xl border border-[var(--card-border)]">
               <span className="text-xl mt-0.5">⏱</span>
               <div>
-                <p className="font-medium text-[var(--text-primary)]">About 10–15 minutes</p>
+                <p className="font-medium text-[var(--text-primary)]">About 7–10 minutes</p>
                 <p className="text-sm text-[var(--text-secondary)]">Set aside enough time to reflect honestly — there are no right or wrong answers.</p>
               </div>
             </div>
