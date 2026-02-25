@@ -286,7 +286,7 @@ const Menu: React.FC<MenuProps> = ({
         <div className="fixed inset-0 z-50 flex justify-start">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
             <div className="relative w-full max-w-md bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col animate-slide-in-left">
-                <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
+                <div className="px-6 pb-6 safe-area-top border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
                     <h2 className="text-2xl font-light text-[var(--text-secondary)]">Menu</h2>
                     <button onClick={onClose} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
