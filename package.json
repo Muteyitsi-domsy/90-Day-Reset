@@ -19,6 +19,7 @@
     "@capacitor/core": "^8.0.1",
     "@capacitor/ios": "^8.1.0",
     "@capacitor/local-notifications": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.1",
     "@capawesome/capacitor-app-update": "^8.0.2",
     "@emailjs/browser": "^4.4.1",
     "@google/genai": "^1.28.0",

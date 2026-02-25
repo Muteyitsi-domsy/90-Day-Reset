@@ -10,7 +10,17 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false, // Set to true for debugging
   },
   plugins: {
-    // RevenueCat configuration will use API keys from environment
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      launchFadeOutDuration: 500,
+      backgroundColor: '#fdfbf7',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
   },
   server: {
     // For development, you can set the URL to your dev server
