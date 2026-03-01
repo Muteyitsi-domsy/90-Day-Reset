@@ -11,7 +11,8 @@
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
     "cap:build": "npm run build && npx cap sync android",
-    "cap:run": "npx cap run android"
+    "cap:run": "npx cap run android",
+    "release": "node scripts/bump-build.js && npm run build && npx cap sync ios"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
