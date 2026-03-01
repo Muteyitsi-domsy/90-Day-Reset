@@ -43,7 +43,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, settings, 
   // Early return AFTER all hooks
   if (!isOpen || !userProfile) return null;
 
-  const { day: currentDay } = getDayAndMonth(userProfile.startDate);
+  const { day: rawCurrentDay } = getDayAndMonth(userProfile.startDate);
+  const currentDay = Math.min(90, rawCurrentDay);
   const startDate = new Date(userProfile.startDate);
 
   // Calculate which week contains the current day

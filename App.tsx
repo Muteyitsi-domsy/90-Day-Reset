@@ -2177,7 +2177,8 @@ const App: React.FC = () => {
       case 'onboarding_completion':
         return <OnboardingCompletion onComplete={handleOnboardingCompletion} />;
       case 'journal': {
-        const { day } = userProfile ? getDayAndMonth(userProfile.startDate) : { day: 1 };
+        const { day: rawDay } = userProfile ? getDayAndMonth(userProfile.startDate) : { day: 1 };
+        const day = Math.min(90, rawDay);
         const todayCompletion = getTodayCompletion();
         const todaysEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
         
