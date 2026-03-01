@@ -14,6 +14,18 @@ import { db } from '../config/firebase';
 import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
 import { StorageService } from './storageService';
 
+// Firebase SDK v9+ throws on undefined values in documents.
+// Strip them recursively before any write.
+function stripUndefined<T>(obj: T): T {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (Array.isArray(obj)) return (obj as unknown[]).map(stripUndefined) as unknown as T;
+  return Object.fromEntries(
+    Object.entries(obj as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, stripUndefined(v)])
+  ) as T;
+}
+
 /**
  * Firestore implementation of StorageService
  * Handles data persistence using Firebase Firestore
@@ -32,7 +44,7 @@ export class FirestoreService implements StorageService {
       await setDoc(
         userDocRef,
         {
-          profile,
+          profile: stripUndefined(profile),
           metadata: {
             lastSyncedAt: serverTimestamp(),
           },

@@ -62,23 +62,6 @@ const getLocalDateString = (date: Date = new Date()): string => {
   return `${year}-${month}-${day}`;
 };
 
-// Helper function to calculate days remaining in keepsake window (5 days)
-const KEEPSAKE_WINDOW_DAYS = 5;
-const getKeepsakeWindowDaysRemaining = (journeyCompletedDate: string | undefined): number => {
-  if (!journeyCompletedDate) return KEEPSAKE_WINDOW_DAYS;
-
-  const completedDate = new Date(journeyCompletedDate);
-  const today = new Date();
-
-  // Reset times to compare just dates
-  completedDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  const daysSinceCompletion = Math.floor((today.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24));
-  const daysRemaining = KEEPSAKE_WINDOW_DAYS - daysSinceCompletion;
-
-  return Math.max(0, daysRemaining);
-};
 
 // Helper function to remove duplicate weekly/monthly reports
 // Keeps only the most recent report for each week/month
@@ -2000,7 +1983,6 @@ const App: React.FC = () => {
     }
 
     if (isJourneyOver && finalSummaryText && userProfile) {
-      const daysRemaining = getKeepsakeWindowDaysRemaining(userProfile.journeyCompletedDate);
       const todayCompletion = getTodayCompletion();
 
       // Render a full app shell so the user can access the menu and switch to
@@ -2054,7 +2036,6 @@ const App: React.FC = () => {
               userProfile={userProfile}
               journalEntries={journalEntries}
               settings={settings}
-              daysRemaining={daysRemaining}
               onStartNewJourney={handleStartNewJourney}
               onExport={exportData}
             />

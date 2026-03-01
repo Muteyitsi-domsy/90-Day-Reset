@@ -8,7 +8,6 @@ interface KeepsakeWindowProps {
   userProfile: UserProfile;
   journalEntries: JournalEntry[];
   settings: Settings;
-  daysRemaining: number;
   onStartNewJourney: () => void;
   onExport: () => void;
 }
@@ -18,7 +17,6 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
   userProfile,
   journalEntries,
   settings,
-  daysRemaining,
   onStartNewJourney,
   onExport
 }) => {
@@ -60,16 +58,10 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
         {/* Keepsake download reminder */}
         <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800 max-w-md mx-auto">
           <p className="text-amber-800 dark:text-amber-200 font-medium">
-            {daysRemaining > 0 ? (
-              <>
-                <span className="text-2xl">{daysRemaining}</span> day{daysRemaining !== 1 ? 's' : ''} remaining to download your keepsake
-              </>
-            ) : (
-              <>Last chance to download your keepsake!</>
-            )}
+            Download your keepsake before you go.
           </p>
           <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-            Starting a new journey will clear your previous entries.
+            Starting a new journey will clear your previous entries — make sure you've saved your PDF first.
           </p>
         </div>
 
