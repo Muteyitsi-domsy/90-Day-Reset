@@ -2187,13 +2187,54 @@ const App: React.FC = () => {
                     <Header
                         streak={userProfile?.streak}
                         onOpenMenu={() => setIsMenuOpen(true)}
+                        hasUnreadReports={hasUnreadReports}
                         ritualCompleted={todayCompletion.ritualCompleted}
                         morningEntryCompleted={todayCompletion.morningEntryCompleted}
                         eveningCheckinCompleted={todayCompletion.eveningCheckinCompleted}
                     />
-                    <PausedScreen onResume={handleResumeJourney} onOpenMoodJournal={() => {
-                      setActiveView('mood');
-                    }} />
+                    {activeView === 'mood' ? (
+                      <MoodJournalView
+                        moodEntries={moodEntries}
+                        customEmotions={settings.customEmotions || []}
+                        settings={settings}
+                        onNewEntry={() => setShowMoodInputModal(true)}
+                        onDeleteEntry={handleDeleteMoodEntry}
+                        onEditEntry={handleEditMoodEntry}
+                        currentStreak={userProfile.moodStreak || 0}
+                        onFlipEntry={handleFlipTodaysMoodEntry}
+                        flipEntries={flipEntries}
+                        onViewMonthlySummary={(month, year) => {
+                          const customEmotions = settings.customEmotions || [];
+                          const summaryData = calculateMonthlySummary(moodEntries, month - 1, year, customEmotions);
+                          if (summaryData) {
+                            setMonthlySummaryData(summaryData);
+                            setShowMonthlySummaryModal(true);
+                          }
+                        }}
+                        onViewAnnualRecap={(year) => {
+                          const customEmotions = settings.customEmotions || [];
+                          const recapData = calculateAnnualRecap(moodEntries, year, customEmotions);
+                          if (recapData) {
+                            setAnnualRecapData(recapData);
+                            setShowAnnualRecapModal(true);
+                          }
+                        }}
+                      />
+                    ) : activeView === 'flip' ? (
+                      <FlipJournalView
+                        flipEntries={flipEntries}
+                        onNewEntry={() => setShowFlipInputModal(true)}
+                        onEditEntry={handleEditFlipEntry}
+                        onDeleteEntry={handleDeleteFlipEntry}
+                        moodEntries={moodEntries}
+                        currentStreak={userProfile?.flipStreak || 0}
+                        streakEnabled={settings.flipStreakEnabled !== false}
+                      />
+                    ) : (
+                      <PausedScreen onResume={handleResumeJourney} onOpenMoodJournal={() => {
+                        setActiveView('mood');
+                      }} />
+                    )}
                      <Menu
                         isOpen={isMenuOpen}
                         onClose={() => setIsMenuOpen(false)}
