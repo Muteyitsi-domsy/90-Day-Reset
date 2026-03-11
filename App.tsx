@@ -103,6 +103,11 @@ const removeDuplicateReports = (entries: JournalEntry[]): JournalEntry[] => {
 
 const App: React.FC = () => {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  // Snapshot of entries taken the moment the journey completes (or when entries
+  // finish loading into an already-completed journey). Used by KeepsakeWindow /
+  // PDF so that a subsequent "Start New Journey" clearing state/Firestore cannot
+  // produce an empty PDF.
+  const [completedJourneyEntries, setCompletedJourneyEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [appState, setAppState] = useState<AppState>('welcome');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -180,6 +185,14 @@ const App: React.FC = () => {
   useEffect(() => {
     journalEntriesRef.current = journalEntries;
   }, [journalEntries]);
+
+  // When entries finish loading into an already-completed journey (app reload
+  // scenario), capture the snapshot if we don't have one yet.
+  useEffect(() => {
+    if (isJourneyOver && journalEntries.length > 0 && completedJourneyEntries.length === 0) {
+      setCompletedJourneyEntries(journalEntries);
+    }
+  }, [isJourneyOver, journalEntries, completedJourneyEntries.length]);
 
   useEffect(() => {
     userProfileRef.current = userProfile;
@@ -1566,6 +1579,7 @@ const App: React.FC = () => {
         // Set both journeyCompleted and journeyCompletedDate (only if not already set)
         const completedDate = userProfile.journeyCompletedDate || new Date().toISOString();
         setUserProfile(prev => ({ ...prev!, journeyCompleted: true, journeyCompletedDate: completedDate }));
+        setCompletedJourneyEntries(journalEntriesRef.current);
         setIsJourneyOver(true);
     } catch (error) {
         console.error("Error generating final summary:", error);
@@ -1574,6 +1588,7 @@ const App: React.FC = () => {
         // Set both journeyCompleted and journeyCompletedDate (only if not already set)
         const completedDate = userProfile.journeyCompletedDate || new Date().toISOString();
         setUserProfile(prev => ({ ...prev!, journeyCompleted: true, journeyCompletedDate: completedDate }));
+        setCompletedJourneyEntries(journalEntriesRef.current);
         setIsJourneyOver(true);
     } finally {
         setIsLoading(false);
@@ -1783,6 +1798,7 @@ const App: React.FC = () => {
 
       // Reset journey-related state
       setJournalEntries([]);
+      setCompletedJourneyEntries([]);
       setIsJourneyOver(false);
       setFinalSummaryText('');
       setDailyPrompt(null);
@@ -2034,7 +2050,7 @@ const App: React.FC = () => {
             <KeepsakeWindow
               completionSummary={finalSummaryText}
               userProfile={userProfile}
-              journalEntries={journalEntries}
+              journalEntries={completedJourneyEntries.length > 0 ? completedJourneyEntries : journalEntries}
               settings={settings}
               onStartNewJourney={handleStartNewJourney}
               onExport={exportData}

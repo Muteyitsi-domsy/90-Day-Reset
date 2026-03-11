@@ -357,11 +357,25 @@ ${hunchEntriesText}
         ? `Their intention for the journey was: "${profile.intentions}"`
         : '';
 
+    // Practice consistency — week-by-week habit analysis
+    const dailyEntries = journalHistory.filter(e => e.type === 'daily');
+    const weekMap = new Map<number, number>();
+    for (const entry of dailyEntries) {
+        weekMap.set(entry.week, (weekMap.get(entry.week) ?? 0) + 1);
+    }
+    const wellUsedWeeks = [...weekMap.values()].filter(count => count > 2).length;
+    const ritualWasConsistent = wellUsedWeeks >= 10;
+    const practiceContext = `
+Practice data (use as context only, weave into prose—do not quote these numbers directly):
+- They completed ${dailyEntries.length} of 90 possible daily journal entries.
+- They journaled more than twice in ${wellUsedWeeks} of 13 weeks.${ritualWasConsistent ? '\n- This reflects a genuinely consistent practice. The daily ritual was deeply embodied—acknowledge this.' : ''}
+`;
+
     // Arc-specific reflection guidance
     const arcReflection = {
-        release: "What was recognized, what was released, what softened over these 90 days",
-        reaffirm: "What beliefs shifted, what was reaffirmed, what emerged over these 90 days",
-        reignition: "What was embodied, what became natural, what ignited over these 90 days"
+        release: "what you recognized, what you released, what softened across your 90 days",
+        reaffirm: "what beliefs shifted, what was reaffirmed, what emerged across your 90 days",
+        reignition: "what was embodied, what became natural, what ignited across your 90 days"
     };
 
     const prompt = `
@@ -385,13 +399,14 @@ ${hunchEntriesText}
         ${historyText}
         """
         ${hunchTextSection}
+        ${practiceContext}
 
-        Generate a reflective summary following this EXACT structure (400 words max):
+        Generate a reflective summary following this EXACT structure (500 words max):
 
         **[PERSONALIZED TITLE BASED ON THEIR JOURNEY - not generic]**
 
         **THE BEGINNING**
-        2-3 sentences on where they started—their arc, their intention (if provided), what was present in the early entries. Observational, not judgmental.
+        2-3 sentences on where you started—your arc, your intention (if provided), what was present in the early entries. Observational, not judgmental.
 
         **THE TERRAIN**
         3-4 sentences on the major themes that moved through the 90 days. What kept appearing? What evolved? Reference specific phases or turning points. Use their own words as evidence where possible.
@@ -400,13 +415,16 @@ ${hunchEntriesText}
         2-3 sentences specific to their arc: ${arcReflection[profile.arc]}. Describe what was observed, not what was achieved.
 
         **THE THREADS**
-        2-3 sentences weaving together recurring elements—images, words, or themes that appeared across the journey.${hunchHistory.length > 0 ? " Note any patterns between conscious entries and intuitive insights." : ""}
+        2-3 sentences weaving together recurring elements—images, words, or themes that appeared across your journey.${hunchHistory.length > 0 ? " Note any patterns between conscious entries and intuitive insights." : ""}
 
         **THE MIRRORS**
-        3-4 direct quotes from their entries across different phases of the journey (early, middle, late), showing the arc through their own words. Format each quote on its own line with the day number.
+        3-4 direct quotes from your entries across different phases of the journey (early, middle, late), showing the arc through your own words. Format each quote on its own line with the day number.
+
+        **THE PRACTICE**
+        2-3 sentences reflecting on how the act of showing up became its own form of transformation. Weave in how consistently the journaling practice was held (drawing from the practice data provided). Reflect on which specific qualities or values from the Ideal Self Manifesto appear to have been lived—not just aspired to—across the entries. If an intention was stated at the outset, observe how it moved through the journey: whether it deepened, shifted, or quietly became part of the fabric. Observational, not celebratory. If the practice was consistent, acknowledge it with warmth but without flattery.
 
         **THE CLOSING**
-        2-3 sentences of synthesis—not advice, not encouragement, just a poetic observation of what 90 days held. End with a single line from or inspired by their Ideal Self Manifesto, presented as a reflection of who they have been becoming. Do NOT tell them what to do next.
+        2-3 sentences of synthesis—not advice, not encouragement, just a poetic observation of what your 90 days held. End with a single line from or inspired by your Ideal Self Manifesto, presented as a reflection of who you have been becoming. Do NOT tell them what to do next.
 
         Format with Markdown: Use ** for section headers. The response should read as a cohesive narrative, not a list.
     `;
