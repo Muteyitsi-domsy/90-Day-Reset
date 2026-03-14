@@ -1,6 +1,7 @@
 import React from 'react';
 import { JournalEntry } from '../types';
 import WeeklySummary from './WeeklySummary';
+import MonthlyReport from './MonthlyReport';
 
 interface ReportViewerProps {
     report: JournalEntry | null;
@@ -68,7 +69,11 @@ const ReportViewer: React.FC<ReportViewerProps> = ({ report, onClose }) => {
                 {/* Report Content - Scrollable */}
                 <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6">
                     {report.summaryData ? (
-                        <WeeklySummary data={report.summaryData} />
+                        report.type === 'monthly_summary_report' ? (
+                            <MonthlyReport data={report.summaryData} />
+                        ) : (
+                            <WeeklySummary data={report.summaryData} />
+                        )
                     ) : (
                         <div className="text-center text-[var(--text-secondary)] py-8">
                             <p>No report data available.</p>

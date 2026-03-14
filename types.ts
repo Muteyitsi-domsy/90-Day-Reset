@@ -203,6 +203,7 @@ export interface SummaryData {
         completionRate: string;
     };
 
+    arcPhase?: string;
     crisisDetected?: boolean;
 }
 

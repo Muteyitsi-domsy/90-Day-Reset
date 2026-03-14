@@ -33,6 +33,12 @@ const questions = [
     { id: 'idealSelf', label: 'Describe what you\'d like to focus more on in your life over the coming months.', type: 'textarea', rows: 4 },
 ];
 
+const ARC_PURPOSE: Record<string, string> = {
+  release: "Your 90 days will move through three terrains — releasing what no longer serves you, planting new ground, and meeting who you have become.",
+  reaffirm: "Your 90 days will move through two terrains — grounding in what is already true for you, and strengthening the identity you are stepping into.",
+  reignition: "Your 90 days are focused on one terrain — the full embodiment of the self you have already chosen to become.",
+};
+
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [showIntro, setShowIntro] = useState(true);
   const [step, setStep] = useState(0);
@@ -213,6 +219,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     <div className="text-center space-y-6 animate-fade-in">
         <h3 className="text-xl font-light text-[var(--text-secondary)]">Your journey begins from the</h3>
         <p className="text-4xl font-medium text-[var(--accent-primary)] dark:text-[var(--accent-secondary)] capitalize tracking-wide">{analysisResult?.phase} Arc</p>
+        {analysisResult?.phase && ARC_PURPOSE[analysisResult.phase] && (
+          <p className="text-base font-light text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
+            {ARC_PURPOSE[analysisResult.phase]}
+          </p>
+        )}
         <p className="text-lg font-light leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap">{analysisResult?.summary}</p>
         <p className="text-lg italic text-[var(--text-secondary)]">"{analysisResult?.encouragement}"</p>
         <button onClick={handleComplete} className="w-full py-3 rounded-lg bg-[var(--accent-primary)] text-white font-medium text-lg hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 mt-8">

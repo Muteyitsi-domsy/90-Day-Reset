@@ -378,6 +378,19 @@ Practice data (use as context only, weave into prose—do not quote these number
         reignition: "what was embodied, what became natural, what ignited across your 90 days"
     };
 
+    const arcAnalysisPrompt = {
+        release: `This arc moved through three distinct terrains. Write a separate 2-3 sentence reflection for each, clearly labelled:
+- Release (Month 1): The courage it took to look inward — what was met, what began to loosen, what asked to be seen and released.
+- New Leaf (Month 2): The action that followed — what was built day by day, the life being constructed through the dailiness of showing up.
+- Recognition (Month 3): The embodiment — the new self that emerged and was met, what was recognised as already becoming true.
+Observe what was present in each terrain without prescribing or advising.`,
+        reaffirm: `This arc moved through two terrains. Write a separate 2-3 sentence reflection for each, clearly labelled:
+- Grounding (Months 1–2): What was stabilised, what became clear, what the person returned to again and again as their truth.
+- Strengthening (Month 3): What solidified, what was reaffirmed, what identity began to crystallise through consistent practice.
+Observe without prescribing.`,
+        reignition: `This arc was focused on one terrain: full embodiment. Write 3-4 sentences reflecting on what was ignited, what became natural through repetition, what was lived rather than merely aspired to, and how the person stepped into the path they had already chosen. Observe the qualities that were embodied — not just intended.`
+    };
+
     const prompt = `
         You are a reflective mirror concluding a user's 90-Day Identity Reset journey. Your role is to observe and reflect—NOT to coach, advise, or prescribe. You do not give forward guidance or tell them what to do next. You simply reveal what the 90 days contained.
 
@@ -409,10 +422,10 @@ Practice data (use as context only, weave into prose—do not quote these number
         2-3 sentences on where you started—your arc, your intention (if provided), what was present in the early entries. Observational, not judgmental.
 
         **THE TERRAIN**
-        3-4 sentences on the major themes that moved through the 90 days. What kept appearing? What evolved? Reference specific phases or turning points. Use their own words as evidence where possible.
+        Begin with 1-2 sentences naming and defining what the ${profile.arc} arc set out to do — the terrain's purpose and what it asked of the person. Then 2-3 sentences on the major themes that moved through the 90 days: what kept appearing, what evolved, what was present. Reference specific phases or turning points, using their own words as evidence where possible.
 
         **THE ARC**
-        2-3 sentences specific to their arc: ${arcReflection[profile.arc]}. Describe what was observed, not what was achieved.
+        ${arcAnalysisPrompt[profile.arc]}
 
         **THE THREADS**
         2-3 sentences weaving together recurring elements—images, words, or themes that appeared across your journey.${hunchHistory.length > 0 ? " Note any patterns between conscious entries and intuitive insights." : ""}
@@ -667,6 +680,19 @@ Your output must be a single, clean JSON object matching the provided schema.`;
     }
 }
 
+function getArcPhaseContext(arc: Arc, month: number): { phase: string; focus: string } {
+    if (arc === 'release') {
+        if (month === 1) return { phase: 'Release', focus: 'the courage to look inward, what began to loosen, what was named and released' };
+        if (month === 2) return { phase: 'New Leaf', focus: 'the action taken, what was built day by day, new ground being planted' };
+        return { phase: 'Recognition', focus: 'the embodiment of the new self, what was met and recognised as true' };
+    }
+    if (arc === 'reaffirm') {
+        if (month <= 2) return { phase: 'Grounding', focus: 'what was stabilised, what became clear, what was returned to as true' };
+        return { phase: 'Strengthening', focus: 'what solidified, what was reaffirmed, what identity began to crystallise' };
+    }
+    return { phase: 'Embodiment', focus: 'what was ignited, what became natural, how the path was stepped into fully' };
+}
+
 export async function generateMonthlySummary(userProfile: UserProfile, month: number, entries: JournalEntry[], forceRefresh = false): Promise<any> {
     const checkinCount = entries.filter(e => e.type === 'daily' && e.eveningCheckin).length;
     const dailyEntryCount = entries.filter(e => e.type === 'daily').length;
@@ -674,6 +700,7 @@ export async function generateMonthlySummary(userProfile: UserProfile, month: nu
 
     const dateRange = getMonthDateRange(userProfile.startDate, month);
     const periodLabel = `Month ${month}`;
+    const arcPhaseCtx = getArcPhaseContext(userProfile.arc, month);
 
     // Generate cache key from entries
     const cacheContent = `${userProfile.name}_month_${month}_${entries.map(e => e.rawText).join('|')}`;
@@ -706,7 +733,8 @@ Your output must be a single, clean JSON object matching the provided schema.`;
         Reflect the following journal data for ${userProfile.name}'s monthly summary.
 
         **Context:**
-        - Arc: ${userProfile.arc}
+        - Arc: ${userProfile.arc} — ${arcPhaseCtx.phase} phase
+        - Arc Phase Focus: This is the ${arcPhaseCtx.phase} terrain. The reflection should be attuned to ${arcPhaseCtx.focus}.
         - Ideal Self Manifesto: "${userProfile.idealSelfManifesto}"
         - Period: ${periodLabel}
         - Date Range: ${dateRange}
@@ -721,6 +749,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
         3. What tensions were present (frame neutrally as "a pull between...")
         4. Direct quotes that reveal the journey
         5. A poetic synthesis that weaves it together without prescribing next steps
+        6. Arc-phase attunement: ground the reflection in the ${arcPhaseCtx.phase} terrain — what this specific phase of the arc asked of the person, and how these entries moved through that terrain.
     `;
 
     try {
@@ -743,6 +772,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
                 streak: userProfile.streak,
                 completionRate: `${Math.round(completionRate * 100)}%`
             };
+            summaryJson.arcPhase = arcPhaseCtx.phase;
 
             // Cache the result
             analysisCache.set(cacheContent, 'monthly_summary', summaryJson);
@@ -798,9 +828,10 @@ Your output must be a single, clean JSON object matching the provided schema.`;
                                 type: Type.ARRAY,
                                 items: { type: Type.STRING }
                             },
-                            synthesis: { type: Type.STRING }
+                            synthesis: { type: Type.STRING },
+                            arcPhase: { type: Type.STRING, description: "The arc phase this month corresponds to" }
                         },
-                        required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis"]
+                        required: ["title", "period", "dateRange", "dominantThemes", "emotionalTerrain", "recurringThreads", "shifts", "mirrors", "tensions", "synthesis", "arcPhase"]
                     }
                 }
             });
@@ -813,6 +844,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
                 streak: userProfile.streak,
                 completionRate: `${Math.round(completionRate * 100)}%`
             };
+            summaryJson.arcPhase = arcPhaseCtx.phase;
 
             return summaryJson;
         }, `monthly_summary_${month}`);

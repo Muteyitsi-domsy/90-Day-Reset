@@ -183,6 +183,144 @@ const ClosingSection: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
+const ConsistencyGraph: React.FC<{ entries: JournalEntry[] }> = ({ entries }) => {
+  // Only count daily entries (not summaries/hunches)
+  const dailyEntries = entries.filter(e => e.type === 'daily');
+
+  // Count entries per week (13 weeks)
+  const weekCounts = Array.from({ length: 13 }, (_, i) => {
+    const weekNum = i + 1;
+    return dailyEntries.filter(e => e.week === weekNum).length;
+  });
+
+  const maxCount = Math.max(...weekCounts, 7); // at least 7 so bars have room
+  const baseline = 4; // baseline = 4 entries/week
+
+  const width = 300;
+  const height = 120;
+  const paddingLeft = 28;
+  const paddingRight = 8;
+  const paddingTop = 8;
+  const paddingBottom = 24;
+  const graphWidth = width - paddingLeft - paddingRight;
+  const graphHeight = height - paddingTop - paddingBottom;
+  const barWidth = (graphWidth / 13) * 0.6;
+  const gap = (graphWidth / 13) * 0.4;
+
+  const baselineY = paddingTop + graphHeight - (baseline / maxCount) * graphHeight;
+
+  return (
+    <div className="bg-white/60 dark:bg-stone-900/40 backdrop-blur-sm rounded-2xl px-5 py-5 border border-amber-100 dark:border-amber-900/30 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-amber-300/50 dark:to-amber-600/30" />
+        <span className="text-[10px] tracking-[0.2em] uppercase font-medium text-amber-700 dark:text-amber-400 whitespace-nowrap">
+          13 Weeks of Showing Up
+        </span>
+        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-amber-300/50 dark:to-amber-600/30" />
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full"
+        style={{ maxHeight: 160 }}
+        aria-label="Weekly journal consistency over 13 weeks"
+      >
+        {/* Baseline */}
+        <line
+          x1={paddingLeft}
+          y1={baselineY}
+          x2={width - paddingRight}
+          y2={baselineY}
+          stroke="#d97706"
+          strokeWidth={0.8}
+          strokeDasharray="3 3"
+          opacity={0.5}
+        />
+        <text
+          x={paddingLeft - 2}
+          y={baselineY + 3}
+          fontSize={5}
+          fill="#d97706"
+          opacity={0.7}
+          textAnchor="end"
+        >
+          4
+        </text>
+
+        {/* Bars */}
+        {weekCounts.map((count, i) => {
+          const barHeight = (count / maxCount) * graphHeight;
+          const x = paddingLeft + i * (graphWidth / 13) + gap / 2;
+          const y = paddingTop + graphHeight - barHeight;
+          const isAboveBaseline = count >= baseline;
+          return (
+            <g key={i}>
+              <rect
+                x={x}
+                y={barHeight > 0 ? y : paddingTop + graphHeight - 1}
+                width={barWidth}
+                height={Math.max(barHeight, 1)}
+                rx={1.5}
+                fill={isAboveBaseline ? '#92400e' : '#d6b896'}
+                opacity={isAboveBaseline ? 0.75 : 0.35}
+                className="dark:opacity-80"
+              />
+              {/* Week label */}
+              <text
+                x={x + barWidth / 2}
+                y={paddingTop + graphHeight + 10}
+                fontSize={5}
+                fill="#78716c"
+                textAnchor="middle"
+              >
+                {i + 1}
+              </text>
+              {/* Count on top if > 0 */}
+              {count > 0 && (
+                <text
+                  x={x + barWidth / 2}
+                  y={y - 2}
+                  fontSize={4.5}
+                  fill="#92400e"
+                  textAnchor="middle"
+                  opacity={0.8}
+                >
+                  {count}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Y-axis label */}
+        <text
+          x={12}
+          y={paddingTop + graphHeight / 2}
+          fontSize={5}
+          fill="#78716c"
+          textAnchor="middle"
+          transform={`rotate(-90, 12, ${paddingTop + graphHeight / 2})`}
+        >
+          entries
+        </text>
+
+        {/* X-axis label */}
+        <text
+          x={width / 2}
+          y={height - 2}
+          fontSize={5}
+          fill="#78716c"
+          textAnchor="middle"
+        >
+          week
+        </text>
+      </svg>
+      <p className="text-[10px] text-stone-400 dark:text-stone-500 text-center mt-1">
+        dashed line = 4 entries / week
+      </p>
+    </div>
+  );
+};
+
 const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
   completionSummary,
   userProfile,
@@ -292,6 +430,9 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
             );
           })}
         </div>
+
+        {/* Consistency Graph */}
+        <ConsistencyGraph entries={journalEntries} />
 
         {/* Mood Journal note */}
         <div className="mb-8 px-4 py-3.5 bg-stone-100/80 dark:bg-stone-800/40 rounded-xl border border-stone-200 dark:border-stone-700">
