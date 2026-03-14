@@ -140,7 +140,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
             Unlock Your Journey
           </h2>
           <p className="text-[var(--text-secondary)] mt-2">
-            Start your 90-day transformation with full access
+            Everything you need for your 90-day transformation
           </p>
         </div>
 
@@ -159,10 +159,9 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
                 </h3>
                 <ul className="space-y-2">
                   {[
-                    'Daily guided journaling prompts',
+                    'Daily guided journaling prompts across life areas',
                     'AI-powered insights & reflections',
-                    'Mood tracking & analysis',
-                    'Weekly & monthly reports',
+                    '3-level mood intensity tracking with personalized prompts',
                     'Thought flip exercises',
                     'Cloud backup & sync',
                     'Crisis support resources',
@@ -199,9 +198,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
                 </div>
               )}
 
-              {/* Trial Notice */}
               <p className="text-center text-sm text-[var(--text-secondary)] mb-4">
-                Start with a <span className="font-medium text-[var(--accent-primary)]">14-day free trial</span>.
                 Cancel anytime.
               </p>
 
@@ -224,7 +221,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
                     Processing...
                   </span>
                 ) : (
-                  'Start Free Trial'
+                  'Get Full Access'
                 )}
               </button>
 
