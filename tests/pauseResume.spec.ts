@@ -157,13 +157,15 @@ describe('Pause/Resume — journey day preservation', () => {
     const resumed = applyResume(applyPause(profile, pauseNow), resumeLater);
 
     // Immediately after resuming the clock is at resumeLater.
-    // getDayAndMonth uses real Date.now(), which is still "today" from
-    // the test's perspective. But the startDate shifted 10 days forward,
-    // so if we compute getDayAndMonth from the resumed start date using
-    // the same "today" we used before + 10 days:
-    const fakeTodayAfterResume = resumeLater;
+    // getDayAndMonth normalises both dates to midnight before diffing, so we
+    // must do the same here — otherwise sub-day time differences (e.g. pauseNow
+    // being after noon while startDate was set to noon) cause Math.ceil to round up.
+    const fakeTodayAfterResume = new Date(resumeLater);
+    fakeTodayAfterResume.setHours(0, 0, 0, 0);
+    const resumedStart = new Date(resumed.startDate);
+    resumedStart.setHours(0, 0, 0, 0);
     const elapsed = Math.ceil(
-      Math.max(0, fakeTodayAfterResume.getTime() - new Date(resumed.startDate).getTime()) /
+      Math.max(0, fakeTodayAfterResume.getTime() - resumedStart.getTime()) /
       (1000 * 60 * 60 * 24)
     ) + 1;
     // Should still be day 21 (the start date shifted exactly 10 days forward)
