@@ -426,13 +426,16 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
                     {section.content}
                   </p>
                 )}
+
+                {sectionName === 'THE PRACTICE' && (
+                  <div className="mt-5">
+                    <ConsistencyGraph entries={journalEntries} />
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
-
-        {/* Consistency Graph */}
-        <ConsistencyGraph entries={journalEntries} />
 
         {/* Mood Journal note */}
         <div className="mb-8 px-4 py-3.5 bg-stone-100/80 dark:bg-stone-800/40 rounded-xl border border-stone-200 dark:border-stone-700">
