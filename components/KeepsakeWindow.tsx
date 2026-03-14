@@ -184,13 +184,18 @@ const ClosingSection: React.FC<{ content: string }> = ({ content }) => {
 };
 
 const ConsistencyGraph: React.FC<{ entries: JournalEntry[] }> = ({ entries }) => {
-  // Only count daily entries (not summaries/hunches)
-  const dailyEntries = entries.filter(e => e.type === 'daily');
+  // Only count prompt journaling entries — exclude evening check-ins
+  const promptEntries = entries.filter(e => e.type === 'daily' && !e.eveningCheckin);
 
-  // Count entries per week (13 weeks)
+  // Evening check-in intentionality metrics
+  const dailyEntries = entries.filter(e => e.type === 'daily');
+  const eveningEntries = dailyEntries.filter(e => !!e.eveningCheckin);
+  const eveningRate = dailyEntries.length > 0 ? eveningEntries.length / dailyEntries.length : 0;
+
+  // Count prompt entries per week (13 weeks)
   const weekCounts = Array.from({ length: 13 }, (_, i) => {
     const weekNum = i + 1;
-    return dailyEntries.filter(e => e.week === weekNum).length;
+    return promptEntries.filter(e => e.week === weekNum).length;
   });
 
   const maxCount = Math.max(...weekCounts, 7); // at least 7 so bars have room
@@ -317,6 +322,15 @@ const ConsistencyGraph: React.FC<{ entries: JournalEntry[] }> = ({ entries }) =>
       <p className="text-[10px] text-stone-400 dark:text-stone-500 text-center mt-1">
         dashed line = 4 entries / week
       </p>
+
+      {eveningRate >= 0.5 && (
+        <p className="text-xs text-stone-600 dark:text-stone-400 font-light leading-relaxed mt-4 text-center italic">
+          {eveningRate >= 0.8
+            ? `Beyond showing up to the prompt, you returned at the close of the day in ${eveningEntries.length} of ${dailyEntries.length} entries. That kind of intentionality — the willingness to bookend the day with reflection — is rare, and it left its mark on this journey.`
+            : `You also returned at the close of the day in ${eveningEntries.length} of ${dailyEntries.length} entries. That second act of reflection speaks to something deliberate — a practice held not just in the morning, but carried through.`
+          }
+        </p>
+      )}
     </div>
   );
 };
