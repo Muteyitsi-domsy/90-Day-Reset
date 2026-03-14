@@ -10,6 +10,8 @@
  */
 
 import { Capacitor } from '@capacitor/core';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '../src/config/firebase';
 import type {
   SubscriptionState,
   SubscriptionStatus,
@@ -18,31 +20,24 @@ import type {
   SubscriptionOffering
 } from '../types';
 
+const functions = getFunctions(app, 'us-central1');
+
 // RevenueCat types (will be available when running on device)
 let Purchases: typeof import('@revenuecat/purchases-capacitor').Purchases | null = null;
 
 // Product identifiers - must match what you set up in RevenueCat/Play Console
 export const PRODUCT_IDS = {
-  MONTHLY: 'renew90_monthly',
-  YEARLY: 'renew90_yearly',
+  MONTHLY: 'pro_monthly',
+  YEARLY: 'pro_annual',
 } as const;
 
 // RevenueCat API keys (set these in your environment)
 const REVENUECAT_API_KEY_ANDROID = import.meta.env.VITE_REVENUECAT_ANDROID_KEY || '';
 const REVENUECAT_API_KEY_IOS = import.meta.env.VITE_REVENUECAT_IOS_KEY || '';
 
-// Beta codes storage key
+// Beta codes storage keys
 const BETA_CODE_STORAGE_KEY = 'renew90_beta_code';
 const BETA_EXPIRY_STORAGE_KEY = 'renew90_beta_expiry';
-
-// Valid beta codes (in production, validate these server-side)
-const VALID_BETA_CODES = new Set([
-  'BETA2026',
-  'RENEW90BETA',
-  'EARLYBIRD',
-  'FOUNDER90',
-  // Add more codes as needed
-]);
 
 /**
  * Check if running on a native platform (not web)
@@ -316,38 +311,40 @@ export const restorePurchases = async (): Promise<{
 };
 
 /**
- * Validate and apply a beta code
+ * Validate and apply a beta code.
+ * Validation is performed server-side via a Cloud Function — no codes exist in this bundle.
  */
-export const applyBetaCode = (code: string): {
+export const applyBetaCode = async (code: string): Promise<{
   success: boolean;
   error?: string;
   expiryDate?: string;
-} => {
-  const normalizedCode = code.trim().toUpperCase();
-
-  if (!VALID_BETA_CODES.has(normalizedCode)) {
-    return { success: false, error: 'Invalid beta code' };
-  }
-
-  // Check if already used a beta code
+}> => {
+  // Check if already used a beta code on this device
   const existingCode = localStorage.getItem(BETA_CODE_STORAGE_KEY);
   if (existingCode) {
     return { success: false, error: 'A beta code has already been applied to this device' };
   }
 
-  // Calculate expiry date (90 days from now)
-  const expiryDate = new Date();
-  expiryDate.setDate(expiryDate.getDate() + 90);
-  const expiryString = expiryDate.toISOString();
+  try {
+    const validateBetaCode = httpsCallable<{ code: string }, { success: boolean; durationDays: number }>(
+      functions,
+      'validateBetaCode'
+    );
+    const result = await validateBetaCode({ code: code.trim() });
+    const { durationDays } = result.data;
 
-  // Store the beta code and expiry
-  localStorage.setItem(BETA_CODE_STORAGE_KEY, normalizedCode);
-  localStorage.setItem(BETA_EXPIRY_STORAGE_KEY, expiryString);
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + durationDays);
+    const expiryString = expiryDate.toISOString();
 
-  return {
-    success: true,
-    expiryDate: expiryString
-  };
+    localStorage.setItem(BETA_CODE_STORAGE_KEY, code.trim().toUpperCase());
+    localStorage.setItem(BETA_EXPIRY_STORAGE_KEY, expiryString);
+
+    return { success: true, expiryDate: expiryString };
+  } catch (err: any) {
+    const message = err?.message || 'Invalid code';
+    return { success: false, error: message };
+  }
 };
 
 /**

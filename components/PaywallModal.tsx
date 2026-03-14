@@ -93,15 +93,19 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
     }
   };
 
-  const handleApplyBetaCode = () => {
+  const handleApplyBetaCode = async () => {
     setBetaError(null);
-    const result = applyBetaCode(betaCode);
-
-    if (result.success) {
-      onSubscribed();
-      onClose();
-    } else {
-      setBetaError(result.error || 'Invalid code');
+    setIsPurchasing(true);
+    try {
+      const result = await applyBetaCode(betaCode);
+      if (result.success) {
+        onSubscribed();
+        onClose();
+      } else {
+        setBetaError(result.error || 'Invalid code');
+      }
+    } finally {
+      setIsPurchasing(false);
     }
   };
 

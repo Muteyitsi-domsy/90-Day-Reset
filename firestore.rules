@@ -226,7 +226,13 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
      }
- // Explicit default deny
+    // Beta codes — server-side only, never readable by clients
+    // Validation happens exclusively via the validateBetaCode Cloud Function
+    match /betaCodes/{code} {
+      allow read, write: if false;
+    }
+
+    // Explicit default deny
     match /{document=**} {
       allow read, write: if false;
     }
