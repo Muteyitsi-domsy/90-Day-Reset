@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { SubscriptionOffering, SubscriptionProduct } from '../types';
+import type { SubscriptionOffering } from '../types';
 import {
   getOfferings,
   purchaseSubscription,
@@ -14,25 +14,52 @@ interface PaywallModalProps {
   onSubscribed: () => void;
 }
 
-const PaywallModal: React.FC<PaywallModalProps> = ({
-  isOpen,
-  onClose,
-  onSubscribed,
-}) => {
+const arcFeatures = [
+  {
+    color: '#9b82c4',
+    title: 'Your arc, your entry point',
+    desc: 'Placed into Release, Re-affirm, or Reignition based on where you are — guided prompts shaped to your emotional season across 8 life areas.',
+  },
+  {
+    color: '#b49b6e',
+    title: 'Flip journal — the thought reframe',
+    desc: 'When thoughts loop, your higher-self perspective waits. Answer the same situation from a wiser vantage point and watch the weight shift.',
+  },
+  {
+    color: '#7ab8a4',
+    title: 'Weekly & monthly reflections',
+    desc: 'Poetic summaries woven from your own words — a mirror that shows how far you\'ve moved, in language that feels like yours.',
+  },
+  {
+    color: '#b49b6e',
+    title: 'The 90-day keepsake',
+    desc: 'At journey\'s end, your arc is woven into a single artefact — your growth, your language, your proof of becoming.',
+  },
+  {
+    color: '#9b82c4',
+    title: '30, 60 & 90 day check-ins',
+    desc: 'Pause points to reflect on your intention — whether it has deepened, shifted, or been fulfilled.',
+  },
+];
+
+const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscribed }) => {
   const [offerings, setOfferings] = useState<SubscriptionOffering | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Beta code state
   const [showBetaInput, setShowBetaInput] = useState(false);
   const [betaCode, setBetaCode] = useState('');
   const [betaError, setBetaError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      setSelectedPlan('yearly');
+      setError(null);
+      setBetaCode('');
+      setBetaError(null);
+      setShowBetaInput(false);
       loadOfferings();
     }
   }, [isOpen]);
@@ -41,13 +68,13 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const loadedOfferings = await getOfferings();
-      if (!loadedOfferings) {
+      const loaded = await getOfferings();
+      if (!loaded) {
         setError('Could not load subscription options. Please check your connection and try again.');
       } else {
-        setOfferings(loadedOfferings);
+        setOfferings(loaded);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load subscription options. Please try again.');
     } finally {
       setIsLoading(false);
@@ -56,13 +83,11 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
 
   const handlePurchase = async () => {
     if (!offerings) return;
-
     const product = selectedPlan === 'monthly' ? offerings.monthly : offerings.yearly;
     if (!product) return;
 
     setIsPurchasing(true);
     setError(null);
-
     try {
       const result = await purchaseSubscription(product.id);
       if (result.success) {
@@ -71,7 +96,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
       } else if (result.error && result.error !== 'Purchase cancelled') {
         setError(result.error);
       }
-    } catch (err) {
+    } catch {
       setError('Purchase failed. Please try again.');
     } finally {
       setIsPurchasing(false);
@@ -81,17 +106,16 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
   const handleRestore = async () => {
     setIsRestoring(true);
     setError(null);
-
     try {
       const result = await restorePurchases();
       if (result.hasActiveSubscription) {
         onSubscribed();
         onClose();
       } else {
-        setError('No active subscription found');
+        setError('No active subscription found.');
       }
-    } catch (err) {
-      setError('Failed to restore purchases');
+    } catch {
+      setError('Failed to restore purchases.');
     } finally {
       setIsRestoring(false);
     }
@@ -113,198 +137,334 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
     }
   };
 
-  const calculateSavings = (): string => {
-    if (!offerings?.monthly || !offerings?.yearly) return '';
-    const monthlyAnnual = offerings.monthly.priceAmount * 12;
-    const savings = Math.round(((monthlyAnnual - offerings.yearly.priceAmount) / monthlyAnnual) * 100);
-    return `Save ${savings}%`;
+  const savingsPercent = (): number => {
+    if (!offerings?.monthly || !offerings?.yearly) return 0;
+    return Math.round(
+      ((offerings.monthly.priceAmount * 12 - offerings.yearly.priceAmount) /
+        (offerings.monthly.priceAmount * 12)) * 100
+    );
+  };
+
+  const ctaLabel = (): string => {
+    if (isPurchasing) return 'Processing...';
+    return selectedPlan === 'yearly' ? 'Begin my journey' : 'Start monthly';
   };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-[var(--card-bg)] rounded-2xl shadow-2xl border border-[var(--card-border)] max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in">
-        {/* Header */}
-        <div className="relative p-6 pb-4 text-center border-b border-[var(--card-border)]">
+      <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-2xl sm:border sm:border-[var(--card-border)] rounded-t-2xl max-h-[92vh] overflow-y-auto">
+
+        {/* Sticky close */}
+        <div className="sticky top-0 bg-[var(--card-bg)] flex justify-between items-center px-5 pt-4 pb-2 z-10 border-b border-[var(--card-border)]/40">
+          <p className="text-xs tracking-widest uppercase text-[var(--accent-primary)] font-medium">
+            your 90-day transformation
+          </p>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="Close"
           >
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
 
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 mb-4">
-            <span className="text-3xl">✨</span>
+        <div className="px-5 pt-5 pb-8">
+
+          {/* Headline */}
+          <div className="text-center mb-6">
+            <h2
+              className="text-3xl font-light italic text-[var(--text-primary)] leading-snug mb-2"
+              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+            >
+              The version of you<br />that's becoming
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              A structured journey inward — with a mirror<br />that remembers everything you've written.
+            </p>
           </div>
-          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
-            Unlock Your Journey
-          </h2>
-          <p className="text-[var(--text-secondary)] mt-2">
-            Everything you need for your 90-day transformation
+
+          {/* Feature list */}
+          <div className="border border-[var(--card-border)] rounded-2xl p-4 mb-4">
+            <p className="text-xs tracking-widest uppercase text-[var(--text-secondary)] mb-3">
+              What unlocks with your journey
+            </p>
+            <div className="space-y-3.5">
+              {arcFeatures.map((f, i) => (
+                <div key={i} className="flex gap-3 items-start">
+                  <div
+                    className="w-1.5 h-1.5 rounded-full mt-[7px] flex-shrink-0"
+                    style={{ backgroundColor: f.color }}
+                  />
+                  <div>
+                    <span
+                      className="block text-sm font-medium italic text-[var(--text-primary)] mb-0.5"
+                      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                    >
+                      {f.title}
+                    </span>
+                    <span className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                      {f.desc}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Journey timeline strip */}
+          <div className="bg-gray-900 dark:bg-black/70 rounded-2xl px-4 py-4 mb-5">
+            <p className="text-xs tracking-widest uppercase text-amber-500/70 mb-3">
+              Your journey structure
+            </p>
+            <div className="flex items-start justify-between">
+              {[
+                { day: 'Day 1', label: 'Arc placed.\nIdeal self scripted.' },
+                { day: 'Day 30', label: 'First mirror.\nIntention checked.' },
+                { day: 'Day 90', label: 'Keepsake.\nProof of becoming.' },
+              ].map((step, i, arr) => (
+                <React.Fragment key={step.day}>
+                  <div className="text-center flex-1">
+                    <span
+                      className="block text-lg italic text-amber-400 leading-tight"
+                      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                    >
+                      {step.day}
+                    </span>
+                    <span className="text-xs text-gray-500 mt-1 leading-snug block whitespace-pre-line">
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <span className="text-gray-600 mt-2 px-1 flex-shrink-0">→</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-[var(--card-border)] mb-4" />
+
+          {/* Plans label */}
+          <p className="text-xs tracking-widest uppercase text-[var(--text-secondary)] text-center mb-3">
+            Choose your path
+          </p>
+
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-7 h-7 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-2.5 mb-5">
+
+              {/* Monthly */}
+              {offerings?.monthly && (
+                <button
+                  onClick={() => setSelectedPlan('monthly')}
+                  className={`w-full p-3.5 rounded-xl border transition-all flex items-center gap-3 text-left ${
+                    selectedPlan === 'monthly'
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/5'
+                      : 'border-[var(--card-border)] hover:border-gray-400 dark:hover:border-gray-500'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                    selectedPlan === 'monthly' ? 'border-[var(--accent-primary)]' : 'border-gray-400'
+                  }`}>
+                    {selectedPlan === 'monthly' && (
+                      <div className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <span className="block text-sm font-medium text-[var(--text-primary)]">Monthly</span>
+                    <span className="text-xs text-[var(--text-secondary)]">Begin when you're ready</span>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className="block text-lg font-light text-[var(--text-primary)]"
+                      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                    >
+                      {offerings.monthly.price}
+                    </span>
+                    <span className="text-xs text-[var(--text-secondary)]">per month</span>
+                  </div>
+                </button>
+              )}
+
+              {/* 90-Day Journey — Coming Soon (featured) */}
+              <div className="relative">
+                <div className="absolute -top-px left-1/2 -translate-x-1/2 z-10">
+                  <span className="bg-amber-500 text-white text-xs font-medium px-3 py-0.5 rounded-b-lg tracking-wide">
+                    one full journey
+                  </span>
+                </div>
+                <div className="w-full pt-5 pb-3.5 px-3.5 rounded-xl border border-amber-400/40 bg-amber-50/20 dark:bg-amber-900/10 opacity-60 flex items-center gap-3">
+                  <div className="w-4 h-4 rounded-full border-2 border-gray-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-[var(--text-primary)]">90-Day Journey</span>
+                      <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full">
+                        Coming soon
+                      </span>
+                    </div>
+                    <span className="text-xs text-[var(--text-secondary)]">One arc, complete — one payment</span>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className="block text-lg font-light text-[var(--text-primary)]"
+                      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                    >
+                      $24.99
+                    </span>
+                    <span className="text-xs text-[var(--text-secondary)]">one time</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Annual */}
+              {offerings?.yearly && (
+                <button
+                  onClick={() => setSelectedPlan('yearly')}
+                  className={`w-full p-3.5 rounded-xl border transition-all flex items-center gap-3 text-left ${
+                    selectedPlan === 'yearly'
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/5'
+                      : 'border-[var(--card-border)] hover:border-gray-400 dark:hover:border-gray-500'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                    selectedPlan === 'yearly' ? 'border-[var(--accent-primary)]' : 'border-gray-400'
+                  }`}>
+                    {selectedPlan === 'yearly' && (
+                      <div className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="block text-sm font-medium text-[var(--text-primary)]">Annual</span>
+                      {savingsPercent() > 0 && (
+                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                          Save {savingsPercent()}%
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-[var(--text-secondary)]">
+                      Four full arcs a year —{' '}
+                      {offerings.yearly && `$${(offerings.yearly.priceAmount / 12).toFixed(2)}/mo`}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span
+                      className="block text-lg font-light text-[var(--text-primary)]"
+                      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                    >
+                      {offerings.yearly.price}
+                    </span>
+                    <span className="text-xs text-[var(--text-secondary)]">per year</span>
+                  </div>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm text-center space-y-1.5">
+              <p>{error}</p>
+              {!offerings && (
+                <button onClick={loadOfferings} className="text-xs underline">
+                  Tap to retry
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* CTA */}
+          <button
+            onClick={handlePurchase}
+            disabled={isPurchasing || !offerings}
+            className="w-full py-4 rounded-xl font-medium text-white text-sm tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[var(--accent-primary)] to-purple-700 hover:opacity-90"
+          >
+            {isPurchasing ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Processing...
+              </span>
+            ) : ctaLabel()}
+          </button>
+
+          <p className="text-center text-xs text-[var(--text-secondary)] mt-2 mb-4">
+            Cancel anytime.
+          </p>
+
+          {/* Restore & beta */}
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <button
+              onClick={handleRestore}
+              disabled={isRestoring}
+              className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+            >
+              {isRestoring ? 'Restoring...' : 'Restore Purchases'}
+            </button>
+            <button
+              onClick={() => setShowBetaInput(!showBetaInput)}
+              className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+            >
+              Have a beta code?
+            </button>
+          </div>
+
+          {showBetaInput && (
+            <div className="mb-4 p-4 rounded-xl bg-gray-100 dark:bg-gray-800/50">
+              <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
+                Enter Beta Code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={betaCode}
+                  onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
+                  placeholder="BETA2026"
+                  className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)]"
+                  maxLength={20}
+                />
+                <button
+                  onClick={handleApplyBetaCode}
+                  disabled={!betaCode.trim() || isPurchasing}
+                  className="px-3 py-2 rounded-lg bg-[var(--accent-primary)] text-white text-sm font-medium disabled:opacity-50"
+                >
+                  Apply
+                </button>
+              </div>
+              {betaError && <p className="mt-2 text-xs text-red-500">{betaError}</p>}
+            </div>
+          )}
+
+          {/* Web notice */}
+          {!isNativePlatform() && (
+            <p className="text-center text-xs text-[var(--text-secondary)] mb-4 leading-relaxed">
+              Subscriptions are managed in the mobile app.<br />
+              Use a beta code for web access.
+            </p>
+          )}
+
+          {/* Closing quote */}
+          <p
+            className="text-center text-sm italic text-[var(--text-secondary)] px-4 leading-relaxed"
+            style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+          >
+            "The version I am becoming<br />deserves a witness."
           </p>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-8 h-8 border-4 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <>
-              {/* Features */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                  What's included:
-                </h3>
-                <ul className="space-y-2">
-                  {[
-                    'Daily guided journaling prompts across life areas',
-                    'AI-powered insights & reflections',
-                    '3-level mood intensity tracking with personalized prompts',
-                    'Thought flip exercises',
-                    'Cloud backup & sync',
-                    'Crisis support resources',
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
-                      <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Plan Selection */}
-              {offerings && (
-                <div className="space-y-3 mb-6">
-                  {offerings.yearly && (
-                    <PlanOption
-                      product={offerings.yearly}
-                      isSelected={selectedPlan === 'yearly'}
-                      onSelect={() => setSelectedPlan('yearly')}
-                      badge={calculateSavings()}
-                      isRecommended
-                    />
-                  )}
-                  {offerings.monthly && (
-                    <PlanOption
-                      product={offerings.monthly}
-                      isSelected={selectedPlan === 'monthly'}
-                      onSelect={() => setSelectedPlan('monthly')}
-                    />
-                  )}
-                </div>
-              )}
-
-              <p className="text-center text-sm text-[var(--text-secondary)] mb-4">
-                Cancel anytime.
-              </p>
-
-              {/* Error Message */}
-              {error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm text-center space-y-2">
-                  <p>{error}</p>
-                  {!offerings && (
-                    <button
-                      onClick={loadOfferings}
-                      className="text-xs underline text-red-600 dark:text-red-400"
-                    >
-                      Tap to retry
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Purchase Button */}
-              <button
-                onClick={handlePurchase}
-                disabled={isPurchasing || !offerings}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-lg hover:from-indigo-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isPurchasing ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Processing...
-                  </span>
-                ) : (
-                  'Get Full Access'
-                )}
-              </button>
-
-              {/* Restore & Beta Code */}
-              <div className="mt-4 flex flex-col items-center gap-2">
-                <button
-                  onClick={handleRestore}
-                  disabled={isRestoring}
-                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
-                >
-                  {isRestoring ? 'Restoring...' : 'Restore Purchases'}
-                </button>
-
-                <button
-                  onClick={() => setShowBetaInput(!showBetaInput)}
-                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
-                >
-                  Have a beta code?
-                </button>
-              </div>
-
-              {/* Beta Code Input */}
-              {showBetaInput && (
-                <div className="mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800/50">
-                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
-                    Enter Beta Code
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={betaCode}
-                      onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
-                      placeholder="BETA2026"
-                      className="flex-1 px-4 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-[var(--text-primary)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)]"
-                      maxLength={20}
-                    />
-                    <button
-                      onClick={handleApplyBetaCode}
-                      disabled={!betaCode.trim()}
-                      className="px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-white font-medium hover:bg-[var(--accent-primary-hover)] transition-colors disabled:opacity-50"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  {betaError && (
-                    <p className="mt-2 text-sm text-red-500">{betaError}</p>
-                  )}
-                  <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                    Beta codes provide 90 days of free access
-                  </p>
-                </div>
-              )}
-
-              {/* Web Notice */}
-              {!isNativePlatform() && (
-                <p className="mt-4 text-center text-xs text-[var(--text-secondary)]">
-                  Subscriptions are available in the mobile app.
-                  <br />
-                  Use a beta code for web access.
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
         {/* Footer */}
-        <div className="p-4 border-t border-[var(--card-border)] text-center">
+        <div className="px-5 pb-5 border-t border-[var(--card-border)] pt-3 text-center">
           <p className="text-xs text-gray-500">
             By subscribing, you agree to our{' '}
             <button className="text-[var(--accent-primary)] hover:underline">Terms of Service</button>
@@ -313,114 +473,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
           </p>
         </div>
       </div>
-
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scale-in {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
-        .animate-scale-in {
-          animation: scale-in 0.2s ease-out;
-        }
-      `}</style>
     </div>
-  );
-};
-
-// Plan Option Component
-interface PlanOptionProps {
-  product: SubscriptionProduct;
-  isSelected: boolean;
-  onSelect: () => void;
-  badge?: string;
-  isRecommended?: boolean;
-}
-
-const PlanOption: React.FC<PlanOptionProps> = ({
-  product,
-  isSelected,
-  onSelect,
-  badge,
-  isRecommended,
-}) => {
-  const periodLabel = product.period === 'yearly' ? '/year' : '/month';
-  const monthlyPrice = product.period === 'yearly'
-    ? `${(product.priceAmount / 12).toFixed(2)}/mo`
-    : null;
-
-  return (
-    <button
-      onClick={onSelect}
-      className={`w-full p-4 rounded-xl border-2 transition-all ${
-        isSelected
-          ? 'border-[var(--accent-primary)] bg-indigo-50 dark:bg-indigo-900/20'
-          : 'border-[var(--card-border)] hover:border-gray-400 dark:hover:border-gray-600'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* Radio indicator */}
-          <div
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-              isSelected
-                ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]'
-                : 'border-gray-400'
-            }`}
-          >
-            {isSelected && (
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </div>
-
-          <div className="text-left">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-[var(--text-primary)]">
-                {product.period === 'yearly' ? 'Yearly' : 'Monthly'}
-              </span>
-              {isRecommended && (
-                <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full">
-                  Best Value
-                </span>
-              )}
-              {badge && !isRecommended && (
-                <span className="px-2 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
-                  {badge}
-                </span>
-              )}
-            </div>
-            {monthlyPrice && (
-              <span className="text-xs text-[var(--text-secondary)]">
-                Just {monthlyPrice} billed annually
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="text-right">
-          <span className="text-xl font-bold text-[var(--text-primary)]">
-            {product.price}
-          </span>
-          <span className="text-sm text-[var(--text-secondary)]">
-            {periodLabel}
-          </span>
-        </div>
-      </div>
-
-      {product.trialDays > 0 && (
-        <p className="mt-2 text-xs text-center text-[var(--text-secondary)]">
-          Includes {product.trialDays}-day free trial
-        </p>
-      )}
-    </button>
   );
 };
 
