@@ -29,7 +29,7 @@ let Purchases: typeof import('@revenuecat/purchases-capacitor').Purchases | null
 export const PRODUCT_IDS = {
   MONTHLY: 'pro_monthly',
   YEARLY: 'pro_annual',
-  JOURNEY_90: 'pro_journey_90', // One-time 90-day purchase (set in Play Console one-time products)
+  JOURNEY_90: 'pro_journey_90:pro-journey-90-base', // Prepaid 3-month subscription (no auto-renewal)
 } as const;
 
 // RevenueCat API keys (set these in your environment)
