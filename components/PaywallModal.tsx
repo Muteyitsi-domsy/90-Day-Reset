@@ -42,9 +42,13 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
     setError(null);
     try {
       const loadedOfferings = await getOfferings();
-      setOfferings(loadedOfferings);
+      if (!loadedOfferings) {
+        setError('Could not load subscription options. Please check your connection and try again.');
+      } else {
+        setOfferings(loadedOfferings);
+      }
     } catch (err) {
-      setError('Failed to load subscription options');
+      setError('Failed to load subscription options. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -208,8 +212,16 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
 
               {/* Error Message */}
               {error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm text-center">
-                  {error}
+                <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm text-center space-y-2">
+                  <p>{error}</p>
+                  {!offerings && (
+                    <button
+                      onClick={loadOfferings}
+                      className="text-xs underline text-red-600 dark:text-red-400"
+                    >
+                      Tap to retry
+                    </button>
+                  )}
                 </div>
               )}
 
