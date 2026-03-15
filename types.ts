@@ -76,6 +76,7 @@ export interface UserProfile {
   lastMilestoneDayCompleted: number;
   journeyCompleted?: boolean;
   journeyCompletedDate?: string; // ISO date when journey completed (for keepsake window)
+  pendingJourneyRestart?: { keepManifesto: boolean; keepIntentions: boolean }; // Set during restart, cleared on completion
   streak: number;
   lastEntryDate: string;
   isPaused?: boolean;

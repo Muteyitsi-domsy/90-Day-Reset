@@ -295,7 +295,12 @@ const App: React.FC = () => {
             setActiveView('mood'); // After journey completion, default to mood journal
           }
 
-          if (!savedProfile.idealSelfManifesto) {
+          // Detect mid-restart: user had started a new journey but app was killed before completing onboarding
+          if (savedProfile.pendingJourneyRestart && !savedProfile.journeyCompleted) {
+            // Restore the in-progress restart options and resume onboarding
+            setNewJourneyOptions(savedProfile.pendingJourneyRestart);
+            setAppState('onboarding');
+          } else if (!savedProfile.idealSelfManifesto) {
             // If intention is also missing, go there first — scripting should never
             // be reached without an intention (can happen mid-restart recovery)
             if (!savedProfile.intentions?.trim()) {
@@ -309,7 +314,6 @@ const App: React.FC = () => {
               setAppState('onboarding_completion');
             } else {
               // User has complete profile - restore their session
-              // If they were in the middle of onboarding, interrupt it and go to returning_welcome
               if (appState === 'welcome' || appState === 'name_collection' || appState === 'onboarding') {
                 console.log('🔄 Existing user data found - skipping onboarding');
               }
@@ -1808,6 +1812,12 @@ const App: React.FC = () => {
 
   const handleOnboardingCompletion = async (newSettings: { dailyAnalysis: boolean; weeklyReports: boolean; monthlyReports: boolean }) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
+    // Clear pendingJourneyRestart now that onboarding is fully complete
+    if (userProfile?.pendingJourneyRestart) {
+      const clearedProfile = { ...userProfile, pendingJourneyRestart: undefined };
+      setUserProfile(clearedProfile);
+      await storageService.saveUserProfile(clearedProfile);
+    }
     setAppState('journal');
     // Clear new journey options after completing the flow
     setNewJourneyOptions(null);
@@ -1854,6 +1864,7 @@ const App: React.FC = () => {
           lastMilestoneDayCompleted: 0,
           journeyCompleted: false,
           journeyCompletedDate: undefined,
+          pendingJourneyRestart: { keepManifesto, keepIntentions },
           streak: 0,
           lastEntryDate: '',
           moodStreak: userProfile.moodStreak, // Preserve mood streak
