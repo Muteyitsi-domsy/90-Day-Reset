@@ -67,7 +67,7 @@ export interface MoodJournalEntry {
 export interface UserProfile {
   name: string;
   email?: string; // Added for PIN recovery simulation
-  arc: Arc;
+  arc?: Arc; // Optional: absence signals mid-restart (user must re-select arc in onboarding)
   startDate: string;
   intentions?: string;
   idealSelfManifesto?: string;

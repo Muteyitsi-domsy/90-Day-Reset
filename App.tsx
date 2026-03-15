@@ -295,10 +295,12 @@ const App: React.FC = () => {
             setActiveView('mood'); // After journey completion, default to mood journal
           }
 
-          // Detect mid-restart: user had started a new journey but app was killed before completing onboarding
-          if (savedProfile.pendingJourneyRestart && !savedProfile.journeyCompleted) {
-            // Restore the in-progress restart options and resume onboarding
-            setNewJourneyOptions(savedProfile.pendingJourneyRestart);
+          // Detect mid-restart: arc absence is the definitive signal the user must go
+          // through full onboarding (arc is cleared in handleNewJourneyConfirm)
+          if (!savedProfile.arc && !savedProfile.journeyCompleted) {
+            if (savedProfile.pendingJourneyRestart) {
+              setNewJourneyOptions(savedProfile.pendingJourneyRestart);
+            }
             setAppState('onboarding');
           } else if (!savedProfile.idealSelfManifesto) {
             // If intention is also missing, go there first — scripting should never
@@ -1855,7 +1857,7 @@ const App: React.FC = () => {
       if (userProfile) {
         const newProfile: UserProfile = {
           name: userProfile.name,
-          arc: userProfile.arc, // Will be updated during onboarding
+          arc: undefined, // Cleared so arc absence signals mid-restart; re-selected during onboarding
           startDate: new Date().toISOString(),
           intentions: keepIntentions ? userProfile.intentions : '',
           idealSelfManifesto: keepManifesto ? userProfile.idealSelfManifesto : '',

@@ -401,6 +401,27 @@ const Menu: React.FC<MenuProps> = ({
                         </button>
                     )}
 
+                    {/* (0) My Arc */}
+                    <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <button onClick={() => toggleSection('arc')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            <span className="font-medium text-[var(--text-primary)]">My Arc</span>
+                            <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'arc' ? 'rotate-180' : ''}`} />
+                        </button>
+                        {openSection === 'arc' && (
+                            <div className="p-4 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700 space-y-1">
+                                <p className="font-medium text-[var(--text-primary)] capitalize">
+                                    {userProfile?.arc === 'release' ? 'Release' : userProfile?.arc === 'reaffirm' ? 'Reaffirm' : userProfile?.arc === 'reignition' ? 'Reignition' : '—'}
+                                </p>
+                                <p className="text-sm font-light italic text-[var(--text-secondary)]">
+                                    {userProfile?.arc === 'release' && 'Your 90 days move through three terrains — releasing what no longer serves you, planting new ground, and meeting who you have become.'}
+                                    {userProfile?.arc === 'reaffirm' && 'Your 90 days move through two terrains — grounding in what is already true for you, and strengthening the identity you are stepping into.'}
+                                    {userProfile?.arc === 'reignition' && 'Your 90 days are focused on one terrain — the full embodiment of the self you have already chosen to become.'}
+                                    {!userProfile?.arc && 'No arc selected yet.'}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* (a) Intention */}
                     <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                         <button onClick={() => toggleSection('intention')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">

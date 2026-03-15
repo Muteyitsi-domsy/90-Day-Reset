@@ -200,6 +200,84 @@ describe('New journey — keep neither (full re-onboard)', () => {
   });
 });
 
+// ─── App-load routing: arc-absence as mid-restart signal ──────────────────
+
+/**
+ * Mirrors the App.tsx loadData() routing block.
+ * Arc absence + !journeyCompleted is the definitive mid-restart signal.
+ */
+function routeOnLoad(
+  profile: UserProfile,
+  settings: object | null
+): { state: AppState; newJourneyOptions: JourneyOptions | null } {
+  if (!profile.arc && !profile.journeyCompleted) {
+    return {
+      state: 'onboarding',
+      newJourneyOptions: profile.pendingJourneyRestart ?? null,
+    };
+  }
+  if (!profile.idealSelfManifesto) {
+    if (!profile.intentions?.trim()) {
+      return { state: 'intention_setting', newJourneyOptions: null };
+    }
+    return { state: 'scripting', newJourneyOptions: null };
+  }
+  if (!settings) {
+    return { state: 'onboarding_completion', newJourneyOptions: null };
+  }
+  return { state: 'journal', newJourneyOptions: null };
+}
+
+describe('App-load routing — arc-absence signals mid-restart', () => {
+
+  test('no arc + !journeyCompleted → onboarding (full re-onboard)', () => {
+    const profile = makeProfile({ arc: undefined, journeyCompleted: false });
+    const { state } = routeOnLoad(profile, {});
+    expect(state).toBe('onboarding');
+  });
+
+  test('no arc + pendingJourneyRestart → onboarding with options restored', () => {
+    const opts: JourneyOptions = { keepManifesto: false, keepIntentions: true };
+    const profile = makeProfile({ arc: undefined, journeyCompleted: false, pendingJourneyRestart: opts });
+    const { state, newJourneyOptions } = routeOnLoad(profile, {});
+    expect(state).toBe('onboarding');
+    expect(newJourneyOptions).toEqual(opts);
+  });
+
+  test('no arc + no pendingJourneyRestart → onboarding with null options (fresh restart)', () => {
+    const profile = makeProfile({ arc: undefined, journeyCompleted: false });
+    const { state, newJourneyOptions } = routeOnLoad(profile, {});
+    expect(state).toBe('onboarding');
+    expect(newJourneyOptions).toBeNull();
+  });
+
+  test('no arc but journeyCompleted=true → does NOT route to onboarding (completed journey edge case)', () => {
+    // A journey-completed profile with no arc is unusual but should fall through
+    // to normal routing (manifesto/intention checks), not force re-onboarding
+    const profile = makeProfile({ arc: undefined, journeyCompleted: true, idealSelfManifesto: 'I am ready.' });
+    const { state } = routeOnLoad(profile, {});
+    expect(state).not.toBe('onboarding');
+  });
+
+  test('has arc → mid-restart check is skipped, routes normally', () => {
+    const profile = makeProfile({ arc: 'release', idealSelfManifesto: 'I am steady.' });
+    const { state } = routeOnLoad(profile, {});
+    expect(state).toBe('journal');
+  });
+
+  test('has arc but no manifesto + no intentions → intention_setting', () => {
+    const profile = makeProfile({ arc: 'reaffirm', idealSelfManifesto: '', intentions: '' });
+    const { state } = routeOnLoad(profile, {});
+    expect(state).toBe('intention_setting');
+  });
+
+  test('has arc, no manifesto, has intentions → scripting', () => {
+    const profile = makeProfile({ arc: 'reignition', idealSelfManifesto: '', intentions: 'Be present.' });
+    const { state } = routeOnLoad(profile, {});
+    expect(state).toBe('scripting');
+  });
+});
+
 // ─── newJourneyOptions lifecycle ─────────────────────────────────────────
 
 describe('newJourneyOptions lifecycle', () => {

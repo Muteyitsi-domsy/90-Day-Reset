@@ -24,7 +24,7 @@ function buildRestartProfile(
 ): UserProfile {
   return {
     name: existingProfile.name,
-    arc: existingProfile.arc,           // updated during onboarding
+    arc: undefined,                      // cleared — absence signals mid-restart; re-selected in onboarding
     startDate: now.toISOString(),
     intentions: opts.keepIntentions ? (existingProfile.intentions ?? '') : '',
     idealSelfManifesto: opts.keepManifesto ? (existingProfile.idealSelfManifesto ?? '') : '',
@@ -127,6 +127,11 @@ describe('Journey restart — what gets RESET', () => {
   test('lastMilestoneDayCompleted resets to 0', () => {
     const r = buildRestartProfile(completedProfile, { keepManifesto: false, keepIntentions: false });
     expect(r.lastMilestoneDayCompleted).toBe(0);
+  });
+
+  test('arc is cleared (undefined) — absence is the mid-restart routing signal', () => {
+    const r = buildRestartProfile(completedProfile, { keepManifesto: true, keepIntentions: true });
+    expect(r.arc).toBeUndefined();
   });
 
   test('startDate is set to the current time (new journey begins now)', () => {
