@@ -11,7 +11,9 @@ const ALLOWED_ORIGINS = [
     'https://renew90.app',
     'capacitor://localhost',
     'http://localhost',
+    'https://localhost',
     'http://localhost:5173',
+    'https://localhost:5173',
 ];
 /**
  * Validates a beta access code server-side.
@@ -29,8 +31,9 @@ const ALLOWED_ORIGINS = [
 exports.validateBetaCodeHttp = (0, https_1.onRequest)({ region: 'us-central1' }, async (req, res) => {
     // CORS
     const origin = req.headers.origin || '';
-    if (ALLOWED_ORIGINS.includes(origin)) {
-        res.set('Access-Control-Allow-Origin', origin);
+    // Allow listed origins; if no origin header (native WebView), allow all
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        res.set('Access-Control-Allow-Origin', origin || '*');
     }
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
