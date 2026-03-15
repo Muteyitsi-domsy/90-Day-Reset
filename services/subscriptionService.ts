@@ -198,6 +198,11 @@ export const getOfferings = async (): Promise<SubscriptionOffering | null> => {
     const monthly = currentOffering.monthly;
     const yearly = currentOffering.annual;
 
+    // journey90 is a custom package — find it by product identifier in availablePackages
+    const journey90Pkg = (currentOffering.availablePackages || []).find(
+      pkg => pkg.product.identifier === PRODUCT_IDS.JOURNEY_90
+    );
+
     return {
       identifier: currentOffering.identifier,
       serverDescription: currentOffering.serverDescription || '',
@@ -219,6 +224,16 @@ export const getOfferings = async (): Promise<SubscriptionOffering | null> => {
         priceAmount: yearly.product.price,
         currency: yearly.product.currencyCode,
         period: 'yearly',
+        trialDays: 0,
+      } : null,
+      journey90: journey90Pkg ? {
+        id: journey90Pkg.product.identifier,
+        title: journey90Pkg.product.title,
+        description: journey90Pkg.product.description,
+        price: journey90Pkg.product.priceString,
+        priceAmount: journey90Pkg.product.price,
+        currency: journey90Pkg.product.currencyCode,
+        period: 'once',
         trialDays: 0,
       } : null,
     };
@@ -429,6 +444,16 @@ const getMockOfferings = (): SubscriptionOffering => {
       priceAmount: 89.99,
       currency: 'USD',
       period: 'yearly',
+      trialDays: 0,
+    },
+    journey90: {
+      id: PRODUCT_IDS.JOURNEY_90,
+      title: '90-Day Journey',
+      description: 'One full arc, one payment — 90 days of full access',
+      price: '$24.99',
+      priceAmount: 24.99,
+      currency: 'USD',
+      period: 'once',
       trialDays: 0,
     },
   };

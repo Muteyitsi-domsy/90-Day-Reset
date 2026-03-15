@@ -1711,13 +1711,25 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handlePopState = () => {
+      // If the paywall is open, close it on back — but stay on current view
+      if (showPaywall) {
+        setShowPaywall(false);
+        // Re-push so mood/flip view history entry stays intact
+        window.history.pushState({ view: activeView }, '');
+        return;
+      }
       if (activeView !== 'journey') {
+        if (!isSubscribed) {
+          // Back button must not bypass the subscription gate — do nothing.
+          // History entry has been consumed; next back press will exit the app.
+          return;
+        }
         setActiveView('journey');
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeView]);
+  }, [activeView, isSubscribed, showPaywall]);
 
   // Retroactive badge grant — awards any milestones that were deserved but not yet recorded
   // (e.g. badge system added after user had already built streaks, or streaks imported).

@@ -44,7 +44,7 @@ const arcFeatures = [
 
 const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscribed }) => {
   const [offerings, setOfferings] = useState<SubscriptionOffering | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'journey90'>('yearly');
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -83,7 +83,10 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
 
   const handlePurchase = async () => {
     if (!offerings) return;
-    const product = selectedPlan === 'monthly' ? offerings.monthly : offerings.yearly;
+    const product =
+      selectedPlan === 'monthly' ? offerings.monthly :
+      selectedPlan === 'journey90' ? offerings.journey90 :
+      offerings.yearly;
     if (!product) return;
 
     setIsPurchasing(true);
@@ -147,7 +150,9 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
 
   const ctaLabel = (): string => {
     if (isPurchasing) return 'Processing...';
-    return selectedPlan === 'yearly' ? 'Begin my journey' : 'Start monthly';
+    if (selectedPlan === 'yearly') return 'Begin my journey';
+    if (selectedPlan === 'journey90') return 'Start my 90-day journey';
+    return 'Start monthly';
   };
 
   if (!isOpen) return null;
@@ -224,28 +229,28 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
             <p className="text-xs tracking-widest uppercase text-amber-500/70 mb-3">
               Your journey structure
             </p>
-            <div className="flex items-start justify-between">
+            <div className="relative pl-5">
+              {/* Vertical connecting line */}
+              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-amber-900/60" />
               {[
-                { day: 'Day 1', label: 'Arc placed.\nIdeal self scripted.' },
-                { day: 'Day 30', label: 'First mirror.\nIntention checked.' },
-                { day: 'Day 90', label: 'Keepsake.\nProof of becoming.' },
-              ].map((step, i, arr) => (
-                <React.Fragment key={step.day}>
-                  <div className="text-center flex-1">
-                    <span
-                      className="block text-lg italic text-amber-400 leading-tight"
-                      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                    >
-                      {step.day}
-                    </span>
-                    <span className="text-xs text-gray-500 mt-1 leading-snug block whitespace-pre-line">
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < arr.length - 1 && (
-                    <span className="text-gray-600 mt-2 px-1 flex-shrink-0">→</span>
-                  )}
-                </React.Fragment>
+                { day: 'Day 1',  label: 'Arc placed. Ideal self scripted.' },
+                { day: 'Day 30', label: 'First reflection — how far you\'ve come.' },
+                { day: 'Day 60', label: 'Second reflection — patterns emerge.' },
+                { day: 'Day 90', label: 'Keepsake. Proof of becoming.' },
+              ].map((step) => (
+                <div key={step.day} className="relative flex items-baseline gap-3 mb-3 last:mb-0">
+                  {/* Dot */}
+                  <div className="absolute -left-5 top-[5px] w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+                  <span
+                    className="text-sm italic text-amber-400 flex-shrink-0 w-14"
+                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                  >
+                    {step.day}
+                  </span>
+                  <span className="text-xs text-gray-500 leading-snug">
+                    {step.label}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
@@ -298,41 +303,57 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                 </button>
               )}
 
-              {/* 90-Day Journey — Coming Soon (featured) */}
-              <div className="relative">
-                <div className="absolute -top-px left-1/2 -translate-x-1/2 z-10">
-                  <span className="bg-amber-500 text-white text-xs font-medium px-3 py-0.5 rounded-b-lg tracking-wide">
-                    one full journey
-                  </span>
-                </div>
-                <div className="w-full pt-5 pb-3.5 px-3.5 rounded-xl border border-amber-400/40 bg-amber-50/20 dark:bg-amber-900/10 opacity-60 flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full border-2 border-gray-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-[var(--text-primary)]">90-Day Journey</span>
-                      <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full">
-                        Coming soon
-                      </span>
-                    </div>
-                    <span className="text-xs text-[var(--text-secondary)]">One arc, complete — one payment</span>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className="block text-lg font-light text-[var(--text-primary)]"
-                      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-                    >
-                      $24.99
+              {/* 90-Day Journey (featured) */}
+              {offerings?.journey90 && (
+                <div className="relative">
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 z-10">
+                    <span className="bg-amber-500 text-white text-xs font-medium px-3 py-0.5 rounded-b-lg tracking-wide">
+                      most popular
                     </span>
-                    <span className="text-xs text-[var(--text-secondary)]">one time</span>
                   </div>
+                  <button
+                    onClick={() => setSelectedPlan('journey90')}
+                    className={`w-full pt-5 pb-3.5 px-3.5 rounded-xl border transition-all flex items-center gap-3 text-left ${
+                      selectedPlan === 'journey90'
+                        ? 'border-amber-400 bg-amber-50/30 dark:bg-amber-900/20'
+                        : 'border-amber-400/40 bg-amber-50/20 dark:bg-amber-900/10 hover:border-amber-400/70'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                      selectedPlan === 'journey90' ? 'border-amber-500' : 'border-gray-400'
+                    }`}>
+                      {selectedPlan === 'journey90' && (
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <span className="block text-sm font-medium text-[var(--text-primary)]">90-Day Journey</span>
+                      <span className="text-xs text-[var(--text-secondary)]">One arc, complete — one payment</span>
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className="block text-lg font-light text-[var(--text-primary)]"
+                        style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                      >
+                        {offerings.journey90.price}
+                      </span>
+                      <span className="text-xs text-[var(--text-secondary)]">one time</span>
+                    </div>
+                  </button>
                 </div>
-              </div>
+              )}
 
               {/* Annual */}
               {offerings?.yearly && (
+                <div className="relative">
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 z-10">
+                    <span className="bg-[var(--accent-primary)] text-white text-xs font-medium px-3 py-0.5 rounded-b-lg tracking-wide">
+                      best value
+                    </span>
+                  </div>
                 <button
                   onClick={() => setSelectedPlan('yearly')}
-                  className={`w-full p-3.5 rounded-xl border transition-all flex items-center gap-3 text-left ${
+                  className={`w-full pt-5 pb-3.5 px-3.5 rounded-xl border transition-all flex items-center gap-3 text-left ${
                     selectedPlan === 'yearly'
                       ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/5'
                       : 'border-[var(--card-border)] hover:border-gray-400 dark:hover:border-gray-500'
@@ -369,6 +390,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                     <span className="text-xs text-[var(--text-secondary)]">per year</span>
                   </div>
                 </button>
+                </div>
               )}
             </div>
           )}
@@ -407,7 +429,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
           </button>
 
           <p className="text-center text-xs text-[var(--text-secondary)] mt-2 mb-4">
-            Cancel anytime.
+            {selectedPlan === 'journey90' ? 'No subscription. No auto-renewal.' : 'Cancel anytime.'}
           </p>
 
           {/* Restore & beta */}
@@ -437,7 +459,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                   type="text"
                   value={betaCode}
                   onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
-                  placeholder="BETA2026"
+                  placeholder="Enter your code"
                   className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)]"
                   maxLength={20}
                 />

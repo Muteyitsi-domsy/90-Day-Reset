@@ -297,7 +297,7 @@ export interface SubscriptionProduct {
   price: string;
   priceAmount: number;
   currency: string;
-  period: 'monthly' | 'yearly';
+  period: 'monthly' | 'yearly' | 'once';
   trialDays: number;
 }
 
@@ -306,4 +306,5 @@ export interface SubscriptionOffering {
   serverDescription: string;
   monthly: SubscriptionProduct | null;
   yearly: SubscriptionProduct | null;
+  journey90: SubscriptionProduct | null;
 }
