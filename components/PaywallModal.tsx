@@ -355,7 +355,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                       )}
                     </div>
                     <span className="text-xs text-[var(--text-secondary)]">
-                      Four full arcs a year —{' '}
+                      Up to 4 journeys / year* —{' '}
                       {offerings.yearly && `$${(offerings.yearly.priceAmount / 12).toFixed(2)}/mo`}
                     </span>
                   </div>
@@ -371,6 +371,13 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                 </button>
               )}
             </div>
+          )}
+
+          {/* Annual asterisk note */}
+          {selectedPlan === 'yearly' && offerings && (
+            <p className="text-xs text-[var(--text-secondary)] mb-3 px-1 leading-relaxed">
+              * Annual plan provides 12 months of access. Number of complete 90-day journeys depends on usage — pauses and restarts affect how many journeys fit within the period. See Terms of Service for details.
+            </p>
           )}
 
           {/* Error */}

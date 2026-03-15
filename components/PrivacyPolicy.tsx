@@ -36,7 +36,7 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
           <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-light text-[var(--text-primary)]">Privacy Policy</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: January 22, 2026</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: March 15, 2026</p>
             </div>
             <button
               onClick={onClose}
@@ -126,10 +126,25 @@ export function PrivacyPolicy({ isOpen, onClose }: PrivacyPolicyProps) {
             <h2>6. Third-Party Services</h2>
             <ul>
               <li><strong>Firebase (Google):</strong> Cloud storage, authentication, and hosting</li>
-              <li><strong>Google Gemini AI:</strong> Analyzes journal entries to generate insights (processed securely, not used for AI training)</li>
+              <li><strong>Google Gemini AI / Vertex AI:</strong> Analyzes journal entries to generate insights (processed securely, not used for AI training)</li>
+              <li><strong>RevenueCat:</strong> Subscription and purchase management. RevenueCat receives your subscription status, product identifiers, and platform information to verify your access entitlements. RevenueCat does not receive your journal content. See <strong>revenuecat.com/privacy</strong> for their privacy policy.</li>
+              <li><strong>Google Play:</strong> Payment processing for in-app subscriptions and purchases. Your payment card details are handled by Google and are never accessible to us.</li>
               <li><strong>Sentry:</strong> Error monitoring and performance tracking (no journal content logged)</li>
-              <li><strong>Vercel:</strong> Application hosting</li>
+              <li><strong>Vercel:</strong> Web application hosting</li>
               <li><strong>EmailJS:</strong> Sending PIN recovery codes (optional feature)</li>
+            </ul>
+            <p className="note">
+              We do not sell, rent, or share your personal data or journal content with any third party for advertising or marketing purposes.
+            </p>
+          </div>
+
+          <div className="policy-section">
+            <h2>6a. Subscription &amp; Payment Data</h2>
+            <p>When you make a purchase through Google Play, the following data flows occur:</p>
+            <ul>
+              <li><strong>What Google Play handles:</strong> Your payment method, billing address, and transaction details. We never see or store these.</li>
+              <li><strong>What RevenueCat receives:</strong> Anonymous or identified user ID, subscription status, product purchased, and device platform. This is used solely to verify your access entitlement within the app.</li>
+              <li><strong>What we store:</strong> Whether your subscription is active (yes/no) and your subscription tier (monthly, annual, or 90-day journey). We do not store full purchase records.</li>
             </ul>
           </div>
 
