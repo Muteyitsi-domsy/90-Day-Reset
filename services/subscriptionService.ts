@@ -204,7 +204,7 @@ export const getOfferings = async (): Promise<SubscriptionOffering | null> => {
         priceAmount: monthly.product.price,
         currency: monthly.product.currencyCode,
         period: 'monthly',
-        trialDays: 14, // Configure in RevenueCat
+        trialDays: 0,
       } : null,
       yearly: yearly ? {
         id: yearly.product.identifier,
@@ -214,7 +214,7 @@ export const getOfferings = async (): Promise<SubscriptionOffering | null> => {
         priceAmount: yearly.product.price,
         currency: yearly.product.currencyCode,
         period: 'yearly',
-        trialDays: 14,
+        trialDays: 0,
       } : null,
     };
   } catch (error) {
@@ -410,21 +410,21 @@ const getMockOfferings = (): SubscriptionOffering => {
       id: PRODUCT_IDS.MONTHLY,
       title: 'Renew90 Monthly',
       description: 'Full access to all features',
-      price: '$6.99',
-      priceAmount: 6.99,
+      price: '$11.99',
+      priceAmount: 11.99,
       currency: 'USD',
       period: 'monthly',
-      trialDays: 14,
+      trialDays: 0,
     },
     yearly: {
       id: PRODUCT_IDS.YEARLY,
       title: 'Renew90 Yearly',
       description: 'Full access - Best Value!',
-      price: '$49.99',
-      priceAmount: 49.99,
+      price: '$89.99',
+      priceAmount: 89.99,
       currency: 'USD',
       period: 'yearly',
-      trialDays: 14,
+      trialDays: 0,
     },
   };
 };
