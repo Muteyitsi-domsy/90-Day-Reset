@@ -268,7 +268,7 @@ export interface AnnualRecapData {
 }
 
 // Subscription Types
-export type SubscriptionTier = 'free' | 'trial' | 'monthly' | 'yearly' | 'beta';
+export type SubscriptionTier = 'free' | 'monthly' | 'yearly' | 'journey90' | 'beta';
 
 export type SubscriptionStatus =
   | 'active'           // Paid and active

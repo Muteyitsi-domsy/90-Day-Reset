@@ -171,6 +171,7 @@ const App: React.FC = () => {
 
   // Subscription state
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionTier, setSubscriptionTier] = useState<import('./types').SubscriptionTier>('free');
   const [showPaywall, setShowPaywall] = useState(false);
 
   // New journey state (for post-completion flow)
@@ -351,6 +352,7 @@ const App: React.FC = () => {
       if (user?.uid) await setRevenueCatUserId(user.uid);
       const state = await getSubscriptionState();
       setIsSubscribed(state.isActive);
+      setSubscriptionTier(state.tier);
       // If not subscribed and on a gated view, redirect to mood journal
       if (!state.isActive) {
         setActiveView(v => (v === 'journey' || v === 'flip') ? 'mood' : v);
@@ -2116,6 +2118,7 @@ const App: React.FC = () => {
             reports={reports}
             onUpdateSettings={setSettings}
             onUpdateProfile={setUserProfile}
+            subscriptionTier={subscriptionTier}
             onPauseJourney={handlePauseJourney}
             onResumeJourney={handleResumeJourney}
             onExportData={exportData}
@@ -2292,7 +2295,8 @@ const App: React.FC = () => {
                         reports={reports}
                         onUpdateSettings={setSettings}
                         onUpdateProfile={setUserProfile}
-                        onPauseJourney={handlePauseJourney}
+                        subscriptionTier={subscriptionTier}
+            onPauseJourney={handlePauseJourney}
                         onResumeJourney={handleResumeJourney}
                         onExportData={exportData}
                         onImportData={importData}
@@ -2392,7 +2396,8 @@ const App: React.FC = () => {
                 reports={reports}
                 onUpdateSettings={setSettings}
                 onUpdateProfile={setUserProfile}
-                onPauseJourney={handlePauseJourney}
+                subscriptionTier={subscriptionTier}
+            onPauseJourney={handlePauseJourney}
                 onResumeJourney={handleResumeJourney}
                 onExportData={exportData}
                 onImportData={importData}

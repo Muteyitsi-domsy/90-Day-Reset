@@ -29,6 +29,7 @@ let Purchases: typeof import('@revenuecat/purchases-capacitor').Purchases | null
 export const PRODUCT_IDS = {
   MONTHLY: 'pro_monthly',
   YEARLY: 'pro_annual',
+  JOURNEY_90: 'pro_journey_90', // One-time 90-day purchase (set in Play Console one-time products)
 } as const;
 
 // RevenueCat API keys (set these in your environment)
@@ -147,18 +148,22 @@ export const getSubscriptionState = async (): Promise<SubscriptionState> => {
     const premiumEntitlement = entitlements['premium'] || entitlements['pro'];
 
     if (premiumEntitlement) {
-      const isMonthly = premiumEntitlement.productIdentifier === PRODUCT_IDS.MONTHLY;
+      const pid = premiumEntitlement.productIdentifier;
+      const tier =
+        pid === PRODUCT_IDS.MONTHLY ? 'monthly' :
+        pid === PRODUCT_IDS.JOURNEY_90 ? 'journey90' :
+        'yearly';
 
       return {
         status: premiumEntitlement.willRenew ? 'active' : 'cancelled',
-        tier: isMonthly ? 'monthly' : 'yearly',
+        tier,
         isActive: true,
         expirationDate: premiumEntitlement.expirationDate || null,
         trialEndDate: null,
         isBetaUser: false,
         betaCodeUsed: null,
         willRenew: premiumEntitlement.willRenew,
-        productId: premiumEntitlement.productIdentifier,
+        productId: pid,
       };
     }
 

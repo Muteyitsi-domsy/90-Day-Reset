@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, UserProfile, JournalEntry, HunchType } from '../types';
+import { Settings, UserProfile, JournalEntry, HunchType, SubscriptionTier } from '../types';
 import { getDayAndMonth } from '../services/geminiService';
 import { QuotaStatus } from './QuotaStatus';
 import { ShareButton } from './ShareButton';
@@ -13,6 +13,7 @@ interface MenuProps {
     reports: JournalEntry[];
     onUpdateSettings: (newSettings: Settings) => void;
     onUpdateProfile: (newProfile: UserProfile) => void;
+    subscriptionTier?: SubscriptionTier;
     onPauseJourney: () => void;
     onResumeJourney: () => void;
     onExportData: () => void;
@@ -46,7 +47,7 @@ const ChevronDownIcon: React.FC<{ className: string }> = ({ className }) => (
 
 const Menu: React.FC<MenuProps> = ({
     isOpen, onClose, userProfile, settings, reports,
-    onUpdateSettings, onUpdateProfile, onPauseJourney, onResumeJourney,
+    onUpdateSettings, onUpdateProfile, subscriptionTier, onPauseJourney, onResumeJourney,
     onExportData, onImportData, onDeleteData, onViewReport, onRegenerateReport, onLockApp,
     onRitualComplete, onOpenCalendar, userEmail, onSignOut,
     onOpenPrivacyPolicy, onOpenTerms, onOpenContact, onSetupCloudBackup,
@@ -813,7 +814,11 @@ const Menu: React.FC<MenuProps> = ({
                                 {/* Pause Journey */}
                                 <div className={`pt-4 border-t border-gray-200 dark:border-gray-700 ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">Journey Status</h4>
-                                    {userProfile?.isPaused ? (
+                                    {subscriptionTier === 'journey90' ? (
+                                        <div className="w-full py-2 px-3 rounded-md text-sm bg-gray-100 dark:bg-gray-800 text-[var(--text-secondary)] text-center">
+                                            Pause not available on 90-Day Journey
+                                        </div>
+                                    ) : userProfile?.isPaused ? (
                                         <button onClick={onResumeJourney} className="w-full py-2 bg-[var(--accent-primary)] text-white rounded-md text-sm">Resume Journey</button>
                                     ) : (
                                         <button onClick={onPauseJourney} className="w-full py-2 border border-amber-500 text-amber-600 dark:text-amber-400 rounded-md text-sm">Pause Journey</button>
