@@ -19,7 +19,16 @@ const db = (0, firestore_1.getFirestore)();
  *
  * Returns: { success: true, durationDays: number } or throws HttpsError.
  */
-exports.validateBetaCode = (0, https_1.onCall)({ region: 'us-central1', enforceAppCheck: false }, async (request) => {
+exports.validateBetaCode = (0, https_1.onCall)({
+    region: 'us-central1',
+    enforceAppCheck: false,
+    cors: [
+        'https://www.renew90.app',
+        'https://renew90.app',
+        'capacitor://localhost',
+        'http://localhost',
+    ],
+}, async (request) => {
     const rawCode = request.data?.code;
     if (typeof rawCode !== 'string' || rawCode.trim().length === 0) {
         throw new https_1.HttpsError('invalid-argument', 'A code is required.');

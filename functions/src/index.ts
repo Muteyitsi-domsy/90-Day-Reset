@@ -19,7 +19,16 @@ const db = getFirestore();
  * Returns: { success: true, durationDays: number } or throws HttpsError.
  */
 export const validateBetaCode = onCall(
-  { region: 'us-central1', enforceAppCheck: false },
+  {
+    region: 'us-central1',
+    enforceAppCheck: false,
+    cors: [
+      'https://www.renew90.app',
+      'https://renew90.app',
+      'capacitor://localhost',
+      'http://localhost',
+    ],
+  },
   async (request) => {
     const rawCode = request.data?.code;
     if (typeof rawCode !== 'string' || rawCode.trim().length === 0) {
