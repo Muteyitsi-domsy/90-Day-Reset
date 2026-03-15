@@ -10,8 +10,6 @@
  */
 
 import { Capacitor } from '@capacitor/core';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '../src/config/firebase';
 import type {
   SubscriptionState,
   SubscriptionStatus,
@@ -20,7 +18,8 @@ import type {
   SubscriptionOffering
 } from '../types';
 
-const functions = getFunctions(app, 'us-central1');
+const VALIDATE_BETA_CODE_URL =
+  'https://us-central1-identity-reset-journal.cloudfunctions.net/validateBetaCodeHttp';
 
 // RevenueCat types (will be available when running on device)
 let Purchases: typeof import('@revenuecat/purchases-capacitor').Purchases | null = null;
@@ -346,12 +345,16 @@ export const applyBetaCode = async (code: string): Promise<{
   }
 
   try {
-    const validateBetaCode = httpsCallable<{ code: string }, { success: boolean; durationDays: number }>(
-      functions,
-      'validateBetaCode'
-    );
-    const result = await validateBetaCode({ code: code.trim() });
-    const { durationDays } = result.data;
+    const response = await fetch(VALIDATE_BETA_CODE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code.trim() }),
+    });
+    const result = await response.json();
+    if (!result.success) {
+      return { success: false, error: result.error || 'Invalid code' };
+    }
+    const { durationDays } = result;
 
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + durationDays);

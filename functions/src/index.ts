@@ -1,9 +1,17 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onRequest } from 'firebase-functions/v2/https';
 
 initializeApp();
 const db = getFirestore();
+
+const ALLOWED_ORIGINS = [
+  'https://www.renew90.app',
+  'https://renew90.app',
+  'capacitor://localhost',
+  'http://localhost',
+  'http://localhost:5173',
+];
 
 /**
  * Validates a beta access code server-side.
@@ -16,23 +24,34 @@ const db = getFirestore();
  *   usageCount:  number    — how many times it has been redeemed
  *   durationDays: number   — how many days of access to grant (default 90)
  *
- * Returns: { success: true, durationDays: number } or throws HttpsError.
+ * Returns: { success: true, durationDays: number } or { success: false, error: string }
  */
-export const validateBetaCode = onCall(
-  {
-    region: 'us-central1',
-    enforceAppCheck: false,
-    cors: [
-      'https://www.renew90.app',
-      'https://renew90.app',
-      'capacitor://localhost',
-      'http://localhost',
-    ],
-  },
-  async (request) => {
-    const rawCode = request.data?.code;
+export const validateBetaCodeHttp = onRequest(
+  { region: 'us-central1' },
+  async (req, res) => {
+    // CORS
+    const origin = req.headers.origin || '';
+    if (ALLOWED_ORIGINS.includes(origin)) {
+      res.set('Access-Control-Allow-Origin', origin);
+    }
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'Method not allowed' });
+      return;
+    }
+
+    const rawCode = req.body?.code;
     if (typeof rawCode !== 'string' || rawCode.trim().length === 0) {
-      throw new HttpsError('invalid-argument', 'A code is required.');
+      res.status(400).json({ success: false, error: 'A code is required.' });
+      return;
     }
 
     const code = rawCode.trim().toUpperCase();
@@ -42,36 +61,38 @@ export const validateBetaCode = onCall(
       const snap = await codeRef.get();
 
       if (!snap.exists) {
-        throw new HttpsError('not-found', 'Invalid code.');
+        res.status(404).json({ success: false, error: 'Invalid code.' });
+        return;
       }
 
       const data = snap.data()!;
 
       if (!data.active) {
-        throw new HttpsError('failed-precondition', 'This code is no longer active.');
+        res.status(403).json({ success: false, error: 'This code is no longer active.' });
+        return;
       }
 
       const expiresAt: FirebaseFirestore.Timestamp = data.expiresAt;
       if (expiresAt && expiresAt.toMillis() < Date.now()) {
-        throw new HttpsError('failed-precondition', 'This code has expired.');
+        res.status(403).json({ success: false, error: 'This code has expired.' });
+        return;
       }
 
       const usageLimit: number = data.usageLimit ?? 0;
       const usageCount: number = data.usageCount ?? 0;
       if (usageLimit > 0 && usageCount >= usageLimit) {
-        throw new HttpsError('resource-exhausted', 'This code has reached its usage limit.');
+        res.status(429).json({ success: false, error: 'This code has reached its usage limit.' });
+        return;
       }
 
       // Atomically increment usage count
       await codeRef.update({ usageCount: FieldValue.increment(1) });
 
       const durationDays: number = data.durationDays ?? 90;
-      return { success: true, durationDays };
+      res.status(200).json({ success: true, durationDays });
     } catch (err) {
-      // Re-throw HttpsErrors as-is; wrap anything else
-      if (err instanceof HttpsError) throw err;
       console.error('validateBetaCode error:', err);
-      throw new HttpsError('internal', 'Something went wrong. Please try again.');
+      res.status(500).json({ success: false, error: 'Something went wrong. Please try again.' });
     }
   }
 );
