@@ -3,10 +3,12 @@ import React, { useState } from 'react';
 
 interface IntentionSettingProps {
   onComplete: (intention: string) => void;
+  existingIntention?: string;
 }
 
-const IntentionSetting: React.FC<IntentionSettingProps> = ({ onComplete }) => {
-  const [intention, setIntention] = useState('');
+const IntentionSetting: React.FC<IntentionSettingProps> = ({ onComplete, existingIntention }) => {
+  const [intention, setIntention] = useState(existingIntention ?? '');
+  const isReturning = !!existingIntention?.trim();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,9 +20,13 @@ const IntentionSetting: React.FC<IntentionSettingProps> = ({ onComplete }) => {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 pb-6 safe-area-top font-sans">
       <div className="max-w-lg w-full bg-[var(--card-bg)] backdrop-blur-sm rounded-2xl shadow-lg p-8 sm:p-12 border border-[var(--card-border)] text-center animate-fade-in">
-        <h1 className="text-3xl font-light text-[var(--text-secondary)] mb-4">Set Your Intention 🌟</h1>
+        <h1 className="text-3xl font-light text-[var(--text-secondary)] mb-4">
+          {isReturning ? 'Your North Star 🌟' : 'Set Your Intention 🌟'}
+        </h1>
         <p className="text-lg text-[var(--text-primary)] mb-8 leading-relaxed">
-          What is the primary shift you hope to experience in the next 90 days? An intention is your North Star.
+          {isReturning
+            ? 'This was your intention from your last journey. You can carry it forward or set a new one for this reset.'
+            : 'What is the primary shift you hope to experience in the next 90 days? An intention is your North Star.'}
         </p>
         <form onSubmit={handleSubmit} className="flex flex-col items-center">
           <textarea
@@ -37,8 +43,17 @@ const IntentionSetting: React.FC<IntentionSettingProps> = ({ onComplete }) => {
             disabled={!intention.trim()}
             className="bg-[var(--accent-primary)] text-white px-8 py-3 rounded-lg text-lg font-medium shadow hover:bg-[var(--accent-primary-hover)] transition-colors duration-300 transform hover:scale-105 disabled:bg-gray-400 disabled:scale-100"
           >
-            Set My North Star
+            {isReturning ? 'Carry This Forward' : 'Set My North Star'}
           </button>
+          {isReturning && (
+            <button
+              type="button"
+              onClick={() => setIntention('')}
+              className="mt-3 text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+            >
+              Start fresh with a new intention
+            </button>
+          )}
         </form>
       </div>
       <style>{`

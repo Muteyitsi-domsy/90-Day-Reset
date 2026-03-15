@@ -50,6 +50,8 @@ import AnnualRecapModal from './components/AnnualRecapModal';
 import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompts';
 import { shouldShowMonthlySummary, shouldShowAnnualRecap, calculateMonthlySummary, calculateAnnualRecap } from './utils/moodSummaryCalculations';
 import type { MoodSummaryState, MonthlySummaryData, AnnualRecapData } from './types';
+import PaywallModal from './components/PaywallModal';
+import { initializeRevenueCat, setRevenueCatUserId, getSubscriptionState } from './services/subscriptionService';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -166,6 +168,10 @@ const App: React.FC = () => {
   const [showAnnualRecapModal, setShowAnnualRecapModal] = useState(false);
   const [monthlySummaryData, setMonthlySummaryData] = useState<MonthlySummaryData | null>(null);
   const [annualRecapData, setAnnualRecapData] = useState<AnnualRecapData | null>(null);
+
+  // Subscription state
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // New journey state (for post-completion flow)
   const [showNewJourneyModal, setShowNewJourneyModal] = useState(false);
@@ -290,7 +296,13 @@ const App: React.FC = () => {
           }
 
           if (!savedProfile.idealSelfManifesto) {
-            setAppState('scripting');
+            // If intention is also missing, go there first — scripting should never
+            // be reached without an intention (can happen mid-restart recovery)
+            if (!savedProfile.intentions?.trim()) {
+              setAppState('intention_setting');
+            } else {
+              setAppState('scripting');
+            }
           } else {
             const settingsExist = !!savedSettings;
             if (!settingsExist) {
@@ -324,6 +336,22 @@ const App: React.FC = () => {
   useEffect(() => {
     checkForAppUpdate();
   }, []);
+
+  // Initialize RevenueCat and check subscription status
+  useEffect(() => {
+    if (authLoading) return;
+    const initSubscription = async () => {
+      await initializeRevenueCat(user?.uid);
+      if (user?.uid) await setRevenueCatUserId(user.uid);
+      const state = await getSubscriptionState();
+      setIsSubscribed(state.isActive);
+      // If not subscribed and on a gated view, redirect to mood journal
+      if (!state.isActive) {
+        setActiveView(v => (v === 'journey' || v === 'flip') ? 'mood' : v);
+      }
+    };
+    initSubscription();
+  }, [authLoading, user?.uid]);
 
   // Backfill completion data after journal entries are loaded
   useEffect(() => {
@@ -1655,6 +1683,16 @@ const App: React.FC = () => {
     }
   }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
 
+  // Gate view switching — free users can only access mood journal
+  const handleToggleView = (view: 'journey' | 'mood' | 'flip') => {
+    if (!isSubscribed && view !== 'mood') {
+      setShowPaywall(true);
+      return;
+    }
+    setActiveView(view);
+    setIsMenuOpen(false);
+  };
+
   // Android hardware back button: push a history entry when on non-journey views
   // so pressing back navigates to journey view instead of exiting the app.
   useEffect(() => {
@@ -2105,7 +2143,7 @@ const App: React.FC = () => {
             onOpenTerms={() => setShowTerms(true)}
             onOpenContact={() => setShowContact(true)}
             activeView={activeView}
-            onToggleView={(view) => { setActiveView(view); setIsMenuOpen(false); }}
+            onToggleView={handleToggleView}
             calendarView={calendarView}
             onToggleCalendarView={setCalendarView}
             onOpenMoodJournal={() => { setActiveView('mood'); setIsMenuOpen(false); }}
@@ -2165,7 +2203,7 @@ const App: React.FC = () => {
       case 'onboarding':
         return <Onboarding onComplete={handleOnboardingComplete} />;
       case 'intention_setting':
-        return <IntentionSetting onComplete={handleIntentionSettingComplete} />;
+        return <IntentionSetting onComplete={handleIntentionSettingComplete} existingIntention={userProfile?.intentions} />;
       case 'scripting':
         if (userProfile) {
             return <IdealSelfScripting userProfile={userProfile} onComplete={handleScriptingComplete} />;
@@ -2252,10 +2290,7 @@ const App: React.FC = () => {
                         onOpenCalendar={() => setIsCalendarOpen(true)}
                         onSetupCloudBackup={() => setShowAuthModal(true)}
                         activeView={activeView}
-                        onToggleView={(view) => {
-                          setActiveView(view);
-                          setIsMenuOpen(false);
-                        }}
+                        onToggleView={handleToggleView}
                         calendarView={calendarView}
                         onToggleCalendarView={setCalendarView}
                         onOpenMoodJournal={() => {
@@ -2394,10 +2429,7 @@ const App: React.FC = () => {
                 onOpenTerms={() => setShowTerms(true)}
                 onOpenContact={() => setShowContact(true)}
                 activeView={activeView}
-                onToggleView={(view) => {
-                  setActiveView(view);
-                  setIsMenuOpen(false);
-                }}
+                onToggleView={handleToggleView}
                 calendarView={calendarView}
                 onToggleCalendarView={setCalendarView}
                 onOpenMoodJournal={() => {
@@ -2590,6 +2622,14 @@ const App: React.FC = () => {
       <ContactUs
         isOpen={showContact}
         onClose={() => setShowContact(false)}
+      />
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onSubscribed={() => {
+          setIsSubscribed(true);
+          setShowPaywall(false);
+        }}
       />
       {renderContent()}
     </>
