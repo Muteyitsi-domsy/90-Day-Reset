@@ -374,6 +374,13 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
   const titleSection = sections.find(s => s.name !== null && !NAMED_SECTIONS.includes(s.name));
   const namedSections = sections.filter(s => s.name !== null && NAMED_SECTIONS.includes(s.name));
 
+  const dailyEntries = journalEntries.filter(e => e.type === 'daily');
+  const weeklyReports = journalEntries.filter(e => e.type === 'weekly_summary_report');
+  const monthlyReports = journalEntries.filter(e => e.type === 'monthly_summary_report');
+  const isSparseData = dailyEntries.length > 0 && dailyEntries.length < 15;
+  const isNoSections = namedSections.length === 0;
+  const hasMissingReports = weeklyReports.length < 13 || monthlyReports.length < 3;
+
   return (
     <div className="min-h-screen overflow-y-auto bg-gradient-to-b from-amber-50 via-stone-50 to-amber-100 dark:from-stone-950 dark:via-amber-950/10 dark:to-stone-950">
       <Confetti numberOfPieces={150} recycle={false} />
@@ -411,9 +418,24 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
           </p>
         </div>
 
+        {/* Sparse data notice */}
+        {isSparseData && (
+          <div className="mb-6 px-4 py-3 bg-stone-100/80 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 rounded-lg">
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+              Your keepsake reflects {dailyEntries.length} {dailyEntries.length === 1 ? 'entry' : 'entries'} written across 90 days. With fewer entries, some sections may be brief — but what you wrote is still here.
+            </p>
+          </div>
+        )}
+
         {/* Report Sections */}
         <div className="space-y-8 mb-8">
-          {namedSections.map((section, idx) => {
+          {isNoSections ? (
+            <div className="bg-white/60 dark:bg-stone-900/40 backdrop-blur-sm rounded-2xl px-5 py-8 border border-amber-100 dark:border-amber-900/30 shadow-sm text-center">
+              <p className="text-sm text-stone-500 dark:text-stone-400 leading-relaxed">
+                Your journey is complete. A full narrative summary could not be generated at this time, but your written entries are preserved and available in your data export.
+              </p>
+            </div>
+          ) : namedSections.map((section, idx) => {
             const sectionName = section.name!;
             const isKnown = NAMED_SECTIONS.includes(sectionName);
 
@@ -450,6 +472,15 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
             );
           })}
         </div>
+
+        {/* Missing reports note */}
+        {hasMissingReports && (
+          <div className="mb-6 px-4 py-3 bg-stone-100/80 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-700 rounded-lg">
+            <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+              Some weekly or monthly reflection reports were not generated during your journey and won't appear in your PDF. Your daily entries remain complete and are included in your data export.
+            </p>
+          </div>
+        )}
 
         {/* Mood Journal note */}
         <div className="mb-8 px-4 py-3.5 bg-stone-100/80 dark:bg-stone-800/40 rounded-xl border border-stone-200 dark:border-stone-700">

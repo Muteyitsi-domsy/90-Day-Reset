@@ -13,6 +13,7 @@ interface ReturnUserWelcomeScreenProps {
   isJourneyPaused?: boolean;
   isJourneyCompleted?: boolean;
   todaysMoodEntry?: MoodJournalEntry | null;
+  isSubscribed?: boolean;
 }
 
 const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
@@ -25,6 +26,7 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
   isJourneyPaused = false,
   isJourneyCompleted = false,
   todaysMoodEntry = null,
+  isSubscribed = false,
 }) => {
 
   const hour = new Date().getHours();
@@ -33,8 +35,10 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
   const isEveningTime = hour >= 16;
   const isMorning = hour < 12;
 
-  // Check if journey is active (started, not paused, and not completed)
-  const isJourneyActive = userProfile.startDate && !isJourneyPaused && !isJourneyCompleted;
+  const name = userProfile.name || '';
+
+  // Check if journey is active (started, not paused, not completed, and subscribed)
+  const isJourneyActive = isSubscribed && userProfile.startDate && !isJourneyPaused && !isJourneyCompleted;
   const hasMoodEntryToday = !!todaysMoodEntry;
 
   let title = '';
@@ -70,21 +74,22 @@ const ReturnUserWelcomeScreen: React.FC<ReturnUserWelcomeScreenProps> = ({
       cta = "Begin Today's Reflection";
     }
   } else {
-    // Journey is paused or not started - show mood journal focused messaging
+    // Journey is paused, not started, or user is not subscribed - show mood journal focused messaging
+    const greeting = name ? name : null;
     if (hasMoodEntryToday) {
-      title = `You showed up for yourself today, ${userProfile.name}! ✓`;
+      title = greeting ? `You showed up for yourself today, ${greeting}! ✓` : `You showed up for yourself today! ✓`;
       subtitle = "You've already logged your mood. Taking time to check in with yourself matters.";
       cta = "View Your Journal";
     } else {
       // Time-appropriate greeting
       if (isMorning) {
-        title = `Good morning, ${userProfile.name}!`;
+        title = greeting ? `Good morning, ${greeting}!` : `Hi there, Good morning!`;
         subtitle = "Ready to log your mood for the day? A moment of reflection sets the tone.";
       } else if (isEveningTime) {
-        title = `Good evening, ${userProfile.name}.`;
+        title = greeting ? `Good evening, ${greeting}.` : `Hi there, Good evening.`;
         subtitle = "How has your day been? Take a moment to log your mood and reflect.";
       } else {
-        title = `Welcome back, ${userProfile.name}!`;
+        title = greeting ? `Welcome back, ${greeting}!` : `Hi there, welcome back!`;
         subtitle = "Ready to check in with yourself? Logging your mood helps build self-awareness.";
       }
       cta = "Log Your Mood";

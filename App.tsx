@@ -1605,6 +1605,18 @@ const App: React.FC = () => {
 
     try {
         const dailyHistory = journalEntries.filter(e => e.type === 'daily');
+
+        // Zero entries — skip AI entirely, use a specific no-data keepsake
+        if (dailyHistory.length === 0) {
+            const noDataSummary = "**Your 90-Day Journey**\n\nYour journey reached its end, but no written entries were found to reflect on. Your story is still yours — it simply lived outside these pages.";
+            setFinalSummaryText(noDataSummary);
+            const completedDate = userProfile.journeyCompletedDate || new Date().toISOString();
+            setUserProfile(prev => ({ ...prev!, journeyCompleted: true, journeyCompletedDate: completedDate }));
+            setCompletedJourneyEntries(journalEntriesRef.current);
+            setIsJourneyOver(true);
+            return;
+        }
+
         // Filter hunches based on settings
         const hunchHistory = settings.includeHunchesInFinalSummary
             ? journalEntries.filter(e => e.type === 'hunch' && (!settings.finalSummaryIncludedTypes || settings.finalSummaryIncludedTypes.includes(e.hunchType || 'hunch')))
@@ -2212,8 +2224,8 @@ const App: React.FC = () => {
             userProfile={userProfile}
             todaysEntry={todaysEntry}
             onContinue={() => {
-              // Paused → default to mood journal view
-              if (userProfile.isPaused) {
+              // Paused or free user → default to mood journal view
+              if (userProfile.isPaused || !isSubscribed) {
                 setActiveView('mood');
               }
               // Completed → stay on 'journey' activeView so KeepsakeWindow shows
@@ -2225,6 +2237,7 @@ const App: React.FC = () => {
             isJourneyPaused={userProfile.isPaused}
             isJourneyCompleted={!!userProfile.journeyCompleted}
             todaysMoodEntry={todaysMoodEntry}
+            isSubscribed={isSubscribed}
           />;
         }
         return null;
