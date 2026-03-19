@@ -12,6 +12,7 @@ interface PaywallModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubscribed: () => void;
+  userId?: string;
 }
 
 const arcFeatures = [
@@ -42,7 +43,7 @@ const arcFeatures = [
   },
 ];
 
-const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscribed }) => {
+const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscribed, userId }) => {
   const [offerings, setOfferings] = useState<SubscriptionOffering | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'journey90'>('yearly');
   const [isLoading, setIsLoading] = useState(true);
@@ -128,7 +129,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
     setBetaError(null);
     setIsPurchasing(true);
     try {
-      const result = await applyBetaCode(betaCode);
+      const result = await applyBetaCode(betaCode, userId);
       if (result.success) {
         onSubscribed();
         onClose();

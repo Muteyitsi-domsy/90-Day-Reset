@@ -13,6 +13,7 @@ import {
   getSubscriptionState,
   setRevenueCatUserId,
   logOutRevenueCat,
+  syncBetaFromFirestore,
 } from '../../services/subscriptionService';
 
 interface UseSubscriptionReturn {
@@ -71,9 +72,14 @@ export function useSubscription(userId?: string): UseSubscriptionReturn {
     initialize();
   }, []);
 
-  // Update user ID when it changes
+  // When user logs in: sync beta from Firestore (restores access on new devices/reinstalls)
+  // then update RevenueCat user ID
   useEffect(() => {
     if (isInitialized && userId) {
+      syncBetaFromFirestore(userId).then(() => {
+        // Refresh subscription state after sync so beta access is reflected immediately
+        getSubscriptionState().then(setSubscriptionState);
+      });
       setRevenueCatUserId(userId);
     }
   }, [userId, isInitialized]);

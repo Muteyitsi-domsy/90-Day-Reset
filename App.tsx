@@ -2673,6 +2673,7 @@ const App: React.FC = () => {
           setIsSubscribed(true);
           setShowPaywall(false);
         }}
+        userId={user?.uid}
       />
       {renderContent()}
     </>

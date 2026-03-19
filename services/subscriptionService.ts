@@ -10,6 +10,8 @@
  */
 
 import { Capacitor } from '@capacitor/core';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../src/config/firebase';
 import type {
   SubscriptionState,
   SubscriptionStatus,
@@ -332,8 +334,9 @@ export const restorePurchases = async (): Promise<{
 /**
  * Validate and apply a beta code.
  * Validation is performed server-side via a Cloud Function — no codes exist in this bundle.
+ * If userId is provided, beta access is also saved to Firestore so it persists across devices.
  */
-export const applyBetaCode = async (code: string): Promise<{
+export const applyBetaCode = async (code: string, userId?: string): Promise<{
   success: boolean;
   error?: string;
   expiryDate?: string;
@@ -359,14 +362,57 @@ export const applyBetaCode = async (code: string): Promise<{
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + durationDays);
     const expiryString = expiryDate.toISOString();
+    const normalizedCode = code.trim().toUpperCase();
 
-    localStorage.setItem(BETA_CODE_STORAGE_KEY, code.trim().toUpperCase());
+    localStorage.setItem(BETA_CODE_STORAGE_KEY, normalizedCode);
     localStorage.setItem(BETA_EXPIRY_STORAGE_KEY, expiryString);
+
+    // Persist to Firestore so beta access survives reinstalls and device changes
+    if (userId) {
+      try {
+        await setDoc(
+          doc(db, 'users', userId),
+          { betaAccess: { code: normalizedCode, expiry: expiryString, appliedAt: new Date().toISOString() } },
+          { merge: true }
+        );
+      } catch (firestoreErr) {
+        console.error('Beta: failed to save to Firestore (local access still granted)', firestoreErr);
+      }
+    }
 
     return { success: true, expiryDate: expiryString };
   } catch (err: any) {
     const message = err?.message || 'Invalid code';
     return { success: false, error: message };
+  }
+};
+
+/**
+ * Sync beta access from Firestore to localStorage.
+ * Call this after login so beta status is restored on new devices / reinstalls.
+ */
+export const syncBetaFromFirestore = async (userId: string): Promise<void> => {
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const snap = await getDoc(userDocRef);
+    if (!snap.exists()) return;
+
+    const betaAccess = snap.data()?.betaAccess;
+    if (!betaAccess?.code || !betaAccess?.expiry) return;
+
+    // Only restore if still valid
+    const isStillValid = new Date(betaAccess.expiry) > new Date();
+    if (!isStillValid) return;
+
+    // Restore to localStorage if not already there
+    const localCode = localStorage.getItem(BETA_CODE_STORAGE_KEY);
+    if (!localCode) {
+      localStorage.setItem(BETA_CODE_STORAGE_KEY, betaAccess.code);
+      localStorage.setItem(BETA_EXPIRY_STORAGE_KEY, betaAccess.expiry);
+      console.log('Beta: restored from Firestore');
+    }
+  } catch (err) {
+    console.error('Beta: failed to sync from Firestore', err);
   }
 };
 
@@ -484,6 +530,7 @@ export const subscriptionService = {
   restore: restorePurchases,
   applyBetaCode,
   checkBetaAccess,
+  syncBetaFromFirestore,
   getBetaDaysRemaining,
   shouldShowPaywall,
   isNative: isNativePlatform,
