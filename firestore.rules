@@ -47,30 +47,8 @@ service cloud.firestore {
       // Read: User must be authenticated and own the document
   allow read: if isOwner(userId);
 
-  // Create: Controlled structure validation
+  // Create: Ownership + size limit (app writes fields incrementally so strict field validation is not applied here)
   allow create: if isOwner(userId)
-    && hasOnlyAllowedFields([
-        'metadata',
-        'profile',
-        'settings',
-        'dailyCompletions',
-        'includeHunchesInFinalSummary',
-        'monthlyReports',
-        'pin',
-        'theme',
-        'themeMode',
-        'weeklyReports'
-       ])
-    && request.resource.data.metadata is map
-    && request.resource.data.profile is map
-    && request.resource.data.settings is map
-    && request.resource.data.dailyCompletions is list
-    && request.resource.data.includeHunchesInFinalSummary is bool
-    && request.resource.data.monthlyReports is bool
-    && request.resource.data.pin is string
-    && request.resource.data.theme is string
-    && request.resource.data.themeMode is string
-    && request.resource.data.weeklyReports is bool
     && isWithinSizeLimit(200000);
 
   // Update: Ownership + size control
