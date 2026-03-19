@@ -206,7 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Choose model based on request type (can optimize costs by using Flash for most requests)
-    const model = requestType === 'summary' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+    const model = requestType === 'summary' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
     const endpoint = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${model}:generateContent`;
 
     // Get access token
@@ -308,9 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model,
         inputTokens: estimatedInputTokens,
         outputTokens: estimatedOutputTokens,
-        estimatedCost: estimatedCost.toFixed(6),
         responseTime,
-        monthlySpend: monthlySpend.toFixed(2)
       }
     });
 

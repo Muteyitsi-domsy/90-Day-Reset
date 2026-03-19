@@ -20,6 +20,10 @@ import { QuotaStatus } from './QuotaStatus';
 import { Settings, MoodJournalEntry, MonthlySummaryData, AnnualRecapData } from '../types';
 import { calculateMonthlySummary, calculateAnnualRecap } from '../utils/moodSummaryCalculations';
 
+const PIN_MAX_ATTEMPTS = 3;
+const PIN_LOCKOUT_MINUTES = 15;
+const LOCKOUT_KEY = '90day_admin_lockout';
+
 // Founder PIN storage key - separate from user data
 const FOUNDER_PIN_KEY = '90day_founder_pin';
 
@@ -59,6 +63,8 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
   const [testMonth, setTestMonth] = useState(new Date().getMonth());
   const [testYear, setTestYear] = useState(new Date().getFullYear());
   const [pinError, setPinError] = useState('');
+  const [pinAttempts, setPinAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [cacheStats, setCacheStats] = useState({
     totalEntries: 0,
     totalSize: 0,
@@ -78,6 +84,14 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
       setPinInput('');
       setConfirmPinInput('');
       setPinError('');
+      setPinAttempts(0);
+      // Restore any active lockout
+      try {
+        const stored = localStorage.getItem(LOCKOUT_KEY);
+        setLockedUntil(stored ? parseInt(stored) : null);
+      } catch {
+        setLockedUntil(null);
+      }
     }
   }, [isOpen]);
 
@@ -102,6 +116,14 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
   };
 
   const handlePinSubmit = () => {
+    // Check lockout
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 60000);
+      setPinError(`Too many attempts. Try again in ${remaining} minute${remaining !== 1 ? 's' : ''}.`);
+      setPinInput('');
+      return;
+    }
+
     const founderPin = getFounderPin();
     if (!founderPin) {
       setPinError('No founder PIN set');
@@ -112,9 +134,22 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
       setIsPinVerified(true);
       setPinError('');
       setPinInput('');
+      setPinAttempts(0);
+      setLockedUntil(null);
+      try { localStorage.removeItem(LOCKOUT_KEY); } catch { /* ignore */ }
     } else {
-      setPinError('Incorrect PIN');
+      const newAttempts = pinAttempts + 1;
+      setPinAttempts(newAttempts);
       setPinInput('');
+
+      if (newAttempts >= PIN_MAX_ATTEMPTS) {
+        const until = Date.now() + PIN_LOCKOUT_MINUTES * 60 * 1000;
+        setLockedUntil(until);
+        try { localStorage.setItem(LOCKOUT_KEY, String(until)); } catch { /* ignore */ }
+        setPinError(`Too many attempts. Locked for ${PIN_LOCKOUT_MINUTES} minutes.`);
+      } else {
+        setPinError(`Incorrect PIN. ${PIN_MAX_ATTEMPTS - newAttempts} attempt${PIN_MAX_ATTEMPTS - newAttempts !== 1 ? 's' : ''} remaining.`);
+      }
     }
   };
 
@@ -204,7 +239,7 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
                 <div>
                   <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Create PIN</label>
                   <input
-                    type="text"
+                    type="password"
                     value={pinInput}
                     onChange={(e) => {
                       setPinInput(e.target.value.slice(0, 4));
@@ -220,7 +255,7 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
                 <div>
                   <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Confirm PIN</label>
                   <input
-                    type="text"
+                    type="password"
                     value={confirmPinInput}
                     onChange={(e) => {
                       setConfirmPinInput(e.target.value.slice(0, 4));
@@ -280,7 +315,7 @@ export function AdminDashboard({ isOpen, onClose, settings, moodEntries = [], on
 
               <div className="space-y-4">
                 <input
-                  type="text"
+                  type="password"
                   value={pinInput}
                   onChange={(e) => {
                     setPinInput(e.target.value.slice(0, 4));

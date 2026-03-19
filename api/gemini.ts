@@ -131,17 +131,8 @@ async function getSummary(data: any) {
         return { crisisDetected: true };
     }
 
-    // Check for API key - try multiple environment variable names
+    // Check for API key
     const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
-
-    // Debug logging
-    console.log('Environment variables check:', {
-        hasGEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
-        hasAPI_KEY: !!process.env.API_KEY,
-        hasVITE_GEMINI_API_KEY: !!process.env.VITE_GEMINI_API_KEY,
-        apiKeyFound: !!apiKey,
-        apiKeyLength: apiKey?.length || 0
-    });
 
     if (!apiKey) {
         console.error('Gemini API key not found. Please set GEMINI_API_KEY, API_KEY, or VITE_GEMINI_API_KEY environment variable.');
@@ -192,13 +183,13 @@ Your output must be a single, clean JSON object matching the provided schema.`;
     console.log('Calling Gemini API for summary generation...', {
         period: periodLabel,
         entriesCount: data.entries.length,
-        model: 'gemini-2.0-flash'
+        model: 'gemini-2.5-flash'
     });
 
     let response;
     try {
         response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-2.5-flash',
             contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
             config: {
                 systemInstruction,

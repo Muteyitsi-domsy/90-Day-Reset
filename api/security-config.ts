@@ -8,10 +8,11 @@
 export const ALLOWED_ORIGINS = [
   'http://localhost:5173',           // Local development (Vite default)
   'http://localhost:3000',           // Local development (alternative)
-  'https://90-day-reset.vercel.app', // Production domain
-  // Add your custom domain here when you deploy:
-  // 'https://yourdomain.com',
-  // 'https://www.yourdomain.com',
+  'https://90-day-reset.vercel.app', // Vercel preview
+  'https://renew90.app',             // Production
+  'https://www.renew90.app',         // Production (www)
+  'capacitor://localhost',           // Android/iOS Capacitor WebView
+  'https://localhost',               // iOS Capacitor WebView
 ];
 
 // Development mode check

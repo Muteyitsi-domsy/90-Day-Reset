@@ -142,7 +142,7 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 contents: prompt,
                 config: {
                     responseMimeType: 'application/json',
@@ -207,7 +207,7 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 contents: prompt,
             });
 
@@ -287,7 +287,7 @@ export async function analyzeJournalEntry(entryText: string, forceRefresh = fals
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 contents: prompt,
                 config: {
                     responseMimeType: 'application/json',
@@ -460,7 +460,7 @@ Observe without prescribing.`,
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
-                model: 'gemini-2.0-flash', // Using a powerful model for the final, complex summary
+                model: 'gemini-2.5-flash', // Using a powerful model for the final, complex summary
                 contents: prompt,
             });
 
@@ -601,7 +601,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
                 config: {
                     systemInstruction,
@@ -787,7 +787,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
         // Use rate limiter to queue the request
         const result = await rateLimiter.enqueue(async () => {
             const response = await ai!.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
                 config: {
                     systemInstruction,
@@ -931,7 +931,7 @@ Respond with ONLY the question itself, no introduction or explanation. Start the
 
     const result = await rateLimiter.enqueue(async () => {
       const response = await ai!.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: { temperature: 0.8, maxOutputTokens: 256 }
       });
