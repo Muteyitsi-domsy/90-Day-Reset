@@ -27,49 +27,49 @@ export function SharePrompt({ isOpen, onClose, userProfile, milestone }: SharePr
       case 'day7':
         return {
           title: '7 Days Complete! 🌱',
-          message: 'You've shown up for yourself every day this week. That's powerful.',
-          shareText: '7 days into my 90-Day Identity Reset! 🌱\n\nTaking time each day to reflect and reconnect with myself. The consistency is already making a difference.\n\nIf you've been thinking about doing deeper work, this is your sign. ✨',
+          message: "You've shown up for yourself every day this week. That's powerful.",
+          shareText: "7 days into my 90-Day Identity Reset! 🌱\n\nTaking time each day to reflect and reconnect with myself. The consistency is already making a difference.\n\nIf you've been thinking about doing deeper work, this is your sign. ✨",
           emoji: '🌱'
         };
       case 'day30':
         return {
           title: '30 Days Complete! ✨',
-          message: 'One month of daily reflection. You're building something real here.',
-          shareText: '30 days of self-reflection complete! ✨\n\nA whole month of showing up for myself through the 90-Day Identity Reset. The shifts are real.\n\nIf you're looking to reconnect with yourself, highly recommend this journey. 💫',
+          message: "One month of daily reflection. You're building something real here.",
+          shareText: "30 days of self-reflection complete! ✨\n\nA whole month of showing up for myself through the 90-Day Identity Reset. The shifts are real.\n\nIf you're looking to reconnect with yourself, highly recommend this journey. 💫",
           emoji: '✨'
         };
       case 'day60':
         return {
           title: '60 Days Complete! 🌟',
-          message: 'Two months of showing up. You're in the final stretch.',
-          shareText: '60 days into my 90-Day Identity Reset! 🌟\n\n2 months of daily reflection and I can feel the transformation happening. The final 30 days are going to be powerful.\n\nThis journey is no joke. If you're ready to do the work, check it out. 🦋',
+          message: "Two months of showing up. You're in the final stretch.",
+          shareText: "60 days into my 90-Day Identity Reset! 🌟\n\n2 months of daily reflection and I can feel the transformation happening. The final 30 days are going to be powerful.\n\nThis journey is no joke. If you're ready to do the work, check it out. 🦋",
           emoji: '🌟'
         };
       case 'day90':
         return {
           title: '90 Days Complete! 🦋',
-          message: 'You did it. 90 days of showing up for yourself. You've transformed.',
-          shareText: '90 days. Complete. 🦋\n\nI just finished my 90-Day Identity Reset journey and I'm genuinely not the same person I was when I started.\n\nIf you've been thinking about doing deeper inner work, this is your sign. The transformation is real. ✨',
+          message: "You did it. 90 days of showing up for yourself. You've transformed.",
+          shareText: "90 days. Complete. 🦋\n\nI just finished my 90-Day Identity Reset journey and I'm genuinely not the same person I was when I started.\n\nIf you've been thinking about doing deeper inner work, this is your sign. The transformation is real. ✨",
           emoji: '🦋'
         };
       case 'streak7':
         return {
           title: '7-Day Streak! 🔥',
           message: 'Seven days in a row. Consistency is transformation.',
-          shareText: '7 days in a row of showing up for myself 🔥\n\nUsing the 90-Day Identity Reset for daily reflection and the consistency is everything. Small daily steps, real growth.\n\nIf you're looking for a structured way to reconnect with yourself, this is it. 🌱',
+          shareText: "7 days in a row of showing up for myself 🔥\n\nUsing the 90-Day Identity Reset for daily reflection and the consistency is everything. Small daily steps, real growth.\n\nIf you're looking for a structured way to reconnect with yourself, this is it. 🌱",
           emoji: '🔥'
         };
       case 'streak30':
         return {
           title: '30-Day Streak! 🔥',
-          message: 'Thirty consecutive days. You're unstoppable.',
-          shareText: '30 days in a row 🔥\n\nShowing up for myself every single day through the 90-Day Identity Reset. The discipline is becoming second nature.\n\nConsistency > intensity. This journey proves it. 💪',
+          message: "Thirty consecutive days. You're unstoppable.",
+          shareText: "30 days in a row 🔥\n\nShowing up for myself every single day through the 90-Day Identity Reset. The discipline is becoming second nature.\n\nConsistency > intensity. This journey proves it. 💪",
           emoji: '🔥'
         };
       default:
         return {
           title: 'Milestone Reached! 🎉',
-          message: 'You're making progress on your journey.',
+          message: "You're making progress on your journey.",
           shareText: 'Making progress on my 90-Day Identity Reset journey! 💫',
           emoji: '🎉'
         };
@@ -79,7 +79,7 @@ export function SharePrompt({ isOpen, onClose, userProfile, milestone }: SharePr
   const content = getMilestoneContent();
 
   const handleShare = async () => {
-    const appUrl = window.location.origin;
+    const appUrl = 'https://play.google.com/store/apps/details?id=app.renew90.journal';
     const fullMessage = `${content.shareText}\n\n${appUrl}`;
 
     // Try native share API first
