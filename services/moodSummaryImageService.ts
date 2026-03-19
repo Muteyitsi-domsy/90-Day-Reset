@@ -158,7 +158,7 @@ export async function generateMonthlySummaryImage(data: MonthlySummaryData, user
   // Footer branding
   ctx.fillStyle = PALETTE.textSecondary;
   ctx.font = '14px system-ui, -apple-system, sans-serif';
-  ctx.fillText('90 Day Reset • Mood Journal', width / 2, height - 40);
+  ctx.fillText('Renew90 Journal', width / 2, height - 40);
 
   // Convert to blob
   return new Promise((resolve) => {
@@ -304,7 +304,7 @@ export async function generateAnnualRecapImage(data: AnnualRecapData, userName?:
   // Footer branding
   ctx.fillStyle = PALETTE.textSecondary;
   ctx.font = '14px system-ui, -apple-system, sans-serif';
-  ctx.fillText('90 Day Reset • Mood Journal', width / 2, height - 40);
+  ctx.fillText('Renew90 Journal', width / 2, height - 40);
 
   // Convert to blob
   return new Promise((resolve) => {
@@ -475,7 +475,7 @@ export async function generateCategoryRecapImage(
   ctx.fillStyle = PALETTE.textSecondary;
   ctx.font = '14px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('90 Day Reset • Mood Journal', width / 2, height - 40);
+  ctx.fillText('Renew90 Journal', width / 2, height - 40);
 
   // Convert to blob
   return new Promise((resolve) => {
