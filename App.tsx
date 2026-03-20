@@ -213,13 +213,15 @@ const App: React.FC = () => {
   // Load from storage on mount (localStorage or Firestore based on auth)
   useEffect(() => {
     const loadData = async () => {
+      // Declared outside try so finally can always clearTimeout without ReferenceError
+      let loadingTimeout: ReturnType<typeof setTimeout> | undefined;
       try {
         // Wait for auth to load
         if (authLoading) return;
 
         // Safety timeout: if data loading takes too long (e.g. Firestore hanging due to no network),
         // fall back to defaults so the app doesn't get stuck on the loading spinner
-        const loadingTimeout = setTimeout(() => {
+        loadingTimeout = setTimeout(() => {
           console.warn('⚠️ Data loading timed out after 15 seconds - falling back to defaults');
           setIsLoading(false);
           setHasLoadedSettings(true);
