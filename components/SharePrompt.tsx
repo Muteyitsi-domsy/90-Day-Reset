@@ -85,9 +85,11 @@ export function SharePrompt({ isOpen, onClose, userProfile, milestone }: SharePr
     // Try native share API first
     if (navigator.share) {
       try {
+        // Pass url separately so Android generates a rich link preview with app icon
         await navigator.share({
-          title: '90-Day Identity Reset',
-          text: fullMessage,
+          title: 'Renew90 – 90-Day Identity Reset',
+          text: content.shareText,
+          url: appUrl,
         });
         setShareSuccess(true);
         setTimeout(() => {

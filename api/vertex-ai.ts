@@ -234,6 +234,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           temperature: config?.temperature || 0.7,
           maxOutputTokens: config?.maxOutputTokens || 2048,
           topP: config?.topP || 0.95,
+          // Disable thinking for non-summary requests — thinking tokens share the
+          // maxOutputTokens budget on Gemini 2.5 Flash, which truncates the answer.
+          ...(requestType !== 'summary' && { thinkingConfig: { thinkingBudget: 0 } }),
         },
         safetySettings: [
           {
@@ -274,8 +277,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await response.json();
 
-    // Extract response text
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Extract response text — skip thinking parts (thought: true) added by Gemini 2.5 Flash
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const text = (parts.find((p: { thought?: boolean; text?: string }) => !p.thought)?.text) || parts[0]?.text;
 
     if (!text) {
       console.error('No text in response:', JSON.stringify(data, null, 2));
