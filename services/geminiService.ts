@@ -908,7 +908,7 @@ Respond with ONLY the question itself, no introduction or explanation. Start the
           prompt,
           userId,
           requestType: 'analysis',
-          config: { temperature: 0.8, maxOutputTokens: 256 }
+          config: { temperature: 0.8, maxOutputTokens: 1024 }
         })
       });
 
@@ -933,7 +933,13 @@ Respond with ONLY the question itself, no introduction or explanation. Start the
       const response = await ai!.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-        config: { temperature: 0.8, maxOutputTokens: 256 }
+        config: {
+          temperature: 0.8,
+          maxOutputTokens: 1024,
+          // Disable thinking — Gemini 2.5 Flash thinking tokens share the
+          // maxOutputTokens budget, which truncates the actual answer.
+          thinkingConfig: { thinkingBudget: 0 }
+        }
       });
       return response.text.trim();
     }, `flip_reframe_${Date.now()}`);
