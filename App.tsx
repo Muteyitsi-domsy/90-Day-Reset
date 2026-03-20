@@ -2632,6 +2632,8 @@ const App: React.FC = () => {
           initialChallenge={pendingFlipMoodEntry?.journalText}
           linkedMoodEntryId={pendingFlipMoodEntry?.id}
           editingEntry={editingFlipEntry || undefined}
+          isSubscribed={isSubscribed}
+          onUpgrade={() => setShowPaywall(true)}
         />
       )}
       {showFlipPrompt && pendingFlipMoodEntry && (
