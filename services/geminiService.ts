@@ -388,7 +388,11 @@ Observe what was present in each terrain without prescribing or advising.`,
 - Grounding (Months 1–2): What was stabilised, what became clear, what the person returned to again and again as their truth.
 - Strengthening (Month 3): What solidified, what was reaffirmed, what identity began to crystallise through consistent practice.
 Observe without prescribing.`,
-        reignition: `This arc was focused on one terrain: full embodiment. Write 3-4 sentences reflecting on what was ignited, what became natural through repetition, what was lived rather than merely aspired to, and how the person stepped into the path they had already chosen. Observe the qualities that were embodied — not just intended.`
+        reignition: `This arc moved through three distinct phases. Write a separate 2-3 sentence reflection for each, clearly labelled:
+- Consolidation & Gratitude (Month 1): What was savoured and appreciated — what the person recognised as already working, where alignment was felt, what was anchored as a foundation.
+- Expansion & Joy (Month 2): Where the person stretched beyond the familiar — what freedom and joy emerged, how authentic expression grew and opened.
+- Full Embodiment & Radiance (Month 3): What became effortless and natural — how the person showed up fully, what was shared and given outward, what was lived rather than merely intended.
+Observe the qualities that were present in each phase without prescribing or advising.`
     };
 
     const prompt = `
@@ -690,7 +694,10 @@ function getArcPhaseContext(arc: Arc, month: number): { phase: string; focus: st
         if (month <= 2) return { phase: 'Grounding', focus: 'what was stabilised, what became clear, what was returned to as true' };
         return { phase: 'Strengthening', focus: 'what solidified, what was reaffirmed, what identity began to crystallise' };
     }
-    return { phase: 'Embodiment', focus: 'what was ignited, what became natural, how the path was stepped into fully' };
+    // reignition: three distinct monthly phases
+    if (month === 1) return { phase: 'Consolidation & Gratitude', focus: 'what was savoured and appreciated, where alignment was felt, what the person recognised as already working and worth anchoring' };
+    if (month === 2) return { phase: 'Expansion & Joy', focus: 'where the person stretched beyond the familiar, what joy and freedom emerged, how authentic expression grew' };
+    return { phase: 'Full Embodiment & Radiance', focus: 'what became effortless and natural, how the person showed up fully, what was shared and radiated outward' };
 }
 
 export async function generateMonthlySummary(userProfile: UserProfile, month: number, entries: JournalEntry[], forceRefresh = false): Promise<any> {
