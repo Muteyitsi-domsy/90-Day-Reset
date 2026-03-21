@@ -712,28 +712,22 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
         }
     }
 
-    // Ultimate fallback: Generate a dynamic prompt if ALL prompts exhausted
-    // This should be extremely rare given we have 315 prompts total
+    // Pool exhausted — all 466 prompts have been answered across prior journeys.
+    // Reset the permanent history so the full pool becomes available again.
+    // Prompts from the CURRENT journey's actual entries still act as a filter,
+    // so we won't repeat anything within the journey the user is on right now.
     if (!selectedPrompt) {
-        const dynamicPrompts = [
-            `Day ${dayIndex}: What is alive in you right now?`,
-            `Day ${dayIndex}: What truth is asking to be acknowledged today?`,
-            `Day ${dayIndex}: What would feel like progress today, even if small?`,
-            `Day ${dayIndex}: How can you honor yourself right now?`,
-            `Day ${dayIndex}: What does your intuition want you to notice?`,
-        ];
-
-        for (const dynPrompt of dynamicPrompts) {
-            if (!allUsedPrompts.has(dynPrompt)) {
-                cacheDailyPrompt(dayIndex, dynPrompt);
-                return dynPrompt;
-            }
+        try {
+            localStorage.removeItem(ALL_PROMPTS_HISTORY_KEY);
+        } catch (e) {
+            console.warn('Failed to reset prompt history:', e);
         }
 
-        // Absolute last resort
-        const lastResort = `Day ${dayIndex}: Take a moment to breathe and check in with yourself. What arises?`;
-        cacheDailyPrompt(dayIndex, lastResort);
-        return lastResort;
+        // Retry with fresh history — only current journey entries excluded
+        const freshUsed = new Set(entryPrompts);
+        const freshShuffled = shuffle(promptsForMonth);
+        selectedPrompt = freshShuffled.find(p => !freshUsed.has(p.text))
+            ?? freshShuffled[0]; // absolute safety — use any prompt if needed
     }
 
     // Cache the selected prompt for today (persists across sessions)
