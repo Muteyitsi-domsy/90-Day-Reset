@@ -813,7 +813,25 @@ const App: React.FC = () => {
     if (allNewBadges.length > 0) {
       setCelebrationQueue(prev => [...prev, ...allNewBadges]);
     }
-    // --- End of Streak Logic ---
+
+    // --- Day-based share trigger (fires for all users regardless of streak) ---
+    // Consistent users who earned a streak badge for this same day are already
+    // covered by the streak path (MilestoneCelebration → SharePrompt), so we
+    // skip here to avoid showing the share prompt twice.
+    const DAY_SHARE_MAP: Partial<Record<number, 'day7' | 'day30' | 'day60' | 'day90'>> = {
+      7: 'day7', 30: 'day30', 60: 'day60', 90: 'day90',
+    };
+    const dayShareMilestone = DAY_SHARE_MAP[day];
+    if (dayShareMilestone && severity < 2) {
+      const journeyBadgeId = `journey-${day}`;
+      const streakCoversThis =
+        allNewBadges.some(b => b.id === journeyBadgeId) ||
+        existingBadges.some(b => b.id === journeyBadgeId);
+      if (!streakCoversThis) {
+        setShareMilestone(dayShareMilestone);
+      }
+    }
+    // --- End of Day-based share trigger ---
 
     if (severity >= 2) {
       // Mark entry as crisis-flagged so UI can handle it appropriately
@@ -2540,7 +2558,7 @@ const App: React.FC = () => {
           }}
         />
       )}
-      {shareMilestone && userProfile && (
+      {crisisSeverity === 0 && shareMilestone && userProfile && (
         <SharePrompt
           isOpen={true}
           onClose={() => setShareMilestone(null)}
