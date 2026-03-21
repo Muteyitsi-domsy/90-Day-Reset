@@ -80,7 +80,7 @@ const cacheDailyPrompt = (dayIndex: number, prompt: string) => {
 // EXPANDED PROMPT POOL - 50 prompts per arc per month = 150 per arc = ~470 total
 // Prompts sourced from arc philosophy + book: "Where the Healed Congregate"
 // Every prompt is arc-native — no cross-arc borrowing
-const PROMPTS: Record<Arc, Record<number, Prompt[]>> = {
+export const PROMPTS: Record<Arc, Record<number, Prompt[]>> = {
     release: {
         1: [ // Month 1: Awareness & Gentleness (50 prompts)
             { text: "Looking back on yesterday, what emotion showed up unexpectedly? Let it be here without judgment.", category: 'reflection' },
