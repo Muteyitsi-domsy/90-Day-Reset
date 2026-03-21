@@ -44,6 +44,7 @@ import { checkForAppUpdate } from './utils/appUpdate';
 import { calculateUpdatedStreak, recalculateStreakFromDates } from './services/streakService';
 import { checkForNewMilestones } from './services/milestoneService';
 import MilestoneCelebration from './components/MilestoneCelebration';
+import { SharePrompt } from './components/SharePrompt';
 import BadgeCollection from './components/BadgeCollection';
 import MonthlySummaryModal from './components/MonthlySummaryModal';
 import AnnualRecapModal from './components/AnnualRecapModal';
@@ -162,6 +163,7 @@ const App: React.FC = () => {
   // Milestone celebration queue
   const [celebrationQueue, setCelebrationQueue] = useState<EarnedBadge[]>([]);
   const [showBadgeCollection, setShowBadgeCollection] = useState(false);
+  const [shareMilestone, setShareMilestone] = useState<'day7' | 'day30' | 'day60' | 'day90' | 'streak7' | 'streak30' | null>(null);
 
   // Mood summary state
   const [showMonthlySummaryModal, setShowMonthlySummaryModal] = useState(false);
@@ -2515,15 +2517,35 @@ const App: React.FC = () => {
         <MilestoneCelebration
           badge={celebrationQueue[0]}
           onDismiss={() => {
+            const dismissed = celebrationQueue[0];
             setCelebrationQueue(prev => prev.slice(1));
             // Mark badge as celebrated in profile
             setUserProfile(prev => prev ? {
               ...prev,
               earnedBadges: (prev.earnedBadges || []).map(b =>
-                b.id === celebrationQueue[0].id ? { ...b, celebrated: true } : b
+                b.id === dismissed.id ? { ...b, celebrated: true } : b
               ),
             } : null);
+            // Offer share prompt for key journey milestones
+            const shareMap: Partial<Record<string, 'day7' | 'day30' | 'day60' | 'day90' | 'streak7' | 'streak30'>> = {
+              'journey-7': 'day7',
+              'journey-30': 'day30',
+              'journey-60': 'day60',
+              'journey-90': 'day90',
+              'overall-7': 'streak7',
+              'overall-30': 'streak30',
+            };
+            const milestone = shareMap[dismissed.id];
+            if (milestone) setShareMilestone(milestone);
           }}
+        />
+      )}
+      {shareMilestone && userProfile && (
+        <SharePrompt
+          isOpen={true}
+          onClose={() => setShareMilestone(null)}
+          userProfile={userProfile}
+          milestone={shareMilestone}
         />
       )}
       <ReportViewer

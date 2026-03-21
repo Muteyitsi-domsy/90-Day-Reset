@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Settings, UserProfile, JournalEntry, HunchType, SubscriptionTier } from '../types';
 import { getDayAndMonth } from '../services/geminiService';
 import { QuotaStatus } from './QuotaStatus';
-import { ShareButton } from './ShareButton';
 
 interface MenuProps {
     isOpen: boolean;
@@ -910,15 +909,6 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
 
-                    {/* Share */}
-                    {userProfile && (
-                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
-                            <ShareButton
-                                userProfile={userProfile}
-                                onClose={() => setOpenSection(null)}
-                            />
-                        </div>
-                    )}
 
                     {/* Data Management (GDPR) */}
                      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
