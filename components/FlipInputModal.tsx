@@ -371,7 +371,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] z-40 animate-fade-in-fast" role="dialog" aria-modal="true">
-      <div className="absolute right-4 flex items-center gap-2" style={{ top: 'max(1rem, env(safe-area-inset-top))' }}>
+      <div className="absolute right-4 flex items-center gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
         {!isEditing && step !== 'challenge' && !isGeneratingQuestion && (
           <button
             onClick={handleBack}
@@ -392,7 +392,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
 
       <div className="flex flex-col h-full px-4 pb-4 safe-area-top md:px-8 md:pb-8">
         {!isEditing && (
-          <div className="max-w-3xl w-full mx-auto mt-10">
+          <div className="max-w-3xl w-full mx-auto mt-16">
             {renderProgressBar()}
           </div>
         )}

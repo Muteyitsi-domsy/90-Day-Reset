@@ -200,8 +200,10 @@ export const getOfferings = async (): Promise<SubscriptionOffering | null> => {
     const yearly = currentOffering.annual;
 
     // journey90 is a custom package — find it by product identifier in availablePackages
+    // iOS uses plain 'pro_journey_90'; Android appends ':pro-journey-90-base'
     const journey90Pkg = (currentOffering.availablePackages || []).find(
-      pkg => pkg.product.identifier === PRODUCT_IDS.JOURNEY_90
+      pkg => pkg.product.identifier === PRODUCT_IDS.JOURNEY_90 ||
+             pkg.product.identifier === 'pro_journey_90'
     );
 
     return {

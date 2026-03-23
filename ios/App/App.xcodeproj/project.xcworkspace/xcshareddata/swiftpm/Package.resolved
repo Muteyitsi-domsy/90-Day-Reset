@@ -1,13 +1,13 @@
 {
-  "originHash" : "69edf58f385b8e5952fec40c065d20c51e0a3f2880a7cc07f575ac553b26f2c7",
+  "originHash" : "38d5f2635470037470fbf781ef5ade3fb004c5f90e4f7ab23255b8e77fcf6c6d",
   "pins" : [
     {
       "identity" : "capacitor-swift-pm",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ionic-team/capacitor-swift-pm.git",
+      "location" : "https://github.com/ionic-team/capacitor-swift-pm",
       "state" : {
-        "revision" : "1f324fe7bdbdc8c5cc28bea48a231545a8c2e823",
-        "version" : "8.1.0"
+        "revision" : "0e862e6ff13852a710c8a484180ca4d6a2cc9761",
+        "version" : "8.2.0"
       }
     },
     {
@@ -17,15 +17,6 @@
       "state" : {
         "revision" : "d9359e8da425c682a3ccd42627ba7fa83ed481ed",
         "version" : "17.28.1"
-      }
-    },
-    {
-      "identity" : "purchases-ios",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/RevenueCat/purchases-ios",
-      "state" : {
-        "revision" : "abb0d68c3e7ba97b16ab51c38fcaca16b0e358c8",
-        "version" : "5.66.0"
       }
     },
     {

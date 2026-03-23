@@ -128,14 +128,14 @@ const JournalInputModal: React.FC<JournalInputModalProps> = ({ prompt, onSave, o
             <button
                 onClick={onClose}
                 className="absolute right-4 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
-                style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
+                style={{ top: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
                 aria-label="Close writing view"
             >
                 <CloseIcon className="w-8 h-8" />
             </button>
             <div className="flex flex-col h-full px-4 pb-4 safe-area-top md:px-8 md:pb-8">
                 <main className="flex-1 overflow-y-auto flex items-center justify-center">
-                    <div className="max-w-3xl w-full h-full flex flex-col pt-10">
+                    <div className="max-w-3xl w-full h-full flex flex-col pt-16">
                         <h2 className="text-xl md:text-2xl font-light text-[var(--text-secondary)] mb-6 text-center whitespace-pre-wrap">{prompt || 'Loading...'}</h2>
                         {renderHunchTypeSelector()}
                         <textarea

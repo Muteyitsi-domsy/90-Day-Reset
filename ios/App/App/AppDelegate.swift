@@ -1,14 +1,12 @@
 import UIKit
 import Capacitor
-import RevenueCat
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.	\
-        Purchases.configure(withAPIKey:"appl_oVgibjBpGYgsSTOlebXOGLystoL")
+        // Override point for customization after application launch.
         return true
     }
 

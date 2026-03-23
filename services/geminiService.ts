@@ -145,6 +145,7 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
                 model: 'gemini-2.5-flash',
                 contents: prompt,
                 config: {
+                    maxOutputTokens: 2048,
                     responseMimeType: 'application/json',
                     responseSchema: {
                         type: Type.OBJECT,
@@ -165,6 +166,7 @@ export async function analyzeOnboardingAnswers(answers: OnboardingAnswers): Prom
         return result;
     } catch (error) {
         console.error("Error analyzing onboarding answers:", error);
+        console.error("Onboarding error full dump:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
 
         // Provide user-friendly error messages for quota errors
         if (error && typeof error === 'object' && 'message' in error) {
@@ -209,6 +211,10 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
             const response = await ai!.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
+                config: {
+                    maxOutputTokens: 2048,
+                    thinkingConfig: { thinkingBudget: 0 }
+                }
             });
 
             return response.text.trim();
@@ -217,6 +223,9 @@ export async function generateIdealSelfManifesto(answers: IdealSelfAnswers): Pro
         return result;
     } catch (error) {
         console.error("Error generating manifesto:", error);
+        if (error && typeof error === 'object' && 'message' in error) {
+            console.error("Manifesto error detail:", (error as Error).message);
+        }
 
         // Provide user-friendly error messages for quota errors
         if (error && typeof error === 'object' && 'message' in error) {
@@ -290,6 +299,7 @@ export async function analyzeJournalEntry(entryText: string, forceRefresh = fals
                 model: 'gemini-2.5-flash',
                 contents: prompt,
                 config: {
+                    maxOutputTokens: 2048,
                     responseMimeType: 'application/json',
                     responseSchema: {
                         type: Type.OBJECT,
@@ -466,6 +476,10 @@ Observe the qualities that were present in each phase without prescribing or adv
             const response = await ai!.models.generateContent({
                 model: 'gemini-2.5-flash', // Using a powerful model for the final, complex summary
                 contents: prompt,
+                config: {
+                    maxOutputTokens: 4096,
+                    thinkingConfig: { thinkingBudget: 0 }
+                }
             });
 
             return response.text.trim();
@@ -608,6 +622,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
                 model: 'gemini-2.5-flash',
                 contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
                 config: {
+                    maxOutputTokens: 4096,
                     systemInstruction,
                     responseMimeType: 'application/json',
                     responseSchema: {
@@ -797,6 +812,7 @@ Your output must be a single, clean JSON object matching the provided schema.`;
                 model: 'gemini-2.5-flash',
                 contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
                 config: {
+                    maxOutputTokens: 4096,
                     systemInstruction,
                     responseMimeType: 'application/json',
                     responseSchema: {
