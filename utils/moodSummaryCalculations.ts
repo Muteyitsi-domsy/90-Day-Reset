@@ -11,7 +11,8 @@ const MONTH_NAMES = [
 // All mood contexts for category breakdown
 const ALL_CONTEXTS: MoodContext[] = [
   'career', 'family', 'romantic', 'friendships',
-  'physical_health', 'mental_health', 'spirituality'
+  'physical_health', 'mental_health', 'spirituality', 'finances',
+  'studies', 'decisions', 'motherhood', 'fatherhood',
 ];
 
 // Get emoji for an emotion (handles both default and custom)

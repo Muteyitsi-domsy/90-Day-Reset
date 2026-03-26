@@ -661,9 +661,7 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
     const promptsForMonth = PROMPTS[arc][month];
 
     if (!promptsForMonth || promptsForMonth.length === 0) {
-        const fallback = "How are you feeling today, in this moment?";
-        addToPromptsHistory(fallback);
-        return fallback;
+        return "How are you feeling today, in this moment?";
     }
 
     // Shuffle prompts for randomness

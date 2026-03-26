@@ -6,11 +6,19 @@ interface ShareButtonProps {
   onClose?: () => void;
 }
 
+function computeCurrentDay(startDate: string): number {
+  const start = new Date(startDate);
+  const today = new Date();
+  const diffMs = today.getTime() - start.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+  return Math.min(90, Math.max(1, diffDays));
+}
+
 export function ShareButton({ userProfile, onClose }: ShareButtonProps) {
   const [copySuccess, setCopySuccess] = useState(false);
 
   const appUrl = window.location.origin;
-  const day = userProfile.day;
+  const day = userProfile.startDate ? computeCurrentDay(userProfile.startDate) : 0;
 
   const message = day && day > 0
     ? `Day ${day} of 90 — quietly showing up for myself. Daily reflection, honest check-ins. Something is shifting.\n\nIf you've been thinking about doing the inner work, Renew90 is worth trying.\n\n${appUrl}`

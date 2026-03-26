@@ -10,6 +10,11 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false, // Set to true for debugging
   },
   plugins: {
+    Keyboard: {
+      resize: 'body',
+      resizeOnFullScreen: true,
+      scrollAssist: true,
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,

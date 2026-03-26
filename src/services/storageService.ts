@@ -1,4 +1,4 @@
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive } from '../types';
 import { LocalStorageService } from './localStorageService';
 import { FirestoreService } from './firestoreService';
 
@@ -47,6 +47,9 @@ export interface StorageService {
 
   // Clear only 90-day journey data (preserves mood and flip journals)
   clearJourneyData(): Promise<void>;
+
+  // Archive a completed journey before wiping. Immutable once written.
+  saveJourneyArchive(archive: JourneyArchive): Promise<void>;
 
   // Optional: Set user ID for encryption (only applicable to LocalStorageService)
   setUserId?(userId: string | undefined): void;

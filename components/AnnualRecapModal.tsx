@@ -12,6 +12,11 @@ const CATEGORY_LABELS: Record<MoodContext, string> = {
   physical_health: 'Physical Health',
   mental_health: 'Mental Health',
   spirituality: 'Spirituality',
+  finances: 'Finances',
+  studies: 'Studies',
+  decisions: 'Decisions',
+  motherhood: 'Motherhood',
+  fatherhood: 'Fatherhood',
 };
 
 // Category icons/emojis
@@ -23,6 +28,11 @@ const CATEGORY_ICONS: Record<MoodContext, string> = {
   physical_health: '🏃',
   mental_health: '🧠',
   spirituality: '🙏',
+  finances: '💰',
+  studies: '📚',
+  decisions: '⚖️',
+  motherhood: '🤱',
+  fatherhood: '👨‍🍼',
 };
 
 type ViewMode = 'overview' | MoodContext;

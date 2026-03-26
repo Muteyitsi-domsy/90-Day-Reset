@@ -67,6 +67,7 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
   const [showCustomEmotionForm, setShowCustomEmotionForm] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customEmoji, setCustomEmoji] = useState('');
+  const [emojiError, setEmojiError] = useState('');
 
   // Generate prompt when selections are complete
   useEffect(() => {
@@ -94,13 +95,40 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
     setStep('intensity');
   };
 
+  // Returns true if the string contains at least one emoji character.
+  // Uses Unicode Extended_Pictographic which covers all standard emoji.
+  const isValidEmoji = (str: string): boolean =>
+    str.length > 0 && /\p{Extended_Pictographic}/u.test(str);
+
+  // Controlled onChange for the emoji field.
+  // Uses Intl.Segmenter to extract exactly the first grapheme cluster so that
+  // compound emojis (ZWJ sequences, skin-tone variants, flag sequences) are
+  // treated as a single character rather than being truncated mid-codepoint.
+  const handleEmojiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    if (!raw) {
+      setCustomEmoji('');
+      setEmojiError('');
+      return;
+    }
+    const segmenter = new Intl.Segmenter();
+    const first = Array.from(segmenter.segment(raw))[0]?.segment ?? '';
+    setCustomEmoji(first);
+    if (first && !isValidEmoji(first)) {
+      setEmojiError('Please enter an emoji, not text.');
+    } else {
+      setEmojiError('');
+    }
+  };
+
   const handleAddCustomEmotion = () => {
-    if (customName.trim() && customEmoji.trim()) {
-      onAddCustomEmotion(customName.trim(), customEmoji.trim());
-      handleEmotionSelect(customName.trim(), true, customEmoji.trim());
+    if (customName.trim() && isValidEmoji(customEmoji)) {
+      onAddCustomEmotion(customName.trim(), customEmoji);
+      handleEmotionSelect(customName.trim(), true, customEmoji);
       setShowCustomEmotionForm(false);
       setCustomName('');
       setCustomEmoji('');
+      setEmojiError('');
     }
   };
 
@@ -230,18 +258,27 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
                 className="w-full px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-[var(--text-primary)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)]"
                 maxLength={20}
               />
-              <input
-                type="text"
-                placeholder="Emoji (e.g., 🥺)"
-                value={customEmoji}
-                onChange={(e) => setCustomEmoji(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-[var(--text-primary)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)]"
-                maxLength={4}
-              />
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    placeholder="Tap emoji keyboard 🥺"
+                    value={customEmoji}
+                    onChange={handleEmojiChange}
+                    className={`flex-1 px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border text-[var(--text-primary)] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--ring-color)] ${emojiError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+                  />
+                  {customEmoji && isValidEmoji(customEmoji) && (
+                    <span className="text-4xl leading-none">{customEmoji}</span>
+                  )}
+                </div>
+                {emojiError && (
+                  <p className="text-xs text-red-500">{emojiError}</p>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleAddCustomEmotion}
-                  disabled={!customName.trim() || !customEmoji.trim()}
+                  disabled={!customName.trim() || !isValidEmoji(customEmoji)}
                   className="flex-1 py-2 rounded-lg bg-[var(--accent-primary)] text-white font-medium hover:bg-[var(--accent-primary-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add & Select
@@ -251,6 +288,7 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
                     setShowCustomEmotionForm(false);
                     setCustomName('');
                     setCustomEmoji('');
+                    setEmojiError('');
                   }}
                   className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-[var(--text-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
@@ -319,6 +357,10 @@ const MoodInputModal: React.FC<MoodInputModalProps> = ({
       { id: 'mental_health', label: 'Mental Health', icon: '🧠' },
       { id: 'spirituality', label: 'Spirituality', icon: '✨' },
       { id: 'finances', label: 'Finances', icon: '💰' },
+      { id: 'studies', label: 'Studies', icon: '📚' },
+      { id: 'decisions', label: 'Decisions', icon: '⚖️' },
+      { id: 'motherhood', label: 'Motherhood', icon: '🤱' },
+      { id: 'fatherhood', label: 'Fatherhood', icon: '👨‍🍼' },
     ];
 
     return (

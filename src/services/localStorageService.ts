@@ -1,4 +1,4 @@
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive } from '../types';
 import { StorageService } from './storageService';
 import { safeRead } from '../utils/encryption';
 
@@ -338,6 +338,23 @@ export class LocalStorageService implements StorageService {
     } catch (error) {
       console.error('Error clearing localStorage:', error);
       throw new Error('Failed to clear storage');
+    }
+  }
+
+  /**
+   * Archive a completed journey locally.
+   * For users without cloud sync this is stored in localStorage only —
+   * the secondary product won't see it until they sign in and sync.
+   */
+  async saveJourneyArchive(archive: JourneyArchive): Promise<void> {
+    try {
+      const key = 'renew90_journey_archives';
+      const existing: JourneyArchive[] = JSON.parse(localStorage.getItem(key) || '[]');
+      existing.push({ ...archive, archivedAt: new Date().toISOString() });
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch (error) {
+      // Non-critical — local archive is a fallback only
+      console.warn('Could not save journey archive to localStorage:', error);
     }
   }
 

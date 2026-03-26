@@ -5,18 +5,23 @@
  * App.tsx handlePauseJourney / handleResumeJourney (minus React state
  * and window.confirm). If those handlers change, these tests must
  * be updated — that's intentional: they act as a change-detector.
+ *
+ * Also covers:
+ *   - Subscription-lapse auto-pause (mirrors the initSubscription effect)
+ *   - Subscription-restore auto-unpause (same effect)
+ *   - Grace period end-date and countdown calculation
  */
 
 import { describe, test, expect } from 'vitest';
 import { getDayAndMonth } from '../services/geminiService';
 import { calculateUpdatedStreak } from '../services/streakService';
-import type { UserProfile } from '../types';
+import type { UserProfile, SubscriptionStatus, SubscriptionTier } from '../types';
 import { makeProfile, startDateForDay } from './helpers/factories';
 
 // ─── Mirrors App.tsx handlePauseJourney (pure transform) ──────────────────
 
 function applyPause(profile: UserProfile, now: Date): UserProfile {
-  return { ...profile, isPaused: true, pausedDate: now.toISOString() };
+  return { ...profile, isPaused: true, pausedDate: now.toISOString(), pauseReason: 'user' };
 }
 
 // ─── Mirrors App.tsx handleResumeJourney (pure transform) ─────────────────
@@ -40,9 +45,87 @@ function applyResume(profile: UserProfile, resumedAt: Date): UserProfile {
     ...profile,
     isPaused: false,
     pausedDate: undefined,
+    pauseReason: undefined,
     startDate: newStartDate,
     lastEntryDate: newLastEntryDate,
   };
+}
+
+// ─── Mirrors App.tsx initSubscription auto-pause (pure transform) ──────────
+// Applies the subscription-lapse branch: sets isPaused + pauseReason:'subscription_lapsed'.
+// Returns the profile unchanged when the guard conditions are not met.
+
+function applySubscriptionLapsePause(
+  profile: UserProfile | null,
+  subStatus: SubscriptionStatus,
+  subTier: SubscriptionTier,
+  now: Date
+): UserProfile | null {
+  const shouldPause =
+    subStatus === 'expired' &&
+    subTier !== 'journey90' &&
+    subTier !== 'free' &&
+    subTier !== 'beta';
+
+  if (!shouldPause) return profile;
+  if (!profile) return profile;
+  if (profile.isPaused) return profile;
+  if (profile.journeyCompleted) return profile;
+  if (!profile.startDate) return profile;
+
+  return {
+    ...profile,
+    isPaused: true,
+    pausedDate: now.toISOString(),
+    pauseReason: 'subscription_lapsed',
+  };
+}
+
+// ─── Mirrors App.tsx initSubscription auto-unpause (pure transform) ────────
+// Applies the subscription-restore branch: resumes only if pauseReason is
+// 'subscription_lapsed'. User-initiated pauses are left untouched.
+
+function applySubscriptionRestoreResume(
+  profile: UserProfile | null,
+  isActive: boolean,
+  subStatus: SubscriptionStatus,
+  resumedAt: Date
+): UserProfile | null {
+  if (!profile) return profile;
+  if (!isActive || subStatus === 'grace_period') return profile;
+  if (!profile.isPaused || profile.pauseReason !== 'subscription_lapsed') return profile;
+
+  const pausedAt = profile.pausedDate ? new Date(profile.pausedDate) : resumedAt;
+  const pausedMs = resumedAt.getTime() - pausedAt.getTime();
+  const newStartDate = new Date(new Date(profile.startDate).getTime() + pausedMs).toISOString();
+  const newLastEntry = profile.lastEntryDate
+    ? new Date(new Date(profile.lastEntryDate).getTime() + pausedMs).toISOString()
+    : profile.lastEntryDate;
+
+  return {
+    ...profile,
+    isPaused: false,
+    pausedDate: undefined,
+    pauseReason: undefined,
+    startDate: newStartDate,
+    lastEntryDate: newLastEntry,
+  };
+}
+
+// ─── Mirrors subscriptionService.ts grace period end-date calculation ──────
+
+function calcGracePeriodEndDate(billingIssueAt: Date, platform: 'ios' | 'android'): Date {
+  const graceDays = platform === 'ios' ? 3 : 7;
+  const end = new Date(billingIssueAt);
+  end.setDate(end.getDate() + graceDays);
+  return end;
+}
+
+// ─── Mirrors GracePeriodBanner.tsx daysLeft calculation ───────────────────
+
+function calcGracePeriodDaysLeft(gracePeriodEndDate: Date, now: Date): number {
+  const diff = gracePeriodEndDate.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
 const DAYS_MS = (n: number) => n * 24 * 60 * 60 * 1000;
@@ -62,6 +145,11 @@ describe('Pause logic', () => {
   test('pausedDate is recorded correctly', () => {
     const p = applyPause(makeProfile(), T_PAUSE);
     expect(p.pausedDate).toBe(T_PAUSE.toISOString());
+  });
+
+  test('pauseReason is set to user for manual pause', () => {
+    const p = applyPause(makeProfile(), T_PAUSE);
+    expect(p.pauseReason).toBe('user');
   });
 
   test('startDate is unchanged after pause', () => {
@@ -92,6 +180,12 @@ describe('Resume logic', () => {
     const paused = applyPause(makeProfile({ startDate: T_START.toISOString() }), T_PAUSE);
     const r = applyResume(paused, T_RESUME);
     expect(r.pausedDate).toBeUndefined();
+  });
+
+  test('pauseReason is cleared to undefined on resume', () => {
+    const paused = applyPause(makeProfile({ startDate: T_START.toISOString() }), T_PAUSE);
+    const r = applyResume(paused, T_RESUME);
+    expect(r.pauseReason).toBeUndefined();
   });
 
   test('startDate is shifted forward by the exact pause duration', () => {
@@ -229,5 +323,275 @@ describe('Pause/Resume — streak continuity', () => {
     // startDate should be shifted by 5+3 = 8 days total
     const totalShift = new Date(afterCycle.startDate).getTime() - T_START.getTime();
     expect(totalShift).toBe(DAYS_MS(8));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Subscription-lapse auto-pause
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Subscription lapse — auto-pause', () => {
+
+  test('monthly subscription lapse pauses an active journey', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'monthly', T_PAUSE);
+    expect(result?.isPaused).toBe(true);
+    expect(result?.pauseReason).toBe('subscription_lapsed');
+    expect(result?.pausedDate).toBe(T_PAUSE.toISOString());
+  });
+
+  test('yearly subscription lapse pauses an active journey', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'yearly', T_PAUSE);
+    expect(result?.isPaused).toBe(true);
+    expect(result?.pauseReason).toBe('subscription_lapsed');
+  });
+
+  test('journey90 lapse does NOT auto-pause (one-time plan completes fully)', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'journey90', T_PAUSE);
+    expect(result?.isPaused).toBeFalsy();
+  });
+
+  test('free tier status change does NOT auto-pause', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'free', T_PAUSE);
+    expect(result?.isPaused).toBeFalsy();
+  });
+
+  test('beta expiry does NOT auto-pause', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'beta', T_PAUSE);
+    expect(result?.isPaused).toBeFalsy();
+  });
+
+  test('active status does NOT trigger auto-pause', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'active', 'monthly', T_PAUSE);
+    expect(result?.isPaused).toBeFalsy();
+  });
+
+  test('grace_period status does NOT trigger auto-pause (still active)', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'grace_period', 'monthly', T_PAUSE);
+    expect(result?.isPaused).toBeFalsy();
+  });
+
+  test('already-paused journey is not double-paused', () => {
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      pauseReason: 'user',
+    });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'monthly', T_RESUME);
+    // Should remain unchanged (original pausedDate, original pauseReason)
+    expect(result?.pausedDate).toBe(T_PAUSE.toISOString());
+    expect(result?.pauseReason).toBe('user');
+  });
+
+  test('completed journey is not auto-paused', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString(), journeyCompleted: true });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'monthly', T_PAUSE);
+    expect(result?.isPaused).toBeFalsy();
+  });
+
+  test('profile with no startDate is not auto-paused', () => {
+    const profile = makeProfile({ startDate: '' });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'monthly', T_PAUSE);
+    expect(result?.isPaused).toBeFalsy();
+  });
+
+  test('null profile returns null', () => {
+    const result = applySubscriptionLapsePause(null, 'expired', 'monthly', T_PAUSE);
+    expect(result).toBeNull();
+  });
+
+  test('startDate is unchanged after auto-pause', () => {
+    const profile = makeProfile({ startDate: T_START.toISOString() });
+    const result = applySubscriptionLapsePause(profile, 'expired', 'monthly', T_PAUSE);
+    expect(result?.startDate).toBe(T_START.toISOString());
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Subscription restore — auto-unpause
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Subscription restore — auto-unpause', () => {
+
+  test('subscription_lapsed journey is unpaused when subscription becomes active', () => {
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      pauseReason: 'subscription_lapsed',
+    });
+    const result = applySubscriptionRestoreResume(profile, true, 'active', T_RESUME);
+    expect(result?.isPaused).toBe(false);
+    expect(result?.pausedDate).toBeUndefined();
+    expect(result?.pauseReason).toBeUndefined();
+  });
+
+  test('startDate is shifted forward by the paused duration on restore', () => {
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      pauseReason: 'subscription_lapsed',
+    });
+    const result = applySubscriptionRestoreResume(profile, true, 'active', T_RESUME);
+    const expectedShift = T_RESUME.getTime() - T_PAUSE.getTime(); // 7 days
+    const actualShift = new Date(result!.startDate).getTime() - T_START.getTime();
+    expect(actualShift).toBe(expectedShift);
+  });
+
+  test('lastEntryDate is shifted forward by the paused duration on restore', () => {
+    const lastEntry = new Date('2026-01-14T12:00:00.000Z');
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      lastEntryDate: lastEntry.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      pauseReason: 'subscription_lapsed',
+    });
+    const result = applySubscriptionRestoreResume(profile, true, 'active', T_RESUME);
+    const expectedShift = T_RESUME.getTime() - T_PAUSE.getTime();
+    const actualShift = new Date(result!.lastEntryDate!).getTime() - lastEntry.getTime();
+    expect(actualShift).toBe(expectedShift);
+  });
+
+  test('user-paused journey is NOT auto-unpaused when subscription restores', () => {
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      pauseReason: 'user',
+    });
+    const result = applySubscriptionRestoreResume(profile, true, 'active', T_RESUME);
+    // Must stay paused — user chose this, not subscription system
+    expect(result?.isPaused).toBe(true);
+    expect(result?.pauseReason).toBe('user');
+  });
+
+  test('pause with no pauseReason (legacy) is NOT auto-unpaused', () => {
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      // pauseReason intentionally absent
+    });
+    const result = applySubscriptionRestoreResume(profile, true, 'active', T_RESUME);
+    expect(result?.isPaused).toBe(true);
+  });
+
+  test('grace_period restoration does NOT trigger auto-unpause', () => {
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      pauseReason: 'subscription_lapsed',
+    });
+    const result = applySubscriptionRestoreResume(profile, true, 'grace_period', T_RESUME);
+    expect(result?.isPaused).toBe(true);
+  });
+
+  test('isActive:false does NOT trigger auto-unpause', () => {
+    const profile = makeProfile({
+      startDate: T_START.toISOString(),
+      isPaused: true,
+      pausedDate: T_PAUSE.toISOString(),
+      pauseReason: 'subscription_lapsed',
+    });
+    const result = applySubscriptionRestoreResume(profile, false, 'expired', T_RESUME);
+    expect(result?.isPaused).toBe(true);
+  });
+
+  test('null profile returns null', () => {
+    const result = applySubscriptionRestoreResume(null, true, 'active', T_RESUME);
+    expect(result).toBeNull();
+  });
+
+  test('journey day is preserved after auto-unpause (same as manual resume)', () => {
+    // User was on day 30 when they lapsed. After 7-day billing gap, they restore.
+    // They should still be on day 30, not day 37.
+    const profile = makeProfile({ startDate: startDateForDay(30) });
+    const { day: dayBefore } = getDayAndMonth(profile.startDate);
+    expect(dayBefore).toBe(30);
+
+    const pauseNow = new Date();
+    const pausedProfile = { ...profile, isPaused: true, pausedDate: pauseNow.toISOString(), pauseReason: 'subscription_lapsed' as const };
+
+    const resumeDate = new Date(pauseNow.getTime() + DAYS_MS(7));
+    const result = applySubscriptionRestoreResume(pausedProfile, true, 'active', resumeDate)!;
+
+    const fakeToday = new Date(resumeDate);
+    fakeToday.setHours(0, 0, 0, 0);
+    const newStart = new Date(result.startDate);
+    newStart.setHours(0, 0, 0, 0);
+    const dayAfter = Math.ceil(Math.max(0, fakeToday.getTime() - newStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    expect(dayAfter).toBe(30);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Grace period end-date and countdown calculation
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Grace period — end-date calculation', () => {
+
+  const BILLING_ISSUE = new Date('2026-03-20T12:00:00.000Z');
+
+  test('iOS grace period ends 3 days after billing issue', () => {
+    const end = calcGracePeriodEndDate(BILLING_ISSUE, 'ios');
+    const expected = new Date('2026-03-23T12:00:00.000Z');
+    expect(end.getTime()).toBe(expected.getTime());
+  });
+
+  test('Android grace period ends 7 days after billing issue', () => {
+    const end = calcGracePeriodEndDate(BILLING_ISSUE, 'android');
+    const expected = new Date('2026-03-27T12:00:00.000Z');
+    expect(end.getTime()).toBe(expected.getTime());
+  });
+});
+
+describe('Grace period — countdown (daysLeft)', () => {
+
+  test('returns correct days remaining when well within grace period', () => {
+    const end = new Date('2026-03-27T12:00:00.000Z');
+    const now = new Date('2026-03-24T12:00:00.000Z'); // 3 days before end
+    expect(calcGracePeriodDaysLeft(end, now)).toBe(3);
+  });
+
+  test('returns 1 on the last day', () => {
+    const end = new Date('2026-03-27T12:00:00.000Z');
+    const now = new Date('2026-03-27T06:00:00.000Z'); // same day, earlier
+    expect(calcGracePeriodDaysLeft(end, now)).toBe(1);
+  });
+
+  test('returns 0 when grace period has already ended', () => {
+    const end = new Date('2026-03-27T12:00:00.000Z');
+    const now = new Date('2026-03-28T12:00:00.000Z'); // 1 day past end
+    expect(calcGracePeriodDaysLeft(end, now)).toBe(0);
+  });
+
+  test('never returns a negative value', () => {
+    const end = new Date('2026-03-20T12:00:00.000Z');
+    const now = new Date('2026-04-01T12:00:00.000Z'); // 12 days past end
+    expect(calcGracePeriodDaysLeft(end, now)).toBe(0);
+  });
+
+  test('iOS: 3-day window gives correct countdown from day 1', () => {
+    const billingIssue = new Date('2026-03-20T12:00:00.000Z');
+    const end = calcGracePeriodEndDate(billingIssue, 'ios');
+    const now = new Date('2026-03-20T18:00:00.000Z'); // same day as issue, 6h later
+    expect(calcGracePeriodDaysLeft(end, now)).toBe(3);
+  });
+
+  test('Android: 7-day window gives correct countdown from day 1', () => {
+    const billingIssue = new Date('2026-03-20T12:00:00.000Z');
+    const end = calcGracePeriodEndDate(billingIssue, 'android');
+    const now = new Date('2026-03-20T18:00:00.000Z');
+    expect(calcGracePeriodDaysLeft(end, now)).toBe(7);
   });
 });

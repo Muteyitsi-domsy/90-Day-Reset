@@ -44,6 +44,7 @@ const DEFAULT_STATE: SubscriptionState = {
   betaCodeUsed: null,
   willRenew: false,
   productId: null,
+  gracePeriodEndDate: null,
 };
 
 export function useSubscription(userId?: string): UseSubscriptionReturn {

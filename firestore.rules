@@ -178,6 +178,30 @@ service cloud.firestore {
         // Delete: User can delete their own entries
         allow delete: if isOwner(userId);
       }
+
+      // Completed journey archives — immutable records for secondary product use.
+      // One document per completed journey, grouped by year via the 'year' field.
+      match /journeyArchives/{archiveId} {
+        // Read: owner only (secondary product reads with the same Firebase auth)
+        allow read: if isOwner(userId);
+
+        // Create: owner only, max 1MB (90 days of entries + AI summary)
+        allow create: if isOwner(userId)
+          && isWithinSizeLimit(1048576)
+          && hasRequiredFields(['id', 'year', 'startDate', 'completedDate', 'entries', 'finalSummary'])
+          && request.resource.data.year is number
+          && isString('id')
+          && isString('startDate')
+          && isString('completedDate')
+          && isString('finalSummary')
+          && request.resource.data.entries is list;
+
+        // Update: NOT allowed — archives are immutable once written
+        allow update: if false;
+
+        // Delete: owner can remove if needed (e.g. GDPR erasure)
+        allow delete: if isOwner(userId);
+      }
     }
 
     // Audit logs collection (append-only)

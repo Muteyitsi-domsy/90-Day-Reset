@@ -27,7 +27,11 @@ export type MoodContext =
   | 'physical_health'
   | 'mental_health'
   | 'spirituality'
-  | 'finances';
+  | 'finances'
+  | 'studies'
+  | 'decisions'
+  | 'motherhood'
+  | 'fatherhood';
 
 export type DefaultEmotion =
   | 'joyful'
@@ -81,6 +85,7 @@ export interface UserProfile {
   lastEntryDate: string;
   isPaused?: boolean;
   pausedDate?: string;
+  pauseReason?: 'user' | 'subscription_lapsed'; // Why the journey was paused
   lastViewedReportDate?: string; // To track the "red dot" notification
 
   // Mood journaling tracking
@@ -267,6 +272,24 @@ export interface AnnualRecapData {
   moodsByCategory: Record<MoodContext, CategoryMoodData>; // Top 3 moods per category
 }
 
+// Journey Archive — immutable record of a completed 90-day journey.
+// Stored in Firestore under /users/{userId}/journeyArchives/{id}.
+// Contains only the data that is wiped on restart (journal entries + profile
+// snapshot). Mood and flip entries are not wiped so they are not archived here;
+// the secondary product can correlate them by date range using startDate/completedDate.
+export interface JourneyArchive {
+  id: string;                    // journey-{YYYY-MM-DD}-{ms} — unique, sortable
+  year: number;                  // Completion year — primary grouping key for secondary product
+  arc: Arc | undefined;          // Journey arc selected by the user
+  startDate: string;             // ISO timestamp: journey start
+  completedDate: string;         // ISO timestamp: day 90 completion
+  intentions: string;            // User's stated intentions at the start
+  idealSelfManifesto: string;    // User's manifesto
+  finalSummary: string;          // Full AI-generated narrative text
+  entries: JournalEntry[];       // All daily/hunch/report entries (these get wiped on restart)
+  archivedAt: string;            // ISO timestamp: when archive was written
+}
+
 // Subscription Types
 export type SubscriptionTier = 'free' | 'monthly' | 'yearly' | 'journey90' | 'beta';
 
@@ -288,6 +311,7 @@ export interface SubscriptionState {
   betaCodeUsed: string | null;
   willRenew: boolean;
   productId: string | null;
+  gracePeriodEndDate: string | null; // Set when status === 'grace_period'
 }
 
 export interface SubscriptionProduct {

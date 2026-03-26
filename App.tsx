@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getDayAndMonth, generateFinalSummary, analyzeJournalEntry, generateWeeklySummary, generateMonthlySummary } from './services/geminiService';
 import { getDailyPrompt, markPromptAsAnswered } from './services/promptGenerator';
-import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry, EarnedBadge, StreakJournalType } from './types';
+import { JournalEntry, UserProfile, EntryAnalysis, Settings, EveningCheckin, SummaryData, HunchType, MoodJournalEntry, CustomEmotion, FlipJournalEntry, EarnedBadge, StreakJournalType, JourneyArchive } from './types';
 import Header from './components/Header';
 import Onboarding from './components/Onboarding';
 import IdealSelfScripting from './components/IdealSelfScripting';
@@ -52,7 +52,9 @@ import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompt
 import { shouldShowMonthlySummary, shouldShowAnnualRecap, calculateMonthlySummary, calculateAnnualRecap } from './utils/moodSummaryCalculations';
 import type { MoodSummaryState, MonthlySummaryData, AnnualRecapData } from './types';
 import PaywallModal from './components/PaywallModal';
+import GracePeriodBanner from './components/GracePeriodBanner';
 import { initializeRevenueCat, setRevenueCatUserId, getSubscriptionState } from './services/subscriptionService';
+import { sanitizeText } from './src/utils/validation';
 
 
 type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
@@ -174,6 +176,8 @@ const App: React.FC = () => {
   // Subscription state
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<import('./types').SubscriptionTier>('free');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<import('./types').SubscriptionStatus>('none');
+  const [gracePeriodEndDate, setGracePeriodEndDate] = useState<string | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
 
   // New journey state (for post-completion flow)
@@ -357,9 +361,54 @@ const App: React.FC = () => {
       const state = await getSubscriptionState();
       setIsSubscribed(state.isActive);
       setSubscriptionTier(state.tier);
+      setSubscriptionStatus(state.status);
+      setGracePeriodEndDate(state.gracePeriodEndDate);
+
       // If not subscribed and on a gated view, redirect to mood journal
       if (!state.isActive) {
         setActiveView(v => (v === 'journey' || v === 'flip') ? 'mood' : v);
+      }
+
+      // Auto-pause: subscription has fully lapsed (not journey90 — they complete fully)
+      // Only pause if the journey is active and wasn't already paused by the user.
+      if (
+        state.status === 'expired' &&
+        state.tier !== 'journey90' &&
+        state.tier !== 'free' &&
+        state.tier !== 'beta'
+      ) {
+        setUserProfile(prev => {
+          if (!prev || prev.isPaused || prev.journeyCompleted || !prev.startDate) return prev;
+          return {
+            ...prev,
+            isPaused: true,
+            pausedDate: new Date().toISOString(),
+            pauseReason: 'subscription_lapsed' as const,
+          };
+        });
+      }
+
+      // Auto-unpause: subscription was restored after lapsing
+      if (state.isActive && state.status !== 'grace_period') {
+        setUserProfile(prev => {
+          if (!prev || !prev.isPaused || prev.pauseReason !== 'subscription_lapsed') return prev;
+          // Adjust startDate by the paused duration so user picks up exactly where they left off
+          const pausedAt = prev.pausedDate ? new Date(prev.pausedDate) : new Date();
+          const resumedAt = new Date();
+          const pausedMs = resumedAt.getTime() - pausedAt.getTime();
+          const newStartDate = new Date(new Date(prev.startDate).getTime() + pausedMs);
+          const newLastEntry = prev.lastEntryDate
+            ? new Date(new Date(prev.lastEntryDate).getTime() + pausedMs).toISOString()
+            : prev.lastEntryDate;
+          return {
+            ...prev,
+            isPaused: false,
+            pausedDate: undefined,
+            pauseReason: undefined,
+            startDate: newStartDate.toISOString(),
+            lastEntryDate: newLastEntry,
+          };
+        });
       }
     };
     initSubscription();
@@ -1139,7 +1188,7 @@ const App: React.FC = () => {
   const handleAddCustomEmotion = (name: string, emoji: string) => {
     const newEmotion: CustomEmotion = {
       id: `custom-${Date.now()}`,
-      name,
+      name: sanitizeText(name),
       emoji,
     };
     setSettings(prev => ({
@@ -1888,6 +1937,31 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Archive the completed journey BEFORE wiping — preserves data for secondary product.
+      // Non-blocking: a failure here never prevents the user from starting a new journey.
+      if (userProfile) {
+        try {
+          const completedDate = userProfile.journeyCompletedDate || new Date().toISOString();
+          const archiveDateStr = completedDate.split('T')[0];
+          const entriesToArchive = completedJourneyEntries.length > 0 ? completedJourneyEntries : journalEntries;
+          const archive: JourneyArchive = {
+            id: `journey-${archiveDateStr}-${Date.now()}`,
+            year: new Date(completedDate).getFullYear(),
+            arc: userProfile.arc,
+            startDate: userProfile.startDate,
+            completedDate,
+            intentions: userProfile.intentions || '',
+            idealSelfManifesto: userProfile.idealSelfManifesto || '',
+            finalSummary: finalSummaryText,
+            entries: entriesToArchive,
+            archivedAt: new Date().toISOString(),
+          };
+          await storageService.saveJourneyArchive(archive);
+        } catch (archiveError) {
+          console.error('Journey archive failed (non-critical, continuing):', archiveError);
+        }
+      }
+
       // Clear only journey data (preserves mood and flip journals)
       await storageService.clearJourneyData();
 
@@ -2006,6 +2080,7 @@ const App: React.FC = () => {
         ...prev!,
         isPaused: true,
         pausedDate: new Date().toISOString(),
+        pauseReason: 'user' as const,
       }));
     }
   };
@@ -2151,6 +2226,7 @@ const App: React.FC = () => {
               userProfile={userProfile}
               journalEntries={completedJourneyEntries.length > 0 ? completedJourneyEntries : journalEntries}
               settings={settings}
+              userEmail={user?.email ?? undefined}
               onStartNewJourney={handleStartNewJourney}
               onExport={exportData}
             />
@@ -2377,6 +2453,12 @@ const App: React.FC = () => {
                 morningEntryCompleted={todayCompletion.morningEntryCompleted}
                 eveningCheckinCompleted={todayCompletion.eveningCheckinCompleted}
             />
+            {subscriptionStatus === 'grace_period' && gracePeriodEndDate && (
+              <GracePeriodBanner
+                gracePeriodEndDate={gracePeriodEndDate}
+                onUpdateBilling={() => setShowPaywall(true)}
+              />
+            )}
             <div style={{ padding: '0 1rem' }}>
               {!user && userProfile && (
                 <CloudSyncBanner onSetup={() => setShowAuthModal(true)} />

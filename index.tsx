@@ -180,6 +180,20 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
+// Android keyboard scroll assist
+// On Android WebViews (especially edge-to-edge devices like Infinix),
+// the keyboard can cover the focused input without scrolling it into view.
+// This listener fires on any input/textarea focus and nudges the element
+// into the visible area after a short delay (keyboard animation settle time).
+document.addEventListener('focusin', (e) => {
+  const target = e.target as HTMLElement;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }
+});
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");

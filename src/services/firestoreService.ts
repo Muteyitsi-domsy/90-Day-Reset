@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive } from '../types';
 import { StorageService } from './storageService';
 
 // Firebase SDK v9+ throws on undefined values in documents.
@@ -394,6 +394,24 @@ export class FirestoreService implements StorageService {
     } catch (error) {
       console.error('Error clearing journey data from Firestore:', error);
       throw new Error('Failed to clear journey data from cloud');
+    }
+  }
+
+  /**
+   * Archive a completed journey before wiping.
+   * Writes to /users/{userId}/journeyArchives/{archive.id}.
+   * Document is immutable after creation (enforced by Firestore rules).
+   */
+  async saveJourneyArchive(archive: JourneyArchive): Promise<void> {
+    try {
+      const archiveRef = doc(db, 'users', this.userId, 'journeyArchives', archive.id);
+      await setDoc(archiveRef, {
+        ...stripUndefined(archive),
+        archivedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error saving journey archive to Firestore:', error);
+      throw new Error('Failed to archive journey data');
     }
   }
 

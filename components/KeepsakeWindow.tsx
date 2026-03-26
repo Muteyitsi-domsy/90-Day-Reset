@@ -3,12 +3,18 @@ import Confetti from './Confetti';
 import { UserProfile, JournalEntry, Settings } from '../types';
 import { generateJourneyKeepsake } from '../services/pdfKeepsakeService';
 
+// EmailJS service/key — same account as PIN recovery, new template for keepsake.
+// Create the template at emailjs.com and set VITE_EMAILJS_KEEPSAKE_TEMPLATE in .env.
+const EMAILJS_SERVICE_ID = 'service_n8jla35';
+const EMAILJS_PUBLIC_KEY = 'uAtxjwzd4c2lx_6xT';
+
 interface KeepsakeWindowProps {
   completionSummary: string;
   userProfile: UserProfile;
   journalEntries: JournalEntry[];
   settings: Settings;
-  daysRemaining: number;
+  daysRemaining?: number;
+  userEmail?: string;  // Pre-fill from Firebase auth; user can override
   onStartNewJourney: () => void;
   onExport: () => void;
 }
@@ -340,12 +346,63 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
   userProfile,
   journalEntries,
   settings,
-  // daysRemaining kept for App.tsx compatibility but not displayed
+  userEmail,
   onStartNewJourney,
   onExport
 }) => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [hasDownloaded, setHasDownloaded] = useState(false);
+
+  // Email keepsake state
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailInput, setEmailInput] = useState(userEmail || '');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  const handleEmailKeepsake = async () => {
+    const recipient = emailInput.trim();
+    if (!recipient) return;
+    setIsSendingEmail(true);
+    setEmailError('');
+    try {
+      const { default: emailjs } = await import('@emailjs/browser');
+      const templateId = (import.meta as any).env?.VITE_EMAILJS_KEEPSAKE_TEMPLATE || 'template_keepsake';
+
+      const journeyTitle = titleSection?.name || 'Your 90-Day Journey';
+      const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const arcLabel = userProfile.arc
+        ? userProfile.arc.charAt(0).toUpperCase() + userProfile.arc.slice(1)
+        : 'Transformation';
+
+      // Truncate to stay within EmailJS parameter limits (~50KB per send)
+      const summaryText = completionSummary.length > 5000
+        ? completionSummary.slice(0, 5000) + '\n\n[Full summary available in your app keepsake]'
+        : completionSummary;
+
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        templateId,
+        {
+          to_email: recipient,
+          user_name: userProfile.name || recipient.split('@')[0],
+          journey_title: journeyTitle,
+          arc_name: arcLabel,
+          start_date: fmt(userProfile.startDate),
+          completed_date: userProfile.journeyCompletedDate ? fmt(userProfile.journeyCompletedDate) : fmt(new Date().toISOString()),
+          summary_text: summaryText,
+          reply_to: recipient,
+        },
+        EMAILJS_PUBLIC_KEY
+      );
+      setEmailSent(true);
+    } catch (error: any) {
+      console.error('Keepsake email failed:', error);
+      setEmailError('Email could not be sent. Please download the PDF instead.');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   const handleGenerateKeepsake = async () => {
     setIsGeneratingPDF(true);
@@ -494,6 +551,8 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
 
         {/* Action buttons */}
         <div className="flex flex-col items-center gap-4">
+
+          {/* Download PDF */}
           <button
             onClick={handleGenerateKeepsake}
             disabled={isGeneratingPDF}
@@ -508,13 +567,70 @@ const KeepsakeWindow: React.FC<KeepsakeWindowProps> = ({
                 Creating...
               </span>
             ) : (
-              'Download Journey Keepsake'
+              'Download Journey Keepsake (PDF)'
             )}
           </button>
 
           {hasDownloaded && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
               Keepsake downloaded successfully.
+            </p>
+          )}
+
+          {/* Email keepsake */}
+          {!emailSent ? (
+            <div className="w-full max-w-xs">
+              {!showEmailForm ? (
+                <button
+                  onClick={() => setShowEmailForm(true)}
+                  className="w-full border border-amber-400 dark:border-amber-600 text-amber-700 dark:text-amber-400 px-6 py-3 rounded-xl text-sm font-medium hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                >
+                  Email Keepsake to Myself
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={e => { setEmailInput(e.target.value); setEmailError(''); }}
+                    placeholder="your@email.com"
+                    className="w-full px-4 py-2.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-100 text-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  {emailError && (
+                    <p className="text-xs text-red-500">{emailError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleEmailKeepsake}
+                      disabled={isSendingEmail || !emailInput.trim()}
+                      className="flex-1 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSendingEmail ? (
+                        <span className="flex items-center justify-center gap-1.5">
+                          <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Sending...
+                        </span>
+                      ) : 'Send'}
+                    </button>
+                    <button
+                      onClick={() => { setShowEmailForm(false); setEmailError(''); }}
+                      className="px-4 py-2.5 rounded-lg border border-stone-300 dark:border-stone-600 text-stone-500 text-sm hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
+                    Sends your journey summary. The full PDF is available via download above.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Keepsake sent to {emailInput} ✓
             </p>
           )}
 

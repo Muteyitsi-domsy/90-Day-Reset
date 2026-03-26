@@ -22,6 +22,10 @@ export const CONTEXT_LABELS: Record<MoodContext, string> = {
   mental_health: 'Mental Health',
   spirituality: 'Spirituality',
   finances: 'Finances',
+  studies: 'Studies',
+  decisions: 'Decisions',
+  motherhood: 'Motherhood',
+  fatherhood: 'Fatherhood',
 };
 
 // Intensity modifiers for prompts
@@ -84,6 +88,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What financial goal or milestone has brought you satisfaction recently?',
       'How has improving your financial situation contributed to this joyful feeling?',
     ],
+    studies: [
+      'What learning breakthrough is filling you with joy today?',
+      'Describe a moment when something finally clicked in your studies.',
+      'What knowledge or skill are you proud to have gained recently?',
+      'How has your curiosity been rewarded in your learning journey?',
+    ],
+    decisions: [
+      'What choice you made recently are you feeling great about?',
+      'Describe a decision that opened up a positive new path for you.',
+      'What does it feel like to have made a choice aligned with your values?',
+      'What decision has contributed most to this sense of joy?',
+    ],
+    motherhood: [
+      'What moment with your child recently filled your heart completely?',
+      'Describe something your child did or said that brought you pure joy.',
+      'What aspect of being a mother is bringing you the deepest fulfillment?',
+      'How has your child made you see the world differently recently?',
+    ],
+    fatherhood: [
+      'What moment with your child recently made your heart swell with pride?',
+      'Describe something your child did that reminded you why fatherhood matters.',
+      'What aspect of being a father is bringing you the most fulfillment?',
+      'How has being a dad enriched your life recently?',
+    ],
   },
   calm: {
     career: [
@@ -133,6 +161,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe a financial decision that brought you a sense of relief.',
       'What boundary or system have you set up that gives you financial calm?',
       'How has creating financial stability contributed to your peace of mind?',
+    ],
+    studies: [
+      'What about your studies allows you to feel settled and focused today?',
+      'Describe a study session where everything felt clear and manageable.',
+      'What learning routine is giving you a sense of calm and steady progress?',
+      'How have you created space for focus and peace in your academic life?',
+    ],
+    decisions: [
+      'What decision have you made that you feel completely at peace with?',
+      'Describe the clarity that came after a difficult choice.',
+      'What does inner calm around a decision feel like for you right now?',
+      'How have you found acceptance or trust in the choices you have made?',
+    ],
+    motherhood: [
+      'What aspect of motherhood feels steady and peaceful right now?',
+      'Describe a quiet moment with your child that brought you calm.',
+      'What parenting rhythm is giving you a sense of ease and balance?',
+      'How are you finding peace in the journey of raising your child?',
+    ],
+    fatherhood: [
+      'What aspect of fatherhood feels settled and peaceful right now?',
+      'Describe a calm moment with your child that grounded you.',
+      'What parenting routine is giving you a sense of steadiness?',
+      'How are you finding peace in the journey of being a father?',
     ],
   },
   energized: {
@@ -184,6 +236,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What new financial possibility is giving you energy?',
       'How are you channeling this energized feeling into building wealth or security?',
     ],
+    studies: [
+      'What subject or topic is sparking real excitement in your learning right now?',
+      'Describe what is fueling your motivation to study or grow intellectually.',
+      'What new idea or discovery is giving you a surge of energy?',
+      'How are you channeling this enthusiasm into your studies?',
+    ],
+    decisions: [
+      'What decision ahead of you feels exciting and full of possibility?',
+      'Describe the energy you feel when you are clear about a direction.',
+      'What choice are you ready to commit to and why?',
+      'How is this sense of clarity and readiness showing up in your life?',
+    ],
+    motherhood: [
+      'What aspect of raising your child is filling you with energy and purpose?',
+      'Describe a parenting moment that reminded you of your strength as a mother.',
+      'What are you excited to do or experience with your child?',
+      'How is the energy of motherhood showing up for you today?',
+    ],
+    fatherhood: [
+      'What aspect of fatherhood is firing you up with purpose right now?',
+      'Describe a moment that reminded you of your strength as a father.',
+      'What are you excited to do or experience with your child?',
+      'How is the energy of fatherhood showing up in your day?',
+    ],
   },
   anxious: {
     career: [
@@ -233,6 +309,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe what you\'re worried might happen with your money.',
       'What aspect of your finances feels uncertain or stressful?',
       'What do you need to feel more secure about your financial future?',
+    ],
+    studies: [
+      'What academic pressure or deadline is weighing on your mind right now?',
+      'Describe the specific worry you have about your studies or performance.',
+      'What feels uncertain or overwhelming in your learning journey?',
+      'What would help you feel more confident and prepared?',
+    ],
+    decisions: [
+      'What choice are you struggling to make that is causing you anxiety?',
+      'Describe the fear or uncertainty behind the decision in front of you.',
+      'What outcome are you most afraid of and why?',
+      'What information or clarity would help you feel more settled?',
+    ],
+    motherhood: [
+      'What parenting worry is weighing on your heart right now?',
+      'Describe a fear you have about raising your child well.',
+      'What aspect of motherhood feels uncertain or overwhelming?',
+      'What reassurance or support would help you feel more at ease?',
+    ],
+    fatherhood: [
+      'What fatherhood worry is sitting heavily on your mind right now?',
+      'Describe a fear you have about being the father your child needs.',
+      'What aspect of fatherhood feels uncertain or overwhelming?',
+      'What reassurance or support would help you feel more grounded?',
     ],
   },
   sad: {
@@ -284,6 +384,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What financial loss or setback are you processing?',
       'What do you wish was different about your financial circumstances?',
     ],
+    studies: [
+      'What academic disappointment or struggle is affecting you today?',
+      'Describe what feels discouraging about your studies or learning path.',
+      'What academic setback or loss of motivation are you processing?',
+      'What do you wish was different about your current learning experience?',
+    ],
+    decisions: [
+      'What decision are you grieving or second-guessing right now?',
+      'Describe the regret or loss you are feeling connected to a choice made.',
+      'What outcome do you wish had been different?',
+      'What do you need to forgive yourself or others for regarding this decision?',
+    ],
+    motherhood: [
+      'What aspect of motherhood is making your heart heavy today?',
+      'Describe a loss or hard moment you are processing as a mother.',
+      'What do you grieve about your child, your role, or this season of parenting?',
+      'What kind of support or tenderness do you need right now?',
+    ],
+    fatherhood: [
+      'What aspect of fatherhood is weighing on your heart today?',
+      'Describe a hard moment or loss you are processing as a father.',
+      'What do you grieve about your child, your role, or this season of parenting?',
+      'What support or gentleness do you need to give yourself right now?',
+    ],
   },
   angry: {
     career: [
@@ -333,6 +457,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe what makes you angry about your current money circumstances.',
       'What financial boundary was crossed or expectation unmet?',
       'What change or accountability do you need regarding your finances?',
+    ],
+    studies: [
+      'What feels unjust or frustrating in your academic experience right now?',
+      'Describe what is making you angry about your studies or learning environment.',
+      'What expectation or boundary was violated in your academic life?',
+      'What change or acknowledgment do you need?',
+    ],
+    decisions: [
+      'What decision made by you or others feels unjust or deeply frustrating?',
+      'Describe what angers you about the choices available to you right now.',
+      'What boundary or value was violated in a decision affecting your life?',
+      'What needs to be said or changed for you to feel heard and respected?',
+    ],
+    motherhood: [
+      'What about your experience as a mother feels unfair or infuriating right now?',
+      'Describe what is triggering your anger in your parenting role.',
+      'What boundary or expectation has not been honored?',
+      'What change or acknowledgment do you need from those around you?',
+    ],
+    fatherhood: [
+      'What about your experience as a father feels unjust or deeply frustrating?',
+      'Describe what is triggering your anger in your role as a dad.',
+      'What boundary or expectation has gone unacknowledged?',
+      'What needs to change for you to feel respected in your role?',
     ],
   },
   overwhelmed: {
@@ -384,6 +532,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'What bills, debts, or money demands are draining your energy?',
       'What support or change would help you feel less financially overwhelmed?',
     ],
+    studies: [
+      'What academic demands are making you feel like you cannot keep up?',
+      'Describe what is making your studies feel impossible to manage right now.',
+      'What needs to be removed or reduced from your academic plate?',
+      'What support or change would help you feel more capable and less stretched?',
+    ],
+    decisions: [
+      'What choices or crossroads are making your mind feel overloaded?',
+      'Describe the weight of having too many decisions or too much uncertainty.',
+      'What would it feel like to set aside one decision and just breathe?',
+      'What support or clarity would lighten the decision burden right now?',
+    ],
+    motherhood: [
+      'What motherhood demands are exhausting and overwhelming you today?',
+      'Describe what feels like too much in your role as a mother right now.',
+      'What parenting responsibility is consuming more than you can give?',
+      'What rest, help, or grace do you need to ask for today?',
+    ],
+    fatherhood: [
+      'What fatherhood demands are stretching you past your limits right now?',
+      'Describe what feels like too much in your role as a father today.',
+      'What responsibility is taking more than you have to give?',
+      'What rest, support, or grace do you need to receive today?',
+    ],
   },
   grateful: {
     career: [
@@ -433,6 +605,30 @@ const MOOD_PROMPTS: MoodPromptsDatabase = {
       'Describe a financial opportunity or support you received.',
       'What about your money situation deserves your gratitude?',
       'How has your financial journey taught you something valuable?',
+    ],
+    studies: [
+      'What learning opportunity or breakthrough are you most grateful for?',
+      'Describe a teacher, mentor, or resource that has been a gift to your growth.',
+      'What knowledge or skill you have gained do you appreciate deeply?',
+      'How has the ability to learn and grow enriched your life recently?',
+    ],
+    decisions: [
+      'What choice you made are you deeply grateful for today?',
+      'Describe a decision that turned out to be a blessing in your life.',
+      'What wisdom or growth has come from a past choice, even a hard one?',
+      'How have your decisions shaped you into who you are becoming?',
+    ],
+    motherhood: [
+      'What blessing of motherhood fills you with gratitude today?',
+      'Describe a moment with your child that reminded you of the gift of being their mother.',
+      'What about your child or your journey as a mother are you most thankful for?',
+      'How has motherhood grown you or given you something irreplaceable?',
+    ],
+    fatherhood: [
+      'What blessing of fatherhood fills you with deep gratitude today?',
+      'Describe a moment with your child that reminded you what a gift it is to be their father.',
+      'What about your child or your journey as a father are you most thankful for?',
+      'How has fatherhood grown you or given you something irreplaceable?',
     ],
   },
 };

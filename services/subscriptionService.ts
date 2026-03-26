@@ -128,6 +128,7 @@ export const getSubscriptionState = async (): Promise<SubscriptionState> => {
     betaCodeUsed: null,
     willRenew: false,
     productId: null,
+    gracePeriodEndDate: null,
   };
 
   // Check for beta access first
@@ -144,9 +145,9 @@ export const getSubscriptionState = async (): Promise<SubscriptionState> => {
   try {
     const customerInfo = await Purchases.getCustomerInfo();
 
-    // Check for active entitlements
-    const entitlements = customerInfo.customerInfo.entitlements.active;
-    const premiumEntitlement = entitlements['premium'] || entitlements['pro'];
+    // Check for active entitlements (RevenueCat keeps these alive during grace period)
+    const activeEntitlements = customerInfo.customerInfo.entitlements.active;
+    const premiumEntitlement = activeEntitlements['premium'] || activeEntitlements['pro'];
 
     if (premiumEntitlement) {
       const pid = premiumEntitlement.productIdentifier;
@@ -154,6 +155,29 @@ export const getSubscriptionState = async (): Promise<SubscriptionState> => {
         pid === PRODUCT_IDS.MONTHLY ? 'monthly' :
         pid === PRODUCT_IDS.JOURNEY_90 ? 'journey90' :
         'yearly';
+
+      // Check if payment has failed and we're in the platform grace period.
+      // billingIssueDetectedAt is set by RevenueCat when Apple/Google signals a
+      // billing failure. The entitlement stays active while they retry, giving
+      // 3 days (iOS) or 7 days (Android) before access is removed.
+      const billingIssueAt = (premiumEntitlement as any).billingIssueDetectedAt as string | null | undefined;
+      if (billingIssueAt && tier !== 'journey90') {
+        const graceDays = Capacitor.getPlatform() === 'ios' ? 3 : 7;
+        const endDate = new Date(billingIssueAt);
+        endDate.setDate(endDate.getDate() + graceDays);
+        return {
+          status: 'grace_period',
+          tier,
+          isActive: true,
+          expirationDate: premiumEntitlement.expirationDate || null,
+          trialEndDate: null,
+          isBetaUser: false,
+          betaCodeUsed: null,
+          willRenew: false,
+          productId: pid,
+          gracePeriodEndDate: endDate.toISOString(),
+        };
+      }
 
       return {
         status: premiumEntitlement.willRenew ? 'active' : 'cancelled',
@@ -165,11 +189,35 @@ export const getSubscriptionState = async (): Promise<SubscriptionState> => {
         betaCodeUsed: null,
         willRenew: premiumEntitlement.willRenew,
         productId: pid,
+        gracePeriodEndDate: null,
       };
     }
 
-    // Check for trial
-    // Note: Trial info varies by platform
+    // No active entitlement — check if they previously had a subscription that lapsed
+    // (entitlements.all includes expired ones with their product identifiers).
+    // This lets us return the correct tier on expiry so the caller can decide
+    // whether to auto-pause the journey.
+    const allEntitlements = customerInfo.customerInfo.entitlements.all;
+    const lapsedEntitlement = allEntitlements['premium'] || allEntitlements['pro'];
+    if (lapsedEntitlement && !(lapsedEntitlement as any).isActive) {
+      const pid = (lapsedEntitlement as any).productIdentifier as string;
+      const tier =
+        pid === PRODUCT_IDS.MONTHLY ? 'monthly' :
+        pid === PRODUCT_IDS.JOURNEY_90 ? 'journey90' :
+        'yearly';
+      return {
+        status: 'expired',
+        tier,
+        isActive: false,
+        expirationDate: (lapsedEntitlement as any).expirationDate || null,
+        trialEndDate: null,
+        isBetaUser: false,
+        betaCodeUsed: null,
+        willRenew: false,
+        productId: pid,
+        gracePeriodEndDate: null,
+      };
+    }
 
     return defaultState;
   } catch (error) {
@@ -436,6 +484,7 @@ export const checkBetaAccess = (): SubscriptionState => {
       betaCodeUsed: null,
       willRenew: false,
       productId: null,
+      gracePeriodEndDate: null,
     };
   }
 
@@ -452,6 +501,7 @@ export const checkBetaAccess = (): SubscriptionState => {
     betaCodeUsed: betaCode,
     willRenew: false,
     productId: null,
+    gracePeriodEndDate: null,
   };
 };
 
