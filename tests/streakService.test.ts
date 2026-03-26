@@ -3,33 +3,18 @@
  * Run: npx tsx tests/streakService.test.ts
  */
 
+import { test, expect } from 'vitest';
 import { calculateUpdatedStreak, recalculateStreakFromDates } from '../services/streakService';
 
-let passed = 0;
-let failed = 0;
-
 function assert(condition: boolean, label: string) {
-  if (condition) {
-    passed++;
-    console.log(`  PASS  ${label}`);
-  } else {
-    failed++;
-    console.error(`  FAIL  ${label}`);
-  }
+  test(label, () => { expect(condition).toBe(true); });
 }
 
 function eq<T>(actual: T, expected: T, label: string) {
-  const match = JSON.stringify(actual) === JSON.stringify(expected);
-  if (!match) {
-    console.error(`         expected: ${JSON.stringify(expected)}`);
-    console.error(`         actual:   ${JSON.stringify(actual)}`);
-  }
-  assert(match, label);
+  test(label, () => { expect(actual).toEqual(expected); });
 }
 
-function section(name: string) {
-  console.log(`\n--- ${name} ---`);
-}
+function section(_name: string) {}
 
 // ─── calculateUpdatedStreak ──────────────────────────────────────────
 
@@ -196,10 +181,5 @@ eq(
   'duplicate today date → counts as 1 (breaks on second match attempt)'
 );
 
-// ─── Summary ─────────────────────────────────────────────────────────
 
-console.log(`\n========================================`);
-console.log(`  ${passed + failed} tests: ${passed} passed, ${failed} failed`);
-console.log(`========================================\n`);
 
-process.exit(failed > 0 ? 1 : 0);

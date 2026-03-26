@@ -9,29 +9,21 @@
  * Ref: docs/layout/safe-area-spec.md
  */
 
+import { test, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-let passed = 0;
-let failed = 0;
-
 function assert(condition: boolean, label: string, detail?: string) {
-  if (condition) {
-    passed++;
-    console.log(`  PASS  ${label}`);
-  } else {
-    failed++;
-    console.error(`  FAIL  ${label}`);
-    if (detail) console.error(`        → ${detail}`);
-  }
+  test(label, () => {
+    if (!condition && detail) throw new Error(detail);
+    expect(condition).toBe(true);
+  });
 }
 
-function section(name: string) {
-  console.log(`\n--- ${name} ---`);
-}
+function section(_name: string) {}
 
 const root = resolve(__dirname, '..');
 
@@ -107,15 +99,5 @@ assert(
   'Wrap env() in max(1rem, env(safe-area-inset-top)) so Android layout is unchanged.'
 );
 
-// ─── Summary ──────────────────────────────────────────────────────────
 
-console.log(`\n========================================`);
-console.log(`  ${passed + failed} tests: ${passed} passed, ${failed} failed`);
-console.log(`========================================\n`);
 
-if (failed > 0) {
-  console.error('Safe area regression detected. See FAILING tests above.');
-  console.error('Ref: docs/layout/safe-area-spec.md\n');
-}
-
-process.exit(failed > 0 ? 1 : 0);

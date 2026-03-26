@@ -3,34 +3,19 @@
  * Run: npx tsx tests/milestoneService.test.ts
  */
 
+import { test, expect } from 'vitest';
 import { checkForNewMilestones, getBadgeDisplayInfo, getMilestonesForType } from '../services/milestoneService';
 import type { EarnedBadge } from '../types';
 
-let passed = 0;
-let failed = 0;
-
 function assert(condition: boolean, label: string) {
-  if (condition) {
-    passed++;
-    console.log(`  PASS  ${label}`);
-  } else {
-    failed++;
-    console.error(`  FAIL  ${label}`);
-  }
+  test(label, () => { expect(condition).toBe(true); });
 }
 
 function eq<T>(actual: T, expected: T, label: string) {
-  const match = JSON.stringify(actual) === JSON.stringify(expected);
-  if (!match) {
-    console.error(`         expected: ${JSON.stringify(expected)}`);
-    console.error(`         actual:   ${JSON.stringify(actual)}`);
-  }
-  assert(match, label);
+  test(label, () => { expect(actual).toEqual(expected); });
 }
 
-function section(name: string) {
-  console.log(`\n--- ${name} ---`);
-}
+function section(_name: string) {}
 
 const TODAY = '2026-02-17';
 
@@ -288,10 +273,5 @@ assert(milestones[1].threshold === 14, 'second threshold is 14');
 assert(milestones[1].earned === false, '14-day is not earned');
 assert(milestones[1].badge === undefined, '14-day has no badge');
 
-// ─── Summary ─────────────────────────────────────────────────────────
 
-console.log(`\n========================================`);
-console.log(`  ${passed + failed} tests: ${passed} passed, ${failed} failed`);
-console.log(`========================================\n`);
 
-process.exit(failed > 0 ? 1 : 0);

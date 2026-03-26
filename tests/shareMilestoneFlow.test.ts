@@ -13,37 +13,22 @@
  * Run: npx tsx tests/shareMilestoneFlow.test.ts
  */
 
+import { test, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import type { EarnedBadge } from '../types';
 
 // ─── Harness ────────────────────────────────────────────────────────────────
 
-let passed = 0;
-let failed = 0;
-
 function assert(condition: boolean, label: string) {
-  if (condition) {
-    passed++;
-    console.log(`  PASS  ${label}`);
-  } else {
-    failed++;
-    console.error(`  FAIL  ${label}`);
-  }
+  test(label, () => { expect(condition).toBe(true); });
 }
 
 function eq<T>(actual: T, expected: T, label: string) {
-  const match = JSON.stringify(actual) === JSON.stringify(expected);
-  if (!match) {
-    console.error(`         expected: ${JSON.stringify(expected)}`);
-    console.error(`         actual:   ${JSON.stringify(actual)}`);
-  }
-  assert(match, label);
+  test(label, () => { expect(actual).toEqual(expected); });
 }
 
-function section(name: string) {
-  console.log(`\n--- ${name} ---`);
-}
+function section(_name: string) {}
 
 // ─── Streak-based mapping (mirrors App.tsx onDismiss shareMap) ───────────────
 
@@ -243,10 +228,5 @@ assert(appSrc.includes('streakCoversThis'),           'App.tsx has deduplication
 assert(appSrc.includes("7: 'day7'"),                  "App.tsx DAY_SHARE_MAP has day 7 → day7");
 assert(appSrc.includes("90: 'day90'"),                "App.tsx DAY_SHARE_MAP has day 90 → day90");
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
 
-console.log(`\n========================================`);
-console.log(`  ${passed + failed} tests: ${passed} passed, ${failed} failed`);
-console.log(`========================================\n`);
 
-process.exit(failed > 0 ? 1 : 0);
