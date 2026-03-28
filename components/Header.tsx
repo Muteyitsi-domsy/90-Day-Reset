@@ -3,7 +3,20 @@ import React from 'react';
 import DailyCompletionCircle from './DailyCompletionCircle';
 import StreakDisplay from './StreakDisplay';
 
+export const JOURNAL_COLORS: Record<'journey' | 'mood' | 'flip', string> = {
+  journey: '#1E7A8A',
+  mood: '#4E9B58',
+  flip: '#E87520',
+};
+
+export const JOURNAL_LABELS: Record<'journey' | 'mood' | 'flip', string> = {
+  journey: '90-Day Identity Reset',
+  mood: 'Daily Journal',
+  flip: 'Flip Journal',
+};
+
 interface HeaderProps {
+  activeView?: 'journey' | 'mood' | 'flip';
   streak?: number;
   onOpenMenu: () => void;
   hasUnreadReports?: boolean;
@@ -19,6 +32,7 @@ const MenuIcon: React.FC<{ className: string }> = ({ className }) => (
 );
 
 const Header: React.FC<HeaderProps> = ({
+  activeView = 'journey',
   streak,
   onOpenMenu,
   hasUnreadReports,
@@ -36,8 +50,11 @@ const Header: React.FC<HeaderProps> = ({
             <span className="absolute top-1 right-1 block h-3 w-3 rounded-full ring-2 ring-white bg-red-500"></span>
         )}
       </div>
-      <h1 className="text-xl font-light text-[var(--text-secondary)] text-center">
-        90-Day Identity Reset
+      <h1
+        className="text-xl font-light text-center transition-colors duration-300"
+        style={{ color: JOURNAL_COLORS[activeView] }}
+      >
+        {JOURNAL_LABELS[activeView]}
       </h1>
       <div className="flex items-center justify-end gap-3">
         <DailyCompletionCircle

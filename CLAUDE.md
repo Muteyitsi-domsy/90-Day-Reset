@@ -8,7 +8,7 @@ All tests live in `tests/`. Run everything with a single command:
 npm test
 ```
 
-This runs all `*.spec.ts` and `*.test.ts` files in `tests/`. All 15 files must pass before committing.
+This runs all `*.spec.ts` and `*.test.ts` files in `tests/`. All 17 files must pass before committing.
 
 ## TypeScript Check Protocol
 
@@ -48,9 +48,22 @@ Common real-error patterns seen previously:
 3. Use vitest's `test()` and `expect()` — never a custom assert/eq harness with `process.exit()`
 4. No `describe`/`it` imports from jest — import from `vitest` only
 
+## Android Version Bump Checklist
+
+Every Android release requires bumping version in **all three places** — missing any one causes a mismatch between the Play Store listing and what the app reports internally:
+
+| File | Field | Example |
+|---|---|---|
+| `android/app/build.gradle` | `versionCode` (int, +1 each release) and `versionName` (semver string) | `versionCode 28`, `versionName "2.2.1"` |
+| `package.json` | `"version"` | `"version": "2.2.1"` |
+| `components/Menu.tsx` | in-app version display string (search `Renew90 v`) | `Renew90 v2.2.1` |
+
+Versioning pattern: patch bumps within a minor (2.2.0 → 2.2.1 → ... → 2.2.9), then bump minor (2.2.9 → 2.3.0). versionCode increments by 1 every release regardless.
+
 ## Commit Checklist
 
 Before every commit:
-- [ ] `npm test` — all tests pass (currently 445)
+- [ ] `npm test` — all tests pass (currently 476)
 - [ ] `npx tsc --noEmit` — no NEW errors beyond the known false positives above
 - [ ] New features have tests covering the core logic
+- [ ] Android release: all three version locations updated (see Android Version Bump Checklist above)

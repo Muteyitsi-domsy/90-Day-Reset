@@ -8,10 +8,10 @@ interface OnboardingCompletionProps {
 type FrequencyOption = 'daily' | 'weekly' | 'monthly';
 
 const featureItems = [
-    { icon: '🗓', label: '90-day structured journey', detail: 'Daily prompts personalised to your reset arc.' },
-    { icon: '📝', label: 'Daily Journal', detail: 'Capture moods and emotions with guided prompts.' },
-    { icon: '🔄', label: 'Flip Journal', detail: 'Reframe challenges through your future self\'s eyes.' },
-    { icon: '☰', label: 'Access both journals via the menu', detail: 'Tap the menu icon at the top left any time.' },
+    { icon: '🗓', label: '90-Day Identity Reset', detail: 'Daily prompts personalised to your reset arc.', color: '#1E7A8A' },
+    { icon: '📝', label: 'Daily Journal', detail: 'Capture moods and emotions with guided prompts.', color: '#4E9B58' },
+    { icon: '🔄', label: 'Flip Journal', detail: 'Reframe challenges through your future self\'s eyes.', color: '#E87520' },
+    { icon: '☰', label: 'Switch journals from the menu', detail: 'Tap the colour-coded toggle — teal for 90-Day, green for Daily, orange for Flip.', color: undefined },
 ];
 
 const OnboardingCompletion: React.FC<OnboardingCompletionProps> = ({ onComplete }) => {
@@ -135,7 +135,7 @@ const OnboardingCompletion: React.FC<OnboardingCompletionProps> = ({ onComplete 
                             >
                                 <span className="text-2xl mt-0.5">{item.icon}</span>
                                 <div>
-                                    <p className="font-medium text-[var(--text-primary)]">{item.label}</p>
+                                    <p className="font-medium" style={item.color ? { color: item.color } : { color: 'var(--text-primary)' }}>{item.label}</p>
                                     <p className="text-sm text-[var(--text-secondary)]">{item.detail}</p>
                                 </div>
                             </div>

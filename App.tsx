@@ -1776,12 +1776,12 @@ const App: React.FC = () => {
 
   // Gate view switching — free users can only access mood journal
   const handleToggleView = (view: 'journey' | 'mood' | 'flip') => {
+    setIsMenuOpen(false);
     if (!isSubscribed && view !== 'mood') {
       setShowPaywall(true);
       return;
     }
     setActiveView(view);
-    setIsMenuOpen(false);
   };
 
   // Android hardware back button: push a history entry when on non-journey views
@@ -2138,9 +2138,14 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
-    // Show loading spinner while auth is initializing or data is loading
-    // This prevents flashing the welcome screen before auth state is known
-    if (authLoading || (isLoading && !userProfile)) {
+    // Show loading spinner until both auth and all data loading are complete.
+    // Using isLoading alone (not isLoading && !userProfile) is intentional:
+    // setUserProfile() fires mid-load before setAppState('returning_welcome'),
+    // separated by an await. The old guard turned off the spinner when userProfile
+    // became truthy, exposing a render where appState was still 'welcome' —
+    // returning users saw the new-user screen flash for 2-4 seconds.
+    // isLoading only becomes false in the finally block, after appState is set.
+    if (authLoading || isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <LoadingSpinner />
@@ -2181,6 +2186,7 @@ const App: React.FC = () => {
       return (
         <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
           <Header
+            activeView={activeView}
             streak={userProfile.streak}
             onOpenMenu={() => setIsMenuOpen(true)}
             ritualCompleted={todayCompletion.ritualCompleted}
@@ -2360,6 +2366,7 @@ const App: React.FC = () => {
             return (
                 <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
                     <Header
+                        activeView={activeView}
                         streak={userProfile?.streak}
                         onOpenMenu={() => setIsMenuOpen(true)}
                         hasUnreadReports={hasUnreadReports}
@@ -2446,6 +2453,7 @@ const App: React.FC = () => {
         return (
           <div className="flex flex-col min-h-screen text-[var(--text-primary)] font-sans">
             <Header
+                activeView={activeView}
                 streak={userProfile?.streak}
                 onOpenMenu={() => setIsMenuOpen(true)}
                 hasUnreadReports={hasUnreadReports}
@@ -2798,6 +2806,7 @@ const App: React.FC = () => {
         onSubscribed={() => {
           setIsSubscribed(true);
           setShowPaywall(false);
+          setActiveView('journey');
         }}
         userId={user?.uid}
       />

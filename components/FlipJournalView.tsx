@@ -221,7 +221,7 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-3xl md:text-4xl font-light text-[var(--text-primary)] mb-2">
+          <h1 className="text-3xl md:text-4xl font-light mb-2" style={{ color: '#E87520' }}>
             Flip Journal
           </h1>
           {streakEnabled && currentStreak > 0 && (

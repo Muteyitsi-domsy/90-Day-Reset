@@ -296,60 +296,39 @@ const Menu: React.FC<MenuProps> = ({
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
 
                     {/* View Toggle - 90-Day Journey / Daily Journal / Flip Journal */}
-                    {onToggleView && (
-                        <div className="mb-4">
-                            <div className="flex rounded-lg bg-gray-200 dark:bg-gray-800 p-1">
-                                <button
-                                    onClick={() => {
-                                        onToggleView('journey');
-                                        onToggleCalendarView?.('journey');
-                                    }}
-                                    className={`flex-1 py-2 px-2 rounded-md transition-all font-medium text-xs ${
-                                        activeView === 'journey'
-                                            ? 'bg-white dark:bg-gray-700 shadow text-[var(--accent-primary)]'
-                                            : 'text-gray-600 dark:text-gray-400'
-                                    }`}
-                                >
-                                    90-Day
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        onToggleView('mood');
-                                        onToggleCalendarView?.('mood');
-                                    }}
-                                    className={`flex-1 py-2 px-2 rounded-md transition-all font-medium text-xs ${
-                                        activeView === 'mood'
-                                            ? 'bg-white dark:bg-gray-700 shadow text-[var(--accent-primary)]'
-                                            : 'text-gray-600 dark:text-gray-400'
-                                    }`}
-                                >
-                                    Daily
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        onToggleView('flip');
-                                    }}
-                                    className={`flex-1 py-2 px-2 rounded-md transition-all font-medium text-xs ${
-                                        activeView === 'flip'
-                                            ? 'bg-white dark:bg-gray-700 shadow text-[var(--accent-primary)]'
-                                            : 'text-gray-600 dark:text-gray-400'
-                                    }`}
-                                >
-                                    Flip
-                                </button>
+                    {onToggleView && (() => {
+                        const tabs: { view: 'journey' | 'mood' | 'flip'; label: string; color: string }[] = [
+                            { view: 'journey', label: '90-Day', color: '#1E7A8A' },
+                            { view: 'mood',    label: 'Daily',  color: '#4E9B58' },
+                            { view: 'flip',    label: 'Flip',   color: '#E87520' },
+                        ];
+                        return (
+                            <div className="mb-4">
+                                <div className="flex rounded-lg bg-gray-100 dark:bg-gray-900/50 p-1 gap-1">
+                                    {tabs.map(({ view, label, color }) => {
+                                        const isActive = activeView === view;
+                                        return (
+                                            <button
+                                                key={view}
+                                                onClick={() => {
+                                                    onToggleView(view);
+                                                    if (view !== 'flip') onToggleCalendarView?.(view);
+                                                }}
+                                                className="flex-1 py-2.5 px-2 rounded-md transition-all duration-200 font-semibold text-xs"
+                                                style={
+                                                    isActive
+                                                        ? { backgroundColor: `${color}28`, color, boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.12)' }
+                                                        : { backgroundColor: color, color: '#ffffff' }
+                                                }
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            {activeView === 'mood' && (
-                                <p className="text-xs text-[var(--text-secondary)] mt-2 text-center">
-                                    Flexible journaling based on your mood and needs
-                                </p>
-                            )}
-                            {activeView === 'flip' && (
-                                <p className="text-xs text-[var(--text-secondary)] mt-2 text-center">
-                                    Reframe challenges through your wiser self's eyes
-                                </p>
-                            )}
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Quick Access: Calendar */}
                     {onOpenCalendar && (
@@ -987,7 +966,7 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
                     <div className="px-4 pb-4 text-center text-xs text-gray-400">
-                        Renew90 v2.1.4
+                        Renew90 v2.2.1
                     </div>
                 </div>
             </div>
