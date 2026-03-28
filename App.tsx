@@ -30,6 +30,7 @@ import { getStorageService } from './src/services/storageService';
 import { AuthModal } from './components/AuthModal';
 import { safeRead } from './src/utils/encryption';
 import { CloudSyncBanner } from './components/CloudSyncBanner';
+import { Day90CelebrationBanner } from './components/Day90CelebrationBanner';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { ContactUs } from './components/ContactUs';
@@ -918,7 +919,7 @@ const App: React.FC = () => {
               analysis: {
                   summary: isQuotaError
                     ? "Daily analysis quota reached. Your entry is safely saved. You can disable auto-analysis in settings or try again later."
-                    : "Could not analyze this entry. Your thoughts are saved, and you can reflect on them yourself.",
+                    : "Something got in the way of the analysis this time — but your words made it through safely. That's what matters. Come back to them when you're ready.",
                   insights: isQuotaError
                     ? ["Analysis will resume when quota resets", "Your journal entries are always saved regardless of analysis"]
                     : [],
@@ -1028,7 +1029,7 @@ const App: React.FC = () => {
               analysis: {
                 summary: isQuotaError
                   ? "Re-analysis quota reached. Your updated entry is saved. Try again later or disable auto-analysis in settings."
-                  : "Could not re-analyze this entry. Your updated text is saved.",
+                  : "The re-analysis didn't go through this time, but your updated entry is saved safely. Your thoughts are always the real thing.",
                 insights: isQuotaError
                   ? ["Analysis will resume when quota resets"]
                   : [],
@@ -2468,6 +2469,7 @@ const App: React.FC = () => {
               />
             )}
             <div style={{ padding: '0 1rem' }}>
+              {rawDay === 90 && <Day90CelebrationBanner />}
               {!user && userProfile && (
                 <CloudSyncBanner onSetup={() => setShowAuthModal(true)} />
               )}

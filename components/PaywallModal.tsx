@@ -237,7 +237,8 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                 { day: 'Day 1',  label: 'Arc placed. Ideal self scripted.' },
                 { day: 'Day 30', label: 'First reflection — how far you\'ve come.' },
                 { day: 'Day 60', label: 'Second reflection — patterns emerge.' },
-                { day: 'Day 90', label: 'Keepsake. Proof of becoming.' },
+                { day: 'Day 90', label: 'Final reflection. Monthly report. Revel in how far you\'ve come.' },
+                { day: 'Day 91', label: 'Keepsake unlocked. Proof of becoming.' },
               ].map((step) => (
                 <div key={step.day} className="relative flex items-baseline gap-3 mb-3 last:mb-0">
                   {/* Dot */}

@@ -298,9 +298,9 @@ const Menu: React.FC<MenuProps> = ({
                     {/* View Toggle - 90-Day Journey / Daily Journal / Flip Journal */}
                     {onToggleView && (() => {
                         const tabs: { view: 'journey' | 'mood' | 'flip'; label: string; color: string }[] = [
-                            { view: 'journey', label: '90-Day', color: '#1E7A8A' },
-                            { view: 'mood',    label: 'Daily',  color: '#4E9B58' },
-                            { view: 'flip',    label: 'Flip',   color: '#E87520' },
+                            { view: 'journey', label: '90-Day Journal', color: '#1E7A8A' },
+                            { view: 'mood',    label: 'Daily Journal',  color: '#4E9B58' },
+                            { view: 'flip',    label: 'Flip Journal',   color: '#E87520' },
                         ];
                         return (
                             <div className="mb-4">
@@ -314,7 +314,7 @@ const Menu: React.FC<MenuProps> = ({
                                                     onToggleView(view);
                                                     if (view !== 'flip') onToggleCalendarView?.(view);
                                                 }}
-                                                className="flex-1 py-2.5 px-2 rounded-md transition-all duration-200 font-semibold text-xs"
+                                                className="flex-1 py-2.5 px-1 rounded-md transition-all duration-200 font-semibold text-[10px] leading-tight text-center"
                                                 style={
                                                     isActive
                                                         ? { backgroundColor: `${color}28`, color, boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.12)' }
@@ -966,7 +966,7 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
                     <div className="px-4 pb-4 text-center text-xs text-gray-400">
-                        Renew90 v2.2.1
+                        Renew90 v2.2.2
                     </div>
                 </div>
             </div>
