@@ -33,19 +33,19 @@ const CrisisModal: React.FC<CrisisModalProps> = ({ severity, onClose }) => {
         
         <div className="space-y-4 text-left">
             <p className="font-semibold text-gray-800 dark:text-gray-200">Please reach out for support:</p>
-            <a 
-                href="tel:988" 
+            <a
+                href="https://findahelpline.com/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block w-full text-center bg-red-600 text-white px-4 py-3 rounded-lg font-bold text-lg hover:bg-red-700 transition-colors"
             >
-                Call or Text 988 (USA)
+                Find a Helpline in Your Country
             </a>
-            <a 
-                href="https://findahelpline.com/" 
-                target="_blank" 
-                rel="noopener noreferrer"
+            <a
+                href="tel:988"
                 className="block w-full text-center border border-gray-400 dark:border-gray-500 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-                Find a Helpline in Your Country
+                Call or Text 988 (US only)
             </a>
             <p className="text-sm text-gray-600 dark:text-gray-400 text-center pt-2">
                 You can also contact a therapist, a trusted friend, or a family member.
