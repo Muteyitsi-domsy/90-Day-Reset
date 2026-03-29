@@ -205,7 +205,7 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
             <ul>
               <li><strong>Monthly:</strong> Auto-renewable monthly subscription. Renews each month unless cancelled. Access continues until the end of the current billing period after cancellation.</li>
               <li><strong>Annual:</strong> Auto-renewable annual subscription providing 12 months of continuous access. Renews each year unless cancelled.</li>
-              <li><strong>90-Day Journey:</strong> Auto-renewable 3-month subscription. Renews every 3 months unless cancelled at least 24 hours before the end of the current period. Access continues until the end of the current billing period after cancellation.</li>
+              <li><strong>90-Day Journey:</strong> A one-time purchase granting full Pro access for one complete 90-day arc. Does not auto-renew. No cancellation required.</li>
             </ul>
 
             <h3>Annual Plan — Journey Count</h3>
@@ -230,8 +230,9 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
 
             <h3>Cancellations &amp; Refunds</h3>
             <ul>
-              <li>All subscriptions can be cancelled at any time through your Apple ID settings (iOS) or Google Play account (Android). Access continues until the end of the current billing period.</li>
+              <li>Monthly and Annual subscriptions can be cancelled at any time through your Apple ID settings (iOS) or Google Play account (Android). Access continues until the end of the current billing period.</li>
               <li>Subscriptions must be cancelled at least 24 hours before the renewal date to avoid being charged for the next period.</li>
+              <li>The 90-Day Journey does not auto-renew and requires no cancellation.</li>
               <li>Refund requests are subject to Apple's or Google Play's refund policies respectively. We do not process refunds directly.</li>
               <li>We do not offer partial refunds for unused portions of a subscription period.</li>
             </ul>
