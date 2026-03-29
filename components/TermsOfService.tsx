@@ -205,7 +205,7 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
             <ul>
               <li><strong>Monthly:</strong> Auto-renewable monthly subscription. Renews each month unless cancelled. Access continues until the end of the current billing period after cancellation.</li>
               <li><strong>Annual:</strong> Auto-renewable annual subscription providing 12 months of continuous access. Renews each year unless cancelled.</li>
-              <li><strong>90-Day Journey:</strong> A one-time purchase granting full Pro access for one complete 90-day arc. Does not auto-renew. No cancellation required.</li>
+              <li><strong>90-Day Journey:</strong> A one-time purchase granting full Pro access for one complete 90-day arc. Does not auto-renew. No cancellation required. Upon completion of the 90-day journey, a 7-day grace window is provided to access and download your personal keepsake before premium access expires.</li>
             </ul>
 
             <h3>Annual Plan — Journey Count</h3>

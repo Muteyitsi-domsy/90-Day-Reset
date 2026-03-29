@@ -409,6 +409,13 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
             </p>
           )}
 
+          {/* 90-Day Journey keepsake grace note */}
+          {selectedPlan === 'journey90' && offerings && (
+            <p className="text-xs text-[var(--text-secondary)] mb-3 px-1 leading-relaxed">
+              Your keepsake remains accessible for 7 days after your journey completes — giving you time to save and download it before access closes.
+            </p>
+          )}
+
           {/* Error */}
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm text-center space-y-1.5">
