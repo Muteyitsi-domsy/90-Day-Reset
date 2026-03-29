@@ -2911,6 +2911,8 @@ const App: React.FC = () => {
           setActiveView('journey');
         }}
         userId={user?.uid}
+        onOpenTerms={() => setShowTerms(true)}
+        onOpenPrivacyPolicy={() => setShowPrivacyPolicy(true)}
       />
       {renderContent()}
     </>

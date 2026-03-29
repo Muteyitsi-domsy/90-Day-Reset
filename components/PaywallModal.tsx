@@ -13,6 +13,8 @@ interface PaywallModalProps {
   onClose: () => void;
   onSubscribed: () => void;
   userId?: string;
+  onOpenTerms?: () => void;
+  onOpenPrivacyPolicy?: () => void;
 }
 
 const arcFeatures = [
@@ -43,7 +45,7 @@ const arcFeatures = [
   },
 ];
 
-const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscribed, userId }) => {
+const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscribed, userId, onOpenTerms, onOpenPrivacyPolicy }) => {
   const [offerings, setOfferings] = useState<SubscriptionOffering | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'journey90'>('yearly');
   const [isLoading, setIsLoading] = useState(true);
@@ -199,8 +201,11 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
 
           {/* Feature list */}
           <div className="border border-[var(--card-border)] rounded-2xl p-4 mb-4">
-            <p className="text-xs tracking-widest uppercase text-[var(--text-secondary)] mb-3">
+            <p className="text-xs tracking-widest uppercase text-[var(--text-secondary)] mb-1">
               What unlocks with your journey
+            </p>
+            <p className="text-xs text-[var(--text-secondary)] mb-3">
+              Free: Mood Journal &nbsp;·&nbsp; Pro: everything below
             </p>
             <div className="space-y-3.5">
               {arcFeatures.map((f, i) => (
@@ -431,7 +436,9 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
           </button>
 
           <p className="text-center text-xs text-[var(--text-secondary)] mt-2 mb-4">
-            {selectedPlan === 'journey90' ? 'No subscription. No auto-renewal.' : 'Cancel anytime.'}
+            {selectedPlan === 'journey90'
+              ? 'One-time payment. No subscription. No auto-renewal.'
+              : 'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in App Store Settings.'}
           </p>
 
           {/* Restore & beta */}
@@ -498,9 +505,9 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
         <div className="px-5 pb-5 border-t border-[var(--card-border)] pt-3 text-center">
           <p className="text-xs text-gray-500">
             By subscribing, you agree to our{' '}
-            <button className="text-[var(--accent-primary)] hover:underline">Terms of Service</button>
+            <button onClick={onOpenTerms} className="text-[var(--accent-primary)] hover:underline">Terms of Service</button>
             {' '}and{' '}
-            <button className="text-[var(--accent-primary)] hover:underline">Privacy Policy</button>
+            <button onClick={onOpenPrivacyPolicy} className="text-[var(--accent-primary)] hover:underline">Privacy Policy</button>
           </p>
         </div>
       </div>
