@@ -335,7 +335,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                     </div>
                     <div className="flex-1">
                       <span className="block text-sm font-medium text-[var(--text-primary)]">90-Day Journey</span>
-                      <span className="text-xs text-[var(--text-secondary)]">One arc, complete — one payment</span>
+                      <span className="text-xs text-[var(--text-secondary)]">One complete arc — billed every 3 months</span>
                     </div>
                     <div className="text-right">
                       <span
@@ -344,7 +344,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                       >
                         {offerings.journey90.price}
                       </span>
-                      <span className="text-xs text-[var(--text-secondary)]">one time</span>
+                      <span className="text-xs text-[var(--text-secondary)]">per 3 months</span>
                     </div>
                   </button>
                 </div>
@@ -436,9 +436,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
           </button>
 
           <p className="text-center text-xs text-[var(--text-secondary)] mt-2 mb-4">
-            {selectedPlan === 'journey90'
-              ? 'One-time payment. No subscription. No auto-renewal.'
-              : 'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in App Store Settings.'}
+{'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in App Store Settings.'}
           </p>
 
           {/* Restore & beta */}

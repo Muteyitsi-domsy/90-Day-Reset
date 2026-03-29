@@ -36,7 +36,7 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
           <div className="sticky top-0 z-10 bg-[var(--card-bg)] border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-light text-[var(--text-primary)]">Terms of Service</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: March 15, 2026</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last Updated: March 29, 2026</p>
             </div>
             <button
               onClick={onClose}
@@ -195,38 +195,44 @@ export function TermsOfService({ isOpen, onClose }: TermsOfServiceProps) {
 
           <div className="terms-section">
             <h2>11. Subscriptions &amp; Payments</h2>
+            <h3>Free Tier</h3>
+            <p>
+              The App includes a permanently free tier comprising the full Mood Journal feature. No free trial is offered. All subscription terms, pricing, and what is included in each plan are displayed on the paywall screen prior to any purchase.
+            </p>
+
             <h3>Subscription Plans</h3>
-            <p>The App offers three access plans, all processed through Google Play (Android):</p>
+            <p>The App offers three paid access plans, processed through the Apple App Store (iOS) or Google Play (Android) depending on your platform:</p>
             <ul>
-              <li><strong>Monthly:</strong> Recurring monthly subscription. Cancel anytime; access continues until the end of the paid billing period.</li>
-              <li><strong>Annual:</strong> Recurring annual subscription. Provides 12 months of continuous access. See asterisk note below regarding journey count.</li>
-              <li><strong>90-Day Journey:</strong> A one-time prepaid subscription valid for 90 days from the date of purchase. Does not auto-renew. Access expires at the end of the 90-day period.</li>
+              <li><strong>Monthly:</strong> Auto-renewable monthly subscription. Renews each month unless cancelled. Access continues until the end of the current billing period after cancellation.</li>
+              <li><strong>Annual:</strong> Auto-renewable annual subscription providing 12 months of continuous access. Renews each year unless cancelled.</li>
+              <li><strong>90-Day Journey:</strong> Auto-renewable 3-month subscription. Renews every 3 months unless cancelled at least 24 hours before the end of the current period. Access continues until the end of the current billing period after cancellation.</li>
             </ul>
 
             <h3>Annual Plan — Journey Count</h3>
             <p>
-              The Annual plan provides 12 months of continuous access. The number of complete 90-day journeys you can undertake within that period depends on your usage, including any pauses or journey restarts. Annual subscribers may complete <strong>up to 4</strong> consecutive journeys within a 12-month period; the actual number may be fewer depending on individual usage patterns. The Annual plan does not guarantee exactly 4 journeys.
+              The Annual plan provides 12 months of continuous access. Annual subscribers may complete <strong>up to 4</strong> consecutive journeys within a 12-month period; the actual number may be fewer depending on individual usage patterns including pauses or journey restarts.
             </p>
 
             <h3>Journey Pause Feature</h3>
             <p>
-              The ability to pause your journey is available to <strong>Monthly and Annual subscribers only</strong> and is offered as a flexibility benefit of those recurring plans. The 90-Day Journey (one-time prepaid plan) does not include the pause feature. This is because pausing suspends access to time-sensitive features while your access period continues to count down, which would be inconsistent with the fixed-term nature of the one-time purchase.
+              The ability to pause your journey is available to <strong>Monthly and Annual subscribers only</strong>. The 90-Day Journey plan does not include the pause feature.
             </p>
 
             <h3>Payment Processing</h3>
             <p>
-              All payments are processed by <strong>Google Play</strong> (for Android users). We use <strong>RevenueCat</strong> as our subscription management platform to verify entitlements and manage access. RevenueCat receives purchase metadata (subscription status, product ID, platform) but does not store your full payment details. Your payment information is handled directly by Google Play under their terms.
+              All payments are processed by <strong>Apple</strong> (iOS) or <strong>Google Play</strong> (Android) depending on your platform. We use <strong>RevenueCat</strong> as our subscription management platform to verify entitlements. RevenueCat receives purchase metadata (subscription status, product ID, platform) but does not store your payment details. Your payment information is handled directly by Apple or Google under their respective terms.
             </p>
             <ul>
               <li>RevenueCat Privacy Policy: <strong>revenuecat.com/privacy</strong></li>
+              <li>Apple Media Services Terms: <strong>apple.com/legal/internet-services/itunes</strong></li>
               <li>Google Play Terms: <strong>play.google.com/about/play-terms</strong></li>
             </ul>
 
             <h3>Cancellations &amp; Refunds</h3>
             <ul>
-              <li>Subscriptions (Monthly and Annual) can be cancelled at any time through your Google Play account. Access continues until the end of the current billing period.</li>
-              <li>The 90-Day Journey plan does not auto-renew and requires no cancellation.</li>
-              <li>Refund requests are subject to Google Play's refund policies. We do not process refunds directly.</li>
+              <li>All subscriptions can be cancelled at any time through your Apple ID settings (iOS) or Google Play account (Android). Access continues until the end of the current billing period.</li>
+              <li>Subscriptions must be cancelled at least 24 hours before the renewal date to avoid being charged for the next period.</li>
+              <li>Refund requests are subject to Apple's or Google Play's refund policies respectively. We do not process refunds directly.</li>
               <li>We do not offer partial refunds for unused portions of a subscription period.</li>
             </ul>
 
