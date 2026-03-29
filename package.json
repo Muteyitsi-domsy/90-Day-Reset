@@ -1,7 +1,7 @@
 {
   "name": "90-day-identity-reset-app-v1",
   "private": true,
-  "version": "2.2.3",
+  "version": "2.2.4",
   "type": "module",
   "scripts": {
     "dev": "vite",

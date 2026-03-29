@@ -2337,18 +2337,20 @@ const App: React.FC = () => {
               streakEnabled={settings.flipStreakEnabled !== false}
             />
           ) : (
-            {keepsakeGraceEndDate && (
-              <KeepsakeGraceBanner graceEndDate={keepsakeGraceEndDate} />
-            )}
-            <KeepsakeWindow
-              completionSummary={finalSummaryText}
-              userProfile={userProfile}
-              journalEntries={completedJourneyEntries.length > 0 ? completedJourneyEntries : journalEntries}
-              settings={settings}
-              userEmail={user?.email ?? undefined}
-              onStartNewJourney={handleStartNewJourney}
-              onExport={exportData}
-            />
+            <>
+              {keepsakeGraceEndDate && (
+                <KeepsakeGraceBanner graceEndDate={keepsakeGraceEndDate} />
+              )}
+              <KeepsakeWindow
+                completionSummary={finalSummaryText}
+                userProfile={userProfile}
+                journalEntries={completedJourneyEntries.length > 0 ? completedJourneyEntries : journalEntries}
+                settings={settings}
+                userEmail={user?.email ?? undefined}
+                onStartNewJourney={handleStartNewJourney}
+                onExport={exportData}
+              />
+            </>
           )}
 
           <Menu

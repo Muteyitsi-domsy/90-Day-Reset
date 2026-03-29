@@ -966,7 +966,7 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
                     <div className="px-4 pb-4 text-center text-xs text-gray-400">
-                        Renew90 v2.2.3
+                        Renew90 v2.2.4
                     </div>
                 </div>
             </div>
