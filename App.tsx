@@ -9,6 +9,7 @@ import IdealSelfScripting from './components/IdealSelfScripting';
 import { safeRequestNotificationPermission, scheduleDailyReminder, scheduleEveningReminder } from './utils/notifications';
 import CelebrationScreen from './components/CelebrationScreen';
 import KeepsakeWindow from './components/KeepsakeWindow';
+import KeepsakeGraceBanner from './components/KeepsakeGraceBanner';
 import NewJourneyChoiceModal from './components/NewJourneyChoiceModal';
 import JournalView from './components/JournalView';
 import { detectCrisis, CrisisSeverity } from './utils/crisisDetector';
@@ -189,6 +190,17 @@ const App: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<import('./types').SubscriptionStatus>('none');
   const [gracePeriodEndDate, setGracePeriodEndDate] = useState<string | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+
+  // Keepsake grace period: journey90 users get 7 days after journey completion to download
+  const keepsakeGraceEndDate = useMemo(() => {
+    if (subscriptionTier !== 'journey90') return null;
+    if (subscriptionStatus !== 'expired') return null;
+    if (!userProfile?.journeyCompleted || !userProfile.journeyCompletedDate) return null;
+    const end = new Date(userProfile.journeyCompletedDate);
+    end.setDate(end.getDate() + 7);
+    if (end <= new Date()) return null; // Grace window already closed
+    return end.toISOString();
+  }, [subscriptionTier, subscriptionStatus, userProfile?.journeyCompleted, userProfile?.journeyCompletedDate]);
 
   // New journey state (for post-completion flow)
   const [showNewJourneyModal, setShowNewJourneyModal] = useState(false);
@@ -374,9 +386,15 @@ const App: React.FC = () => {
       setSubscriptionStatus(state.status);
       setGracePeriodEndDate(state.gracePeriodEndDate);
 
-      // If not subscribed and on a gated view, redirect to mood journal
+      // If not subscribed and on a gated view, redirect to mood journal.
+      // journey90 expired users stay in 'journey' view — keepsake lives there and
+      // they paid for one complete arc; we must not gate them out before they download.
       if (!state.isActive) {
-        setActiveView(v => (v === 'journey' || v === 'flip') ? 'mood' : v);
+        setActiveView(v => {
+          if (v === 'flip') return 'mood';
+          if (v === 'journey' && state.tier !== 'journey90') return 'mood';
+          return v;
+        });
       }
 
       // Auto-pause: subscription has fully lapsed (not journey90 — they complete fully)
@@ -2319,6 +2337,9 @@ const App: React.FC = () => {
               streakEnabled={settings.flipStreakEnabled !== false}
             />
           ) : (
+            {keepsakeGraceEndDate && (
+              <KeepsakeGraceBanner graceEndDate={keepsakeGraceEndDate} />
+            )}
             <KeepsakeWindow
               completionSummary={finalSummaryText}
               userProfile={userProfile}
