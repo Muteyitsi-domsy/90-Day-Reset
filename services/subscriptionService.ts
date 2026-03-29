@@ -26,12 +26,17 @@ const VALIDATE_BETA_CODE_URL =
 // RevenueCat types (will be available when running on device)
 let Purchases: typeof import('@revenuecat/purchases-capacitor').Purchases | null = null;
 
-// Product identifiers - must match what you set up in RevenueCat/Play Console
+// Product identifiers - must match what you set up in RevenueCat/App Store/Play Console
 export const PRODUCT_IDS = {
   MONTHLY: 'pro_monthly',
   YEARLY: 'pro_annual',
-  JOURNEY_90: 'pro_journey_90:pro-journey-90-base', // Prepaid 3-month subscription (no auto-renewal)
+  JOURNEY_90_IOS: 'pro_journey_90_nr',              // iOS non-renewing subscription
+  JOURNEY_90_ANDROID: 'pro_journey_90:pro-journey-90-base', // Android prepaid (no auto-renewal)
 } as const;
+
+// Helper — matches either platform's journey90 product identifier
+export const isJourney90Product = (id: string): boolean =>
+  id === PRODUCT_IDS.JOURNEY_90_IOS || id === PRODUCT_IDS.JOURNEY_90_ANDROID;
 
 // RevenueCat API keys (set these in your environment)
 const REVENUECAT_API_KEY_ANDROID = import.meta.env.VITE_REVENUECAT_ANDROID_KEY || '';
@@ -153,7 +158,7 @@ export const getSubscriptionState = async (): Promise<SubscriptionState> => {
       const pid = premiumEntitlement.productIdentifier;
       const tier =
         pid === PRODUCT_IDS.MONTHLY ? 'monthly' :
-        pid === PRODUCT_IDS.JOURNEY_90 ? 'journey90' :
+        isJourney90Product(pid) ? 'journey90' :
         'yearly';
 
       // Check if payment has failed and we're in the platform grace period.
@@ -203,7 +208,7 @@ export const getSubscriptionState = async (): Promise<SubscriptionState> => {
       const pid = (lapsedEntitlement as any).productIdentifier as string;
       const tier =
         pid === PRODUCT_IDS.MONTHLY ? 'monthly' :
-        pid === PRODUCT_IDS.JOURNEY_90 ? 'journey90' :
+        isJourney90Product(pid) ? 'journey90' :
         'yearly';
       return {
         status: 'expired',
@@ -248,10 +253,9 @@ export const getOfferings = async (): Promise<SubscriptionOffering | null> => {
     const yearly = currentOffering.annual;
 
     // journey90 is a custom package — find it by product identifier in availablePackages
-    // iOS uses plain 'pro_journey_90'; Android appends ':pro-journey-90-base'
+    // iOS: 'pro_journey_90_nr' (non-renewing); Android: 'pro_journey_90:pro-journey-90-base'
     const journey90Pkg = (currentOffering.availablePackages || []).find(
-      pkg => pkg.product.identifier === PRODUCT_IDS.JOURNEY_90 ||
-             pkg.product.identifier === 'pro_journey_90'
+      pkg => isJourney90Product(pkg.product.identifier)
     );
 
     return {
