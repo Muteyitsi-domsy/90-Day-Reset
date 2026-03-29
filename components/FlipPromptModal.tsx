@@ -5,6 +5,7 @@ interface FlipPromptModalProps {
   onDecline: () => void;
   remainingFlips: number;
   isExhausted?: boolean; // When true, shows exhausted message instead of prompt
+  isSubscribed?: boolean; // When false, show a Pro pattern feature teaser
 }
 
 const FlipPromptModal: React.FC<FlipPromptModalProps> = ({
@@ -12,6 +13,7 @@ const FlipPromptModal: React.FC<FlipPromptModalProps> = ({
   onDecline,
   remainingFlips,
   isExhausted = false,
+  isSubscribed = true,
 }) => {
   // Show exhausted message when no flips remaining
   if (isExhausted) {
@@ -97,9 +99,19 @@ const FlipPromptModal: React.FC<FlipPromptModalProps> = ({
         </div>
 
         {/* Description */}
-        <p className="text-[var(--text-secondary)] text-center mb-6 leading-relaxed">
+        <p className="text-[var(--text-secondary)] text-center mb-4 leading-relaxed">
           Transform what you just wrote into a new perspective. Your wiser self has a question for you.
         </p>
+
+        {/* Pro feature teaser — shown to free users only */}
+        {!isSubscribed && (
+          <div className="bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 rounded-xl px-4 py-3 mb-4 text-center">
+            <p className="text-xs font-medium text-[var(--accent-primary)] uppercase tracking-wide mb-0.5">Pro feature</p>
+            <p className="text-xs text-[var(--text-secondary)] leading-snug">
+              Upgrade to unlock pattern insights — when your mood entries reveal a recurring pattern, your flip question is tuned to gently interrupt it.
+            </p>
+          </div>
+        )}
 
         {/* Remaining flips indicator */}
         <p className="text-sm text-center text-[var(--text-secondary)] mb-6">

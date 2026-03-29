@@ -1,4 +1,4 @@
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive, PatternMemory } from '../types';
 import { StorageService } from './storageService';
 import { safeRead } from '../utils/encryption';
 
@@ -368,6 +368,44 @@ export class LocalStorageService implements StorageService {
     } catch (error) {
       console.error('Error clearing journey data from localStorage:', error);
       throw new Error('Failed to clear journey data');
+    }
+  }
+
+  // Pattern Memory operations (Pro feature)
+  private readonly PATTERN_MEMORY_KEY = 'renew90_pattern_memory';
+
+  async getPatternMemory(patternId: string): Promise<PatternMemory | null> {
+    try {
+      const all = await this.getAllPatternMemories();
+      return all.find(m => m.pattern_id === patternId) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async savePatternMemory(memory: PatternMemory): Promise<void> {
+    try {
+      const all = await this.getAllPatternMemories();
+      const idx = all.findIndex(m => m.pattern_id === memory.pattern_id);
+      if (idx >= 0) {
+        all[idx] = memory;
+      } else {
+        all.push(memory);
+      }
+      localStorage.setItem(this.PATTERN_MEMORY_KEY, JSON.stringify(all));
+    } catch (error) {
+      console.error('Error saving pattern memory to localStorage:', error);
+      throw new Error('Failed to save pattern memory');
+    }
+  }
+
+  async getAllPatternMemories(): Promise<PatternMemory[]> {
+    try {
+      const raw = localStorage.getItem(this.PATTERN_MEMORY_KEY);
+      if (!raw) return [];
+      return JSON.parse(raw) as PatternMemory[];
+    } catch {
+      return [];
     }
   }
 

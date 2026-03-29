@@ -68,6 +68,33 @@ export interface MoodJournalEntry {
   customEmotionEmoji?: string; // Emoji if custom emotion
 }
 
+// Pattern Engine Types (Pro feature)
+export type PatternType = 'repetition' | 'escalation' | 'cross_area';
+export type PatternScoreLevel = 'Low' | 'Moderate' | 'High';
+
+export interface PatternMemory {
+  pattern_id: string;
+  user_id: string;
+  pattern_type: PatternType;
+  key: Record<string, string>;
+  occurrences: number;
+  last_seen: string;   // ISO datetime
+  month_bucket: string; // YYYY-MM
+  last_shown?: string;  // ISO datetime — used for 48h suppression
+}
+
+export interface PatternInsight {
+  pattern_type: PatternType;
+  life_area?: MoodContext;
+  mood_type?: string;
+  source_area?: MoodContext;
+  target_area?: MoodContext;
+  occurrences: number;
+  score_level: PatternScoreLevel;
+  insight_text: string;
+  is_recurring: boolean;
+}
+
 export interface UserProfile {
   name: string;
   email?: string; // Added for PIN recovery simulation

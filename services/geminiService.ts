@@ -892,12 +892,31 @@ Your output must be a single, clean JSON object matching the provided schema.`;
 }
 
 
+// Emotions considered positive for pattern-tuning purposes
+const POSITIVE_EMOTIONS = new Set([
+  'joyful', 'calm', 'energized', 'grateful',
+]);
+
+function isPositiveEmotion(emotion: string): boolean {
+  return POSITIVE_EMOTIONS.has(emotion.toLowerCase());
+}
+
 /**
- * Generates a reframing question from the user's wiser, future self perspective
- * Used by the Flip Journal feature
+ * Builds the flip reframing prompt, optionally tuned by a detected mood pattern.
+ *
+ * Tuning logic:
+ *  - Negative emotion pattern  → empowerment-focused, future-oriented, pattern-interrupting
+ *  - Positive emotion pattern  → deepening + anchoring (what's working, how to invite more)
+ *  - Cross-area spillover       → boundary-awareness + containment framing
+ *  - No pattern (base case)    → original wiser-self question
  */
-export async function generateReframingQuestion(challenge: string): Promise<string> {
-  const prompt = `
+function buildReframingPrompt(
+  challenge: string,
+  patternContext?: PatternInsightInput & { mood_type?: string },
+): string {
+  if (!patternContext) {
+    // Original baseline prompt — unchanged behaviour
+    return `
 You are the user's wiser, older self who has already overcome this challenge. Your role is to ask a single powerful question that helps them see the situation from a different angle.
 
 The user has shared this challenge or stuck thought:
@@ -917,6 +936,111 @@ The question should feel like wisdom from their future self gently guiding them 
 
 Respond with ONLY the question itself, no introduction or explanation. Start the question directly.
 `;
+  }
+
+  const { pattern_type, life_area, mood_type, source_area, target_area, score_level } =
+    patternContext;
+  const positive = mood_type ? isPositiveEmotion(mood_type) : false;
+
+  // ── Cross-area spillover ───────────────────────────────────────────────────
+  if (pattern_type === 'cross_area') {
+    return `
+You are the user's wiser, older self. You can see something the user may not yet — that when things feel heavy in their ${source_area ?? 'one area of life'}, it tends to spill into their ${target_area ?? 'another area'} soon after. This pattern has repeated itself.
+
+The user has written:
+"""
+${challenge}
+"""
+
+Your task: ask ONE question that gently brings awareness to this connection and invites the user to imagine what could help them keep these areas from bleeding into each other. The question should feel caring, not alarming. It should open a door, not apply pressure.
+
+Rules:
+- Future-oriented (what could be different, not what went wrong)
+- No advice, no prescriptions
+- Open-ended (not yes/no)
+- Warm and conversational
+
+Respond with ONLY the question. No introduction.
+`;
+  }
+
+  // ── Escalation (building intensity) ───────────────────────────────────────
+  if (pattern_type === 'escalation') {
+    return `
+You are the user's wiser, older self. You can see that feelings in their ${life_area ?? 'this area'} have been building — getting heavier with each entry. The intensity is ${score_level?.toLowerCase() ?? 'notable'}.
+
+The user has written:
+"""
+${challenge}
+"""
+
+Your task: ask ONE question that is especially empowering and future-focused — something that could interrupt this build-up and help the user see a path forward from a calmer, wiser vantage point. The question should feel like a hand reaching toward them, not a push.
+
+Rules:
+- Empowerment focus — what agency do they have?
+- Future-self perspective — what does the version of them who navigated this already know?
+- Gently pattern-interrupting without drama
+- Open-ended, warm, not clinical
+
+Respond with ONLY the question. No introduction.
+`;
+  }
+
+  // ── Positive emotion repetition ───────────────────────────────────────────
+  if (positive) {
+    return `
+You are the user's wiser, older self. You notice something beautiful — the user keeps returning to ${life_area ?? 'this area'} with ${mood_type ?? 'positive feelings'}. This is a pattern worth understanding deeply.
+
+The user has written:
+"""
+${challenge}
+"""
+
+Your task: ask ONE question that helps the user understand and anchor what is working so well here — so they can consciously invite more of it into their life. This is a celebration question, not a challenge.
+
+Rules:
+- Curious and appreciative tone
+- Focus on what's nourishing this positive pattern
+- Open-ended invitation to reflect, not interrogate
+- Warm and genuine
+
+Respond with ONLY the question. No introduction.
+`;
+  }
+
+  // ── Negative emotion repetition (default for non-escalation, non-cross-area) ──
+  return `
+You are the user's wiser, older self. You can see something the user may be in the middle of — the feeling of ${mood_type ?? 'this emotion'} in their ${life_area ?? 'life'} has been showing up repeatedly. This is a pattern, not a permanent state.
+
+The user has written:
+"""
+${challenge}
+"""
+
+Your task: ask ONE question that empowers the user to step slightly outside this loop and look at it with fresh eyes. The question should feel like a perspective shift — something their future self, who already moved through this, would ask with love and confidence in their ability to navigate it.
+
+Rules:
+- Empowerment-focused (not pity, not pressure)
+- Future-oriented — what might be possible, what can they build toward
+- Acknowledge the pattern exists without dramatising it
+- Open-ended, warm, conversational
+
+Respond with ONLY the question. No introduction.
+`;
+}
+
+/**
+ * Generates a reframing question from the user's wiser, future self perspective.
+ * Used by the Flip Journal feature.
+ *
+ * When patternContext is provided (Pro users), the question is tuned to the
+ * detected mood pattern — empowering for negative patterns, deepening for positive ones.
+ */
+export async function generateReframingQuestion(
+  challenge: string,
+  patternContext?: PatternInsightInput & { mood_type?: string },
+): Promise<string> {
+  const prompt = buildReframingPrompt(challenge, patternContext);
 
   try {
     // Use Vertex AI if enabled
@@ -1001,4 +1125,104 @@ export function getDayAndMonth(startDate: string): { day: number; month: number 
     month = 3;
   }
   return { day, month };
+}
+
+// ---------------------------------------------------------------------------
+// Pattern Insight Generation (Pro feature)
+// ---------------------------------------------------------------------------
+
+export interface PatternInsightInput {
+  pattern_type: 'repetition' | 'escalation' | 'cross_area';
+  life_area?: string;
+  mood_type?: string;
+  source_area?: string;
+  target_area?: string;
+  occurrences: number;
+  score_level: 'Low' | 'Moderate' | 'High';
+}
+
+/**
+ * Generates a calm, non-judgmental 1–2 sentence insight describing the
+ * detected behavioural pattern. No advice. No calls to improve.
+ * The user should feel: "Your feelings are valid. I see you."
+ */
+export async function generatePatternInsight(input: PatternInsightInput): Promise<string> {
+  const contextLine =
+    input.pattern_type === 'cross_area'
+      ? `A cross-area pattern: when stress or difficult emotions appear in "${input.source_area}", an entry in "${input.target_area}" tends to follow within 24 hours. This has happened ${input.occurrences} times.`
+      : input.pattern_type === 'escalation'
+      ? `An escalation pattern: emotional intensity in the "${input.life_area}" area has been increasing across the last 3 entries (score level: ${input.score_level}).`
+      : `A repetition pattern: the emotion "${input.mood_type}" in the "${input.life_area}" area has appeared ${input.occurrences} times in the last 4 days.`;
+
+  const prompt = `You are a gentle, non-judgmental reflection companion.
+
+A user has just submitted a mood journal entry. The following behavioural pattern has been detected in their recent entries:
+
+${contextLine}
+
+Generate a calm, reflective, non-judgmental 1–2 sentence observation describing this pattern.
+
+Rules:
+- Do NOT give advice or tell the user what to do.
+- Do NOT sound clinical, alarming, or prescriptive.
+- Make it feel personal, warm, and purely observational.
+- Meet the user exactly where they are — no calls to change or be different.
+- Write in second person ("You've been…", "It seems…", "There's a pattern…").
+
+Respond with ONLY the observation text. No introduction, no labels, no explanation.`;
+
+  try {
+    if (import.meta.env.VITE_USE_VERTEX_AI === 'true') {
+      const userId = localStorage.getItem('userId') || 'anonymous';
+      const VERTEX_URL = import.meta.env.VITE_VERTEX_API_URL || '/api/vertex-ai';
+      const response = await fetch(VERTEX_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          userId,
+          requestType: 'analysis',
+          config: { temperature: 0.7, maxOutputTokens: 256 },
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Pattern insight API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.text.trim();
+    }
+
+    if (!ai) {
+      // Return a safe rule-based fallback when AI is unavailable
+      return buildFallbackInsight(input);
+    }
+
+    const result = await rateLimiter.enqueue(async () => {
+      const response = await ai!.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          temperature: 0.7,
+          maxOutputTokens: 256,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
+      return response.text.trim();
+    }, `pattern_insight_${Date.now()}`);
+
+    return result;
+  } catch (error) {
+    console.error('Error generating pattern insight:', error);
+    return buildFallbackInsight(input);
+  }
+}
+
+function buildFallbackInsight(input: PatternInsightInput): string {
+  if (input.pattern_type === 'cross_area') {
+    return `When things feel heavy in ${input.source_area ?? 'one area'}, it often carries into ${input.target_area ?? 'another area'} soon after.`;
+  }
+  if (input.pattern_type === 'escalation') {
+    return `Your feelings in ${input.life_area ?? 'this area'} have been building in intensity recently.`;
+  }
+  return `You've been experiencing ${input.mood_type ?? 'similar feelings'} in ${input.life_area ?? 'this area'} a few times lately.`;
 }

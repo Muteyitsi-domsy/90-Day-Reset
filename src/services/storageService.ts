@@ -1,4 +1,4 @@
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive, PatternMemory } from '../types';
 import { LocalStorageService } from './localStorageService';
 import { FirestoreService } from './firestoreService';
 
@@ -50,6 +50,11 @@ export interface StorageService {
 
   // Archive a completed journey before wiping. Immutable once written.
   saveJourneyArchive(archive: JourneyArchive): Promise<void>;
+
+  // Pattern Memory operations (Pro feature)
+  getPatternMemory(patternId: string): Promise<PatternMemory | null>;
+  savePatternMemory(memory: PatternMemory): Promise<void>;
+  getAllPatternMemories(): Promise<PatternMemory[]>;
 
   // Optional: Set user ID for encryption (only applicable to LocalStorageService)
   setUserId?(userId: string | undefined): void;

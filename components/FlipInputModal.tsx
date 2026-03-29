@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateReframingQuestion } from '../services/geminiService';
+import { generateReframingQuestion, PatternInsightInput } from '../services/geminiService';
 import {
   CHALLENGE_MAX_LENGTH,
   PERSPECTIVE_MAX_LENGTH,
@@ -27,6 +27,8 @@ interface FlipInputModalProps {
   };
   isSubscribed?: boolean;         // If false, gate the reflect step behind upgrade CTA
   onUpgrade?: () => void;         // Opens the paywall
+  /** Pattern context from the engine — tunes the reframing question (Pro only) */
+  patternContext?: (PatternInsightInput & { mood_type?: string }) | null;
 }
 
 type Step = 'challenge' | 'question' | 'perspective';
@@ -53,6 +55,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
   editingEntry,
   isSubscribed = true,
   onUpgrade,
+  patternContext,
 }) => {
   const isEditing = !!editingEntry;
   const [step, setStep] = useState<Step>(isEditing ? 'perspective' : 'challenge');
@@ -87,7 +90,7 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
     setQuestionError(null);
 
     try {
-      const question = await generateReframingQuestion(challenge);
+      const question = await generateReframingQuestion(challenge, patternContext ?? undefined);
       setReframingQuestion(question);
     } catch (error) {
       console.error('Error generating reframing question:', error);
@@ -221,8 +224,21 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
           ) : (
             <div className="space-y-3 w-full max-w-sm mx-auto">
               <div className="bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 rounded-xl p-4 text-sm text-[var(--text-secondary)] leading-relaxed">
-                <p className="font-medium text-[var(--text-primary)] mb-1">✨ Unlock the full Flip Journal</p>
-                <p>Upgrade to Pro to reflect on this perspective and get 3 fresh reframes every day.</p>
+                <p className="font-medium text-[var(--text-primary)] mb-2">✨ Unlock smarter reflection</p>
+                <ul className="space-y-1.5">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5 text-[var(--accent-primary)]">→</span>
+                    <span>Respond to this question and write from your wiser self's perspective</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5 text-[var(--accent-primary)]">→</span>
+                    <span>3 fresh reframes every day</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5 text-[var(--accent-primary)]">→</span>
+                    <span><strong className="text-[var(--text-primary)]">Pattern insights</strong> — when your mood entries reveal a repeating or escalating pattern, your flip question is tuned to gently interrupt it</span>
+                  </li>
+                </ul>
               </div>
               <button
                 onClick={() => { onClose(); onUpgrade?.(); }}

@@ -40,6 +40,10 @@ import MoodCalendarView from './components/MoodCalendarView';
 import FlipInputModal from './components/FlipInputModal';
 import FlipJournalView from './components/FlipJournalView';
 import FlipPromptModal from './components/FlipPromptModal';
+import PatternInsightModal from './components/PatternInsightModal';
+import { runPatternEngine, buildPatternId } from './src/services/patternEngine';
+import { generatePatternInsight, PatternInsightInput } from './services/geminiService';
+import type { PatternInsight, PatternMemory } from './types';
 import SuspendedAccountScreen from './components/SuspendedAccountScreen';
 import { checkForAppUpdate } from './utils/appUpdate';
 import { calculateUpdatedStreak, recalculateStreakFromDates } from './services/streakService';
@@ -153,6 +157,11 @@ const App: React.FC = () => {
   const [isSavingMoodEntry, setIsSavingMoodEntry] = useState(false);
   const [activeView, setActiveView] = useState<'journey' | 'mood' | 'flip'>('journey'); // Toggle between 90-day journey, mood journal, and flip journal
   const [calendarView, setCalendarView] = useState<'journey' | 'mood'>('journey'); // Calendar toggle
+
+  // Pattern engine state (Pro feature)
+  const [showPatternInsightModal, setShowPatternInsightModal] = useState(false);
+  const [pendingPatternInsight, setPendingPatternInsight] = useState<PatternInsight | null>(null);
+  const [pendingPatternContext, setPendingPatternContext] = useState<(PatternInsightInput & { mood_type?: string }) | null>(null);
 
   // Flip journaling state
   const [flipEntries, setFlipEntries] = useState<FlipJournalEntry[]>([]);
@@ -1104,7 +1113,82 @@ const App: React.FC = () => {
       const today = getFlipLocalDateString();
       const todayFlipCount = flipEntries.filter(e => e.date === today).length;
 
-      // Always show prompt after mood entry - either to flip or to inform about exhausted flips
+      // ── Pattern Engine (Pro users only) ────────────────────────────────────
+      if (isSubscribed) {
+        try {
+          // Entries from the last 14 days excluding the one just saved
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - 14);
+          const recentEntries = moodEntries.filter(
+            e => new Date(e.timestamp) >= cutoff,
+          );
+
+          // Memory lookup (sync from already-loaded data where possible)
+          const memoryCache: Record<string, PatternMemory | null> = {};
+          const getMemory = (id: string): PatternMemory | null => {
+            if (id in memoryCache) return memoryCache[id];
+            return null; // async lookup happens below after detection
+          };
+
+          const engineResult = runPatternEngine(recentEntries, newEntry, getMemory);
+
+          if (engineResult) {
+            // Async memory lookup now that we have the pattern ID
+            const existingMemory = await storageService.getPatternMemory(
+              engineResult.memory.pattern_id,
+            );
+
+            // Re-run suppression check with real memory
+            const SUPPRESS_MS = 48 * 60 * 60 * 1000;
+            const isSuppressed =
+              existingMemory?.last_shown != null &&
+              Date.now() - new Date(existingMemory.last_shown).getTime() < SUPPRESS_MS;
+
+            if (!isSuppressed) {
+              // Persist updated occurrences and mark as shown
+              const updatedMemory: PatternMemory = {
+                ...engineResult.memory,
+                user_id: user?.uid ?? '',
+                occurrences: (existingMemory?.occurrences ?? 0) + 1,
+                last_shown: new Date().toISOString(),
+              };
+              await storageService.savePatternMemory(updatedMemory);
+
+              // Generate AI insight text
+              const insightInput: PatternInsightInput & { mood_type?: string } = {
+                pattern_type: engineResult.insight.pattern_type,
+                life_area: engineResult.insight.life_area,
+                mood_type: engineResult.insight.mood_type,
+                source_area: engineResult.insight.source_area,
+                target_area: engineResult.insight.target_area,
+                occurrences: updatedMemory.occurrences,
+                score_level: engineResult.insight.score_level,
+              };
+              const insightText = await generatePatternInsight(insightInput);
+
+              const fullInsight: PatternInsight = {
+                ...engineResult.insight,
+                occurrences: updatedMemory.occurrences,
+                is_recurring: updatedMemory.occurrences > 1,
+                insight_text: insightText,
+              };
+
+              setPendingFlipMoodEntry(newEntry);
+              setFlipsExhausted(todayFlipCount >= 3);
+              setPendingPatternInsight(fullInsight);
+              setPendingPatternContext(insightInput);
+              setShowPatternInsightModal(true);
+              return; // Pattern modal will trigger flip prompt on Continue
+            }
+          }
+        } catch (patternError) {
+          // Pattern engine errors must never block the main mood entry flow
+          console.error('Pattern engine error (non-fatal):', patternError);
+        }
+      }
+      // ── End Pattern Engine ─────────────────────────────────────────────────
+
+      // Always show flip prompt after mood entry (no pattern detected or free user)
       setPendingFlipMoodEntry(newEntry);
       setShowFlipPrompt(true);
       setFlipsExhausted(todayFlipCount >= 3);
@@ -1409,6 +1493,13 @@ const App: React.FC = () => {
     setFlipsExhausted(false);
     // Keep pendingFlipMoodEntry so user can flip later from MoodJournalView
     // It will be cleared when a flip is actually saved or when a new mood entry is created
+  };
+
+  const handleDismissPatternInsight = () => {
+    setShowPatternInsightModal(false);
+    setPendingPatternInsight(null);
+    // Continue into the normal flip prompt flow
+    setShowFlipPrompt(true);
   };
 
   // Handler to flip today's mood entry from MoodJournalView
@@ -2751,6 +2842,12 @@ const App: React.FC = () => {
           onCrisisDetected={(severity) => handleCrisisDetected(severity, 'mood')}
         />
       )}
+      {showPatternInsightModal && pendingPatternInsight && (
+        <PatternInsightModal
+          insight={pendingPatternInsight}
+          onContinue={handleDismissPatternInsight}
+        />
+      )}
       {showFlipInputModal && (
         <FlipInputModal
           onSave={handleSaveFlipEntry}
@@ -2758,6 +2855,7 @@ const App: React.FC = () => {
             setShowFlipInputModal(false);
             setPendingFlipMoodEntry(null);
             setEditingFlipEntry(null);
+            setPendingPatternContext(null);
           }}
           isSaving={isSavingFlipEntry}
           onCrisisDetected={(severity) => handleCrisisDetected(severity, 'flip')}
@@ -2766,6 +2864,7 @@ const App: React.FC = () => {
           editingEntry={editingFlipEntry || undefined}
           isSubscribed={isSubscribed}
           onUpgrade={() => setShowPaywall(true)}
+          patternContext={pendingPatternContext}
         />
       )}
       {showFlipPrompt && pendingFlipMoodEntry && (
@@ -2774,6 +2873,7 @@ const App: React.FC = () => {
           onDecline={handleDeclineFlipPrompt}
           remainingFlips={3 - flipEntries.filter(e => e.date === getFlipLocalDateString()).length}
           isExhausted={flipsExhausted}
+          isSubscribed={isSubscribed}
         />
       )}
       {showMonthlySummaryModal && monthlySummaryData && (

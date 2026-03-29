@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive } from '../types';
+import { UserProfile, Settings, JournalEntry, MoodJournalEntry, FlipJournalEntry, JourneyArchive, PatternMemory } from '../types';
 import { StorageService } from './storageService';
 
 // Firebase SDK v9+ throws on undefined values in documents.
@@ -412,6 +412,47 @@ export class FirestoreService implements StorageService {
     } catch (error) {
       console.error('Error saving journey archive to Firestore:', error);
       throw new Error('Failed to archive journey data');
+    }
+  }
+
+  // Pattern Memory operations (Pro feature)
+  async getPatternMemory(patternId: string): Promise<PatternMemory | null> {
+    try {
+      const ref = doc(db, 'users', this.userId, 'patternMemory', patternId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return null;
+      const { createdAt, updatedAt, ...data } = snap.data();
+      return data as PatternMemory;
+    } catch (error) {
+      console.error('Error loading pattern memory from Firestore:', error);
+      return null;
+    }
+  }
+
+  async savePatternMemory(memory: PatternMemory): Promise<void> {
+    try {
+      const ref = doc(db, 'users', this.userId, 'patternMemory', memory.pattern_id);
+      await setDoc(ref, {
+        ...stripUndefined(memory),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Error saving pattern memory to Firestore:', error);
+      throw new Error('Failed to save pattern memory');
+    }
+  }
+
+  async getAllPatternMemories(): Promise<PatternMemory[]> {
+    try {
+      const colRef = collection(db, 'users', this.userId, 'patternMemory');
+      const snap = await getDocs(colRef);
+      return snap.docs.map(d => {
+        const { createdAt, updatedAt, ...data } = d.data();
+        return data as PatternMemory;
+      });
+    } catch (error) {
+      console.error('Error loading pattern memories from Firestore:', error);
+      return [];
     }
   }
 
