@@ -31,7 +31,7 @@ export const PRODUCT_IDS = {
   MONTHLY: 'pro_monthly',
   YEARLY: 'pro_annual',
   JOURNEY_90_IOS: 'pro_journey_90_nr',              // iOS non-renewing subscription
-  JOURNEY_90_ANDROID: 'pro_journey_90:pro-journey-90-base', // Android prepaid (no auto-renewal)
+  JOURNEY_90_ANDROID: 'pro_journey_90:journey90-prepaid', // Android prepaid (no auto-renewal)
 } as const;
 
 // Helper — matches either platform's journey90 product identifier
@@ -253,7 +253,7 @@ export const getOfferings = async (): Promise<SubscriptionOffering | null> => {
     const yearly = currentOffering.annual;
 
     // journey90 is a custom package — find it by product identifier in availablePackages
-    // iOS: 'pro_journey_90_nr' (non-renewing); Android: 'pro_journey_90:pro-journey-90-base'
+    // iOS: 'pro_journey_90_nr' (non-renewing); Android: 'pro_journey_90:journey90-prepaid'
     const journey90Pkg = (currentOffering.availablePackages || []).find(
       pkg => isJourney90Product(pkg.product.identifier)
     );
