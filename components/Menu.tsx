@@ -408,7 +408,7 @@ const Menu: React.FC<MenuProps> = ({
                             <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'intention' ? 'rotate-180' : ''}`} />
                         </button>
                         {openSection === 'intention' && (
-                            <div className="p-4 bg-[var(--card-bg)] text-[var(--text-primary)] font-light italic border-t border-gray-200 dark:border-gray-700">
+                            <div className="p-4 bg-[var(--card-bg)] text-[var(--text-secondary)] font-light italic border-t border-gray-200 dark:border-gray-700">
                                 "{userProfile?.intentions || 'No intention set yet.'}"
                             </div>
                         )}
@@ -555,7 +555,7 @@ const Menu: React.FC<MenuProps> = ({
                             <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'manifesto' ? 'rotate-180' : ''}`} />
                         </button>
                         {openSection === 'manifesto' && (
-                            <div className="p-4 bg-[var(--card-bg)] text-[var(--text-primary)] font-light whitespace-pre-wrap leading-relaxed border-t border-gray-200 dark:border-gray-700">
+                            <div className="p-4 bg-[var(--card-bg)] text-[var(--text-secondary)] font-light whitespace-pre-wrap leading-relaxed border-t border-gray-200 dark:border-gray-700">
                                 {userProfile?.idealSelfManifesto || 'Not yet written.'}
                             </div>
                         )}
@@ -966,7 +966,7 @@ const Menu: React.FC<MenuProps> = ({
                         )}
                     </div>
                     <div className="px-4 pb-4 text-center text-xs text-gray-400">
-                        Renew90 v2.2.5
+                        Renew90 v2.2.6
                     </div>
                 </div>
             </div>

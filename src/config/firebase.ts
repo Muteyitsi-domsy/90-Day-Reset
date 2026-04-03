@@ -21,7 +21,9 @@ export const app = initializeApp(firebaseConfig);
 // initialization and uses Play Integrity (Android) / App Attest (iOS).
 // On web we fall back to reCAPTCHA v3 — set VITE_RECAPTCHA_SITE_KEY in
 // .env.local and the Vercel dashboard.
-export const appCheck = !Capacitor.isNativePlatform() && import.meta.env.VITE_RECAPTCHA_SITE_KEY
+export const appCheck = !Capacitor.isNativePlatform()
+  && typeof document !== 'undefined'
+  && import.meta.env.VITE_RECAPTCHA_SITE_KEY
   ? initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
       isTokenAutoRefreshEnabled: true,

@@ -626,7 +626,23 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
         return milestonePrompt;
     }
 
-    // Day 90: Final "Then & Now" reflection
+    // Days 88–90: Concluding trilogy — rounding up the journey
+    if (dayIndex === 88) {
+        let closingPrompt = `You have two days left. Before the final reflection, take today to gather what this journey has taught you.`;
+        closingPrompt += `\n\nWhat are the three most honest things you've learned about yourself over these 90 days? Not the polished insights — the real ones. The ones that surprised you, or that you almost didn't want to see.`;
+        cacheDailyPrompt(dayIndex, closingPrompt);
+        return closingPrompt;
+    }
+
+    if (dayIndex === 89) {
+        const closingPrompt = intentions
+            ? `One day left. Your intention at the start of this journey was:\n\n"${intentions}"\n\nLooking back now — was it worth it? What did working towards this intention ask of you that you didn't expect? And what did it give you that you didn't know you needed?`
+            : `One day left. Think back to where you were when you began. What has this journey asked of you that you didn't expect? And what did it give you that you didn't know you needed?`;
+        cacheDailyPrompt(dayIndex, closingPrompt);
+        return closingPrompt;
+    }
+
+    // Day 90: Final reflection — then & now, and the intention
     if (dayIndex === 90) {
         let finalPrompt = `You've arrived at your final daily reflection.`;
 

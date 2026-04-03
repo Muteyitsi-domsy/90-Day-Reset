@@ -85,6 +85,11 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
       return;
     }
 
+    if (!isSubscribed) {
+      setStep('question');
+      return;
+    }
+
     setStep('question');
     setIsGeneratingQuestion(true);
     setQuestionError(null);
@@ -206,9 +211,22 @@ const FlipInputModal: React.FC<FlipInputModalProps> = ({
           <h2 className="text-lg font-medium text-[var(--text-secondary)] mb-4 uppercase tracking-wide">
             From Your Wiser Self
           </h2>
-          <p className="text-2xl md:text-3xl font-light text-[var(--text-primary)] leading-relaxed mb-6 italic">
-            "{reframingQuestion}"
-          </p>
+          {!isSubscribed ? (
+            <div className="relative mb-6">
+              <p className="text-2xl md:text-3xl font-light text-[var(--text-primary)] leading-relaxed italic select-none blur-sm pointer-events-none">
+                "What would it feel like to let this thought pass through without holding on to it?"
+              </p>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-sm font-medium text-[var(--text-secondary)] bg-[var(--card-bg)] px-3 py-1 rounded-full border border-[var(--card-border)]">
+                  🔒 Upgrade to reveal your question
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-2xl md:text-3xl font-light text-[var(--text-primary)] leading-relaxed mb-6 italic">
+              "{reframingQuestion}"
+            </p>
+          )}
           {questionError && (
             <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">
               {questionError}

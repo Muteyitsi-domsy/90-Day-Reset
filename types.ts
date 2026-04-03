@@ -143,6 +143,9 @@ export interface UserProfile {
 
   // Mood summary state
   moodSummaryState?: MoodSummaryState;
+
+  // Free users who opted to use Mood Journal only (no 90-day journey)
+  isMoodOnly?: boolean;
 }
 
 export interface DailyCompletion {

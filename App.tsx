@@ -58,12 +58,13 @@ import { getLocalDateString as getFlipLocalDateString } from './utils/flipPrompt
 import { shouldShowMonthlySummary, shouldShowAnnualRecap, calculateMonthlySummary, calculateAnnualRecap } from './utils/moodSummaryCalculations';
 import type { MoodSummaryState, MonthlySummaryData, AnnualRecapData } from './types';
 import PaywallModal from './components/PaywallModal';
+import JourneyCommitmentScreen from './components/JourneyCommitmentScreen';
 import GracePeriodBanner from './components/GracePeriodBanner';
 import { initializeRevenueCat, setRevenueCatUserId, getSubscriptionState } from './services/subscriptionService';
 import { sanitizeText } from './src/utils/validation';
 
 
-type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal';
+type AppState = 'welcome' | 'name_collection' | 'returning_welcome' | 'onboarding' | 'intention_setting' | 'scripting' | 'onboarding_completion' | 'journal' | 'journey_commitment';
 
 // Helper function to get local date string in YYYY-MM-DD format (not UTC)
 const getLocalDateString = (date: Date = new Date()): string => {
@@ -328,12 +329,18 @@ const App: React.FC = () => {
           }
 
           // Detect mid-restart: arc absence is the definitive signal the user must go
-          // through full onboarding (arc is cleared in handleNewJourneyConfirm)
+          // through full onboarding (arc is cleared in handleNewJourneyConfirm).
+          // Exception: isMoodOnly users have no arc by design — route them to returning_welcome
+          // which will redirect to journey_commitment for free users.
           if (!savedProfile.arc && !savedProfile.journeyCompleted) {
-            if (savedProfile.pendingJourneyRestart) {
-              setNewJourneyOptions(savedProfile.pendingJourneyRestart);
+            if (savedProfile.isMoodOnly) {
+              setAppState('returning_welcome');
+            } else {
+              if (savedProfile.pendingJourneyRestart) {
+                setNewJourneyOptions(savedProfile.pendingJourneyRestart);
+              }
+              setAppState('onboarding');
             }
-            setAppState('onboarding');
           } else if (!savedProfile.idealSelfManifesto) {
             // If intention is also missing, go there first — scripting should never
             // be reached without an intention (can happen mid-restart recovery)
@@ -2248,6 +2255,26 @@ const App: React.FC = () => {
       : reports.length > 0;
 
 
+  const handleContinueToMood = async () => {
+    if (!userProfile) {
+      const today = getLocalDateString();
+      const minimalProfile: UserProfile = {
+        name: userName,
+        isMoodOnly: true,
+        startDate: today,
+        week_count: 0,
+        month_count: 0,
+        lastMilestoneDayCompleted: 0,
+        streak: 0,
+        lastEntryDate: today,
+      };
+      await storageService.saveUserProfile(minimalProfile);
+      setUserProfile(minimalProfile);
+    }
+    setActiveView('mood');
+    setAppState('journal');
+  };
+
   const renderContent = () => {
     // Show loading spinner until both auth and all data loading are complete.
     // Using isLoading alone (not isLoading && !userProfile) is intentional:
@@ -2430,7 +2457,7 @@ const App: React.FC = () => {
       case 'name_collection':
           return <NameCollection onComplete={(name) => {
               setUserName(name);
-              setAppState('onboarding');
+              setAppState('journey_commitment');
           }} />;
       case 'returning_welcome':
         if (userProfile) {
@@ -2444,11 +2471,13 @@ const App: React.FC = () => {
             userProfile={userProfile}
             todaysEntry={todaysEntry}
             onContinue={() => {
-              // Paused or free user → default to mood journal view
-              if (userProfile.isPaused || !isSubscribed) {
+              if (!isSubscribed && !userProfile.isPaused) {
+                setAppState('journey_commitment');
+                return;
+              }
+              if (userProfile.isPaused) {
                 setActiveView('mood');
               }
-              // Completed → stay on 'journey' activeView so KeepsakeWindow shows
               setAppState('journal');
             }}
             ritualCompleted={ritualCompleted}
@@ -2461,6 +2490,14 @@ const App: React.FC = () => {
           />;
         }
         return null;
+      case 'journey_commitment':
+        return <JourneyCommitmentScreen
+          userName={userName}
+          isSubscribed={isSubscribed}
+          onBeginJourney={() => setAppState('onboarding')}
+          onOpenPaywall={() => setShowPaywall(true)}
+          onContinueToMood={handleContinueToMood}
+        />;
       case 'onboarding':
         return <Onboarding onComplete={handleOnboardingComplete} />;
       case 'intention_setting':
@@ -2932,7 +2969,12 @@ const App: React.FC = () => {
         onSubscribed={() => {
           setIsSubscribed(true);
           setShowPaywall(false);
-          setActiveView('journey');
+          if (!userProfile?.arc) {
+            // New subscriber with no journey — show commitment screen to begin
+            setAppState('journey_commitment');
+          } else {
+            setActiveView('journey');
+          }
         }}
         userId={user?.uid}
         onOpenTerms={() => setShowTerms(true)}

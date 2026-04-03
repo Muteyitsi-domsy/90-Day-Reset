@@ -356,14 +356,51 @@ export async function generateFinalSummary(profile: UserProfile, journalHistory:
         }
     }
 
+    // Helper: pull brief journal context from the same week as a hunch/dream/insight entry
+    const getWeekContext = (week: number): string => {
+        const weekEntries = journalHistory.filter(e => e.week === week && e.type === 'daily');
+        if (weekEntries.length === 0) return '';
+        return weekEntries
+            .map(e => `"${e.rawText.slice(0, 150)}${e.rawText.length > 150 ? '...' : ''}"`)
+            .join(' / ');
+    };
+
+    const insights = hunchHistory.filter(h => h.hunchType === 'insight');
+    const intuitive = hunchHistory.filter(h => h.hunchType === 'dream' || h.hunchType === 'hunch');
+
     let hunchTextSection = '';
-    if (hunchHistory && hunchHistory.length > 0) {
-        const hunchEntriesText = hunchHistory.map(h => `Recorded on Day ${h.day}: ${h.rawText}`).join('\n\n');
-        hunchTextSection = `
-You also have access to the user's private "Intuitive Insights"—a collection of dreams and hunches they recorded.
+
+    if (insights.length > 0) {
+        const insightLines = insights
+            .map(h => {
+                const ctx = getWeekContext(h.week);
+                return `Day ${h.day}: "${h.rawText}"${ctx ? `\n  [Journal context that week: ${ctx}]` : ''}`;
+            })
+            .join('\n\n');
+        hunchTextSection += `
+INSIGHT LAYER — Wisdom the user crystallized at specific moments across their journey:
 """
-${hunchEntriesText}
+${insightLines}
 """
+How to use: These are conscious awarenesses that surfaced mid-journey. Treat them as the wisdom layer — clarity accumulating beneath the surface. Notice how they connect to the arc's terrain and what the journal entries that week were processing. Use one or two of the most resonant to show understanding was building.
+`;
+    }
+
+    if (intuitive.length > 0) {
+        const intuitiveLines = intuitive
+            .sort((a, b) => a.day - b.day)
+            .map(h => {
+                const label = h.hunchType === 'dream' ? 'Dream' : 'Hunch';
+                const ctx = getWeekContext(h.week);
+                return `${label} (Day ${h.day}): "${h.rawText}"${ctx ? `\n  [Journal context that week: ${ctx}]` : ''}`;
+            })
+            .join('\n\n');
+        hunchTextSection += `
+INTUITIVE SIGNALS — Dreams and hunches recorded across the journey:
+"""
+${intuitiveLines}
+"""
+How to use: Read these as subconscious signals, not literal predictions. Dreams: interpret symbolically but realistically — a dream of marriage points toward desire in that direction; catastrophe toward an underlying fear. Notice whether dream themes echo what the journal was processing that same week. Hunches: treat as directional intuition leaning toward futures the person senses for themselves. Keep it grounded — no pseudoscience or mysticism. Observe the pattern these signals follow across the journey: do they cluster around turning points? Do they mirror the arc's themes? One concise, grounded observation only.
 `;
     }
 
@@ -446,8 +483,11 @@ Observe the qualities that were present in each phase without prescribing or adv
         ${arcAnalysisPrompt[profile.arc]}
 
         **THE THREADS**
-        2-3 sentences weaving together recurring elements—images, words, or themes that appeared across your journey.${hunchHistory.length > 0 ? " Note any patterns between conscious entries and intuitive insights." : ""}
-
+        2-3 sentences weaving together recurring elements—images, words, or themes that appeared across your journey.
+${hunchTextSection.length > 0 ? `
+        **THE INTUITIVE LAYER**
+        Only include this section if INSIGHT LAYER or INTUITIVE SIGNALS data was provided above. 2-3 sentences maximum, total. If insights were provided: observe what wisdom was crystallizing beneath the surface and how it layered onto the arc's unfolding — evidence of growing clarity, not advice. If dreams or hunches were provided: one brief, grounded observation of the pattern these signals followed — which themes or turning points they clustered around, what they may have been mirroring from the journey. No mysticism. No interpretation of specific symbols as universal meaning. Keep it human and observational.
+` : ''}
         **THE MIRRORS**
         3-4 direct quotes from your entries across different phases of the journey (early, middle, late), showing the arc through your own words. Format each quote on its own line with the day number.
 
