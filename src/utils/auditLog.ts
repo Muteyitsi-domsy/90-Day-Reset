@@ -99,9 +99,6 @@ export interface AuditLogEntry {
 const AUDIT_CONFIG = {
   COLLECTION_NAME: 'auditLogs',
   MAX_ENTRIES_PER_QUERY: 100,
-  RETENTION_DAYS: 90, // Keep logs for 90 days
-
-  // Event severity mapping
   SEVERITY_MAP: {
     // Critical events
     'auth.login_failed': 'critical',
@@ -196,13 +193,8 @@ export async function logAuditEvent(
 
     await addDoc(auditCollection, entry);
 
-    // Also log critical events to console for immediate visibility
     if (entry.severity === 'critical') {
-      console.warn('[AUDIT] Critical event:', {
-        eventType,
-        description,
-        userId,
-      });
+      console.warn('[AUDIT] Critical event:', { eventType, description });
     }
   } catch (error) {
     // Don't throw errors from audit logging - it shouldn't break the app
@@ -300,11 +292,18 @@ export async function getSecuritySummary(userId: string): Promise<{
   try {
     const logs = await getAuditLogs(userId, { limit: 50 });
 
-    const criticalEvents = logs.filter((log) => log.severity === 'critical').length;
-    const warningEvents = logs.filter((log) => log.severity === 'warning').length;
-    const failedLogins = logs.filter((log) => log.eventType === 'auth.login_failed').length;
+    let criticalEvents = 0;
+    let warningEvents = 0;
+    let failedLogins = 0;
+    let lastLoginLog: AuditLogEntry | undefined;
 
-    const lastLoginLog = logs.find((log) => log.eventType === 'auth.login');
+    for (const log of logs) {
+      if (log.severity === 'critical') criticalEvents++;
+      else if (log.severity === 'warning') warningEvents++;
+      if (log.eventType === 'auth.login_failed') failedLogins++;
+      if (log.eventType === 'auth.login' && !lastLoginLog) lastLoginLog = log;
+    }
+
     const lastLogin = lastLoginLog?.timestamp instanceof Timestamp
       ? lastLoginLog.timestamp.toDate()
       : undefined;

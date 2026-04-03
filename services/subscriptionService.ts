@@ -12,6 +12,7 @@
 import { Capacitor } from '@capacitor/core';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../src/config/firebase';
+import { getAppCheckToken, APP_CHECK_HEADER } from '../src/utils/appCheck';
 import type {
   SubscriptionState,
   SubscriptionStatus,
@@ -21,7 +22,8 @@ import type {
 } from '../types';
 
 const VALIDATE_BETA_CODE_URL =
-  'https://us-central1-identity-reset-journal.cloudfunctions.net/validateBetaCodeHttp';
+  import.meta.env.VITE_BETA_CODE_URL ||
+  'https://us-central1-gen-lang-client-0241198831.cloudfunctions.net/validateBetaCodeHttp';
 
 // RevenueCat types (will be available when running on device)
 let Purchases: typeof import('@revenuecat/purchases-capacitor').Purchases | null = null;
@@ -402,9 +404,13 @@ export const applyBetaCode = async (code: string, userId?: string): Promise<{
   }
 
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const appCheckToken = await getAppCheckToken();
+    if (appCheckToken) headers[APP_CHECK_HEADER] = appCheckToken;
+
     const response = await fetch(VALIDATE_BETA_CODE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ code: code.trim() }),
     });
     const result = await response.json();
@@ -552,7 +558,7 @@ const getMockOfferings = (): SubscriptionOffering => {
       trialDays: 0,
     },
     journey90: {
-      id: PRODUCT_IDS.JOURNEY_90,
+      id: PRODUCT_IDS.JOURNEY_90_IOS,
       title: '90-Day Journey',
       description: 'One full arc, one payment — 90 days of full access',
       price: '$69.99',

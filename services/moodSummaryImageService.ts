@@ -333,7 +333,8 @@ export function downloadImage(blob: Blob, filename: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  // Defer revocation so the browser has time to start the download before the URL is freed.
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 // Generate filename for monthly summary

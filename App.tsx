@@ -120,6 +120,7 @@ const App: React.FC = () => {
   // produce an empty PDF.
   const [completedJourneyEntries, setCompletedJourneyEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState<boolean>(false);
   const [appState, setAppState] = useState<AppState>('welcome');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [settings, setSettings] = useState<Settings>({
@@ -833,9 +834,9 @@ const App: React.FC = () => {
   };
 
   const handleSaveEntry = async (text: string) => {
-    if (isLoading || !text.trim() || !userProfile || !dailyPrompt) return;
+    if (isLoading || isAnalysisLoading || !text.trim() || !userProfile || !dailyPrompt) return;
 
-    setIsLoading(true);
+    setIsAnalysisLoading(true);
 
     const severity = detectCrisis(text);
 
@@ -958,7 +959,7 @@ const App: React.FC = () => {
           }
           setJournalEntries(prev => prev.map(entry => entry.id === entryWithError.id ? entryWithError : entry));
         } finally {
-          setIsLoading(false);
+          setIsAnalysisLoading(false);
           // Update daily completion tracking after entry is saved
           updateDailyCompletion();
         }
@@ -969,7 +970,7 @@ const App: React.FC = () => {
           const milestoneDay = day - 1;
           setUserProfile(prev => ({ ...prev!, lastMilestoneDayCompleted: milestoneDay }));
         }
-        setIsLoading(false);
+        setIsAnalysisLoading(false);
         // Update daily completion tracking after entry is saved
         updateDailyCompletion();
     }
@@ -1535,7 +1536,7 @@ const App: React.FC = () => {
 
   // Check for mood summaries after mood entries are loaded
   useEffect(() => {
-    if (!userProfile || moodEntries.length === 0 || isLoading) return;
+    if (!userProfile || moodEntries.length === 0 || isLoading || appState !== 'journal') return;
 
     const customEmotions = settings.customEmotions || [];
 
@@ -1560,7 +1561,7 @@ const App: React.FC = () => {
         setShowAnnualRecapModal(true);
       }
     }
-  }, [moodEntries, userProfile?.moodSummaryState, isLoading, settings.customEmotions]);
+  }, [moodEntries, userProfile?.moodSummaryState, isLoading, appState, settings.customEmotions]);
 
   // Handle monthly summary modal close
   const handleMonthlySummaryClose = (downloaded: boolean) => {
@@ -1608,7 +1609,7 @@ const App: React.FC = () => {
     }
 
     // Check if report already exists (prevent duplicates)
-    const existingReport = journalEntries.find(entry => entry.week === weekToSummarize && entry.type === 'weekly_summary_report');
+    const existingReport = journalEntriesRef.current.find(entry => entry.week === weekToSummarize && entry.type === 'weekly_summary_report');
     if (existingReport && !isRegeneration) {
         console.log(`✓ Weekly report for Week ${weekToSummarize} already exists, skipping generation`);
         setUserProfile(prev => ({ ...prev!, week_count: newWeek }));
@@ -1616,7 +1617,7 @@ const App: React.FC = () => {
     }
 
     // Check if there's data for this week
-    const weekEntries = journalEntries.filter(entry => entry.week === weekToSummarize && (entry.type === 'daily' || entry.type === 'hunch'));
+    const weekEntries = journalEntriesRef.current.filter(entry => entry.week === weekToSummarize && (entry.type === 'daily' || entry.type === 'hunch'));
     if (weekEntries.length === 0) {
         console.log(`ℹ️ No entries found for Week ${weekToSummarize}, skipping report generation`);
         // Mark week as processed but don't generate empty report
@@ -1705,7 +1706,7 @@ const App: React.FC = () => {
     // Check if report already exists (prevent duplicates)
     const startDay = (monthToSummarize - 1) * 30;
     const endDay = monthToSummarize * 30;
-    const existingReport = journalEntries.find(entry =>
+    const existingReport = journalEntriesRef.current.find(entry =>
         entry.type === 'monthly_summary_report' &&
         entry.day > startDay && entry.day <= endDay
     );
@@ -1716,7 +1717,7 @@ const App: React.FC = () => {
     }
 
     // Check if there's data for this month
-    const monthEntries = journalEntries.filter(entry => entry.day > startDay && entry.day <= endDay && (entry.type === 'daily' || entry.type === 'hunch'));
+    const monthEntries = journalEntriesRef.current.filter(entry => entry.day > startDay && entry.day <= endDay && (entry.type === 'daily' || entry.type === 'hunch'));
     if (monthEntries.length === 0) {
         console.log(`ℹ️ No entries found for Month ${monthToSummarize}, skipping report generation`);
         // Mark month as processed but don't generate empty report
@@ -1785,7 +1786,7 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-        const dailyHistory = journalEntries.filter(e => e.type === 'daily');
+        const dailyHistory = journalEntriesRef.current.filter(e => e.type === 'daily');
 
         // Zero entries — skip AI entirely, use a specific no-data keepsake
         if (dailyHistory.length === 0) {
@@ -1800,7 +1801,7 @@ const App: React.FC = () => {
 
         // Filter hunches based on settings
         const hunchHistory = settings.includeHunchesInFinalSummary
-            ? journalEntries.filter(e => e.type === 'hunch' && (!settings.finalSummaryIncludedTypes || settings.finalSummaryIncludedTypes.includes(e.hunchType || 'hunch')))
+            ? journalEntriesRef.current.filter(e => e.type === 'hunch' && (!settings.finalSummaryIncludedTypes || settings.finalSummaryIncludedTypes.includes(e.hunchType || 'hunch')))
             : [];
 
         const summaryText = await generateFinalSummary(userProfile, dailyHistory, hunchHistory);
@@ -2594,7 +2595,7 @@ const App: React.FC = () => {
                 dailyPrompt={dailyPrompt?.text}
                 todaysEntry={todaysEntry}
                 allEntries={journalEntries}
-                isLoading={isLoading}
+                isLoading={isAnalysisLoading}
                 onSaveDaily={handleSaveEntry}
                 onSaveHunch={handleSaveHunch}
                 onUpdate={handleUpdateEntry}

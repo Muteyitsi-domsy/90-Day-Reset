@@ -315,7 +315,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                 <div className="relative">
                   <div className="absolute -top-px left-1/2 -translate-x-1/2 z-10">
                     <span className="bg-amber-500 text-white text-xs font-medium px-3 py-0.5 rounded-b-lg tracking-wide">
-                      most popular
+                      most transformational
                     </span>
                   </div>
                   <button
@@ -355,7 +355,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
                 <div className="relative">
                   <div className="absolute -top-px left-1/2 -translate-x-1/2 z-10">
                     <span className="bg-[var(--accent-primary)] text-white text-xs font-medium px-3 py-0.5 rounded-b-lg tracking-wide">
-                      best value
+                      deepest commitment
                     </span>
                   </div>
                 <button

@@ -11,7 +11,8 @@
       "Bash(git add:*)",
       "Bash(curl -s https://90-day-reset.vercel.app/)",
       "Bash(ls:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(grep -o play.google.com[^'']* C:/Users/DOREEN/Documents/90-Day-Reset/android/app/build/intermediates/assets/release/mergeReleaseAssets/public/assets/index-CT_EIcY9.)"
     ],
     "deny": [],
     "ask": []

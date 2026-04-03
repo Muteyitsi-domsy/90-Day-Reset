@@ -60,10 +60,15 @@ Every Android release requires bumping version in **all three places** — missi
 
 Versioning pattern: patch bumps within a minor (2.2.0 → 2.2.1 → ... → 2.2.9), then bump minor (2.2.9 → 2.3.0). versionCode increments by 1 every release regardless.
 
+## Code Quality Rule
+
+**Always run `/simplify` after every code fix or new feature addition.** This reviews the changed code for reuse, quality, and efficiency and fixes any issues found. No exceptions — this keeps the codebase clean as it grows.
+
 ## Commit Checklist
 
 Before every commit:
 - [ ] `npm test` — all tests pass (currently 476)
 - [ ] `npx tsc --noEmit` — no NEW errors beyond the known false positives above
 - [ ] New features have tests covering the core logic
+- [ ] `/simplify` has been run on all changed files
 - [ ] Android release: all three version locations updated (see Android Version Bump Checklist above)

@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, indexedDBLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { Capacitor } from '@capacitor/core';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -13,6 +15,18 @@ const firebaseConfig = {
 
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
+
+// Initialize App Check — verifies requests come from the genuine app binary.
+// On native (Android/iOS) the @capacitor-firebase/app-check plugin owns
+// initialization and uses Play Integrity (Android) / App Attest (iOS).
+// On web we fall back to reCAPTCHA v3 — set VITE_RECAPTCHA_SITE_KEY in
+// .env.local and the Vercel dashboard.
+export const appCheck = !Capacitor.isNativePlatform() && import.meta.env.VITE_RECAPTCHA_SITE_KEY
+  ? initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    })
+  : null;
 
 // Initialize Firebase Authentication
 export const auth = getAuth(app);

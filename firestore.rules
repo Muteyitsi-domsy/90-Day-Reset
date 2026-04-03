@@ -51,9 +51,12 @@ service cloud.firestore {
   allow create: if isOwner(userId)
     && isWithinSizeLimit(200000);
 
-  // Update: Ownership + size control
+  // Update: Ownership + size control.
+  // Block client writes to server-only fields — subscription/admin status
+  // must only be set via Admin SDK (Cloud Functions/webhooks), never by the client.
   allow update: if isOwner(userId)
-    && isWithinSizeLimit(200000);
+    && isWithinSizeLimit(200000)
+    && !request.resource.data.keys().hasAny(['isAdmin', 'subscriptionStatus', 'subscriptionTier', 'subscriptionExpiry']);
 
   // Delete: User can delete their own profile
   allow delete: if isOwner(userId);

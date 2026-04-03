@@ -3,6 +3,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, Arc, OnboardingAnalysis, JournalEntry, EntryAnalysis } from "../types";
 import { rateLimiter } from "./rateLimiter";
 import { analysisCache } from "./analysisCache";
+import { auth } from "../src/config/firebase";
+import { getAppCheckToken, APP_CHECK_HEADER } from "../src/utils/appCheck";
 
 // ✅ Feature flag to switch between Gemini API and Vertex AI
 const USE_VERTEX_AI = import.meta.env.VITE_USE_VERTEX_AI === 'true';
@@ -20,25 +22,27 @@ export const ai = GEMINI_KEY && !USE_VERTEX_AI
   ? new GoogleGenAI({ apiKey: GEMINI_KEY })
   : null;
 
-// ✅ Vertex AI API caller
+// Vertex AI API caller
 async function callVertexAI(
   prompt: string,
   requestType: 'onboarding' | 'analysis' | 'summary' | 'hunch' = 'analysis',
   config?: { temperature?: number; maxOutputTokens?: number }
 ): Promise<string> {
-  const userId = localStorage.getItem('userId') || 'anonymous';
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) throw new Error('You must be signed in to use AI features.');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${idToken}`,
+  };
+
+  const appCheckToken = await getAppCheckToken();
+  if (appCheckToken) headers[APP_CHECK_HEADER] = appCheckToken;
 
   const response = await fetch(VERTEX_API_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt,
-      userId,
-      requestType,
-      config
-    })
+    headers,
+    body: JSON.stringify({ prompt, requestType, config })
   });
 
   if (!response.ok) {
@@ -1044,31 +1048,8 @@ export async function generateReframingQuestion(
 
   try {
     // Use Vertex AI if enabled
-    if (import.meta.env.VITE_USE_VERTEX_AI === 'true') {
-      const userId = localStorage.getItem('userId') || 'anonymous';
-      const VERTEX_API_URL = import.meta.env.VITE_VERTEX_API_URL || '/api/vertex-ai';
-
-      const response = await fetch(VERTEX_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          userId,
-          requestType: 'analysis',
-          config: { temperature: 0.8, maxOutputTokens: 1024 }
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        if (response.status === 429) {
-          throw new Error('Daily AI request limit reached. Please try again tomorrow.');
-        }
-        throw new Error(error.error || `API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.text.trim();
+    if (USE_VERTEX_AI) {
+      return (await callVertexAI(prompt, 'analysis', { temperature: 0.8, maxOutputTokens: 1024 })).trim();
     }
 
     // Fallback to Gemini API
@@ -1172,24 +1153,8 @@ Rules:
 Respond with ONLY the observation text. No introduction, no labels, no explanation.`;
 
   try {
-    if (import.meta.env.VITE_USE_VERTEX_AI === 'true') {
-      const userId = localStorage.getItem('userId') || 'anonymous';
-      const VERTEX_URL = import.meta.env.VITE_VERTEX_API_URL || '/api/vertex-ai';
-      const response = await fetch(VERTEX_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          userId,
-          requestType: 'analysis',
-          config: { temperature: 0.7, maxOutputTokens: 256 },
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(`Pattern insight API error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      return data.text.trim();
+    if (USE_VERTEX_AI) {
+      return (await callVertexAI(prompt, 'analysis', { temperature: 0.7, maxOutputTokens: 256 })).trim();
     }
 
     if (!ai) {

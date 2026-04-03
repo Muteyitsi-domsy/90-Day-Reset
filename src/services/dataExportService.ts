@@ -123,7 +123,8 @@ export function downloadJSON(jsonString: string, filename?: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(link.href);
+  const href = link.href;
+  setTimeout(() => URL.revokeObjectURL(href), 10000);
 }
 
 /**

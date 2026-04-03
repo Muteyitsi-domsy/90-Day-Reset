@@ -143,6 +143,15 @@ const OnboardingCompletion: React.FC<OnboardingCompletionProps> = ({ onComplete 
                     </div>
 
                     <div
+                        className="transition-all duration-500 mb-5"
+                        style={{ opacity: showCta ? 1 : 0, transform: showCta ? 'translateY(0)' : 'translateY(8px)' }}
+                    >
+                        <p className="text-xs text-center text-gray-400 dark:text-gray-500 leading-relaxed">
+                            Pro tip: mood patterns emerge naturally with consistent journalling — the more you log, the more the app learns about you.
+                        </p>
+                    </div>
+
+                    <div
                         className="transition-all duration-500"
                         style={{ opacity: showCta ? 1 : 0, transform: showCta ? 'translateY(0)' : 'translateY(8px)' }}
                     >
