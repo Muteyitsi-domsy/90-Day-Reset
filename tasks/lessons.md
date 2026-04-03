@@ -60,6 +60,12 @@ New lessons go at the TOP of the relevant section so the most recent ones are se
 
 ## AI Output & Tone
 
+### Pattern insight must NOT end with a question — Flip Journal handles that
+- **What happened:** The pattern insight AI prompt was written to end with "a single question that opens". This was wrong.
+- **Why it was wrong:** The pattern insight is a pure observation. It is immediately followed by the Flip Journal which asks its own reflective reframing question. Putting a question in the pattern insight creates awkward double-questioning and muddies the UX boundary between the two features.
+- **The rule:** Pattern insights (`generatePatternInsight`) are observation-only — 1–2 sentences, no closing question. The Flip Journal prompt is entirely responsible for any reflective questioning that follows.
+- **Affected area:** `services/geminiService.ts` → `generatePatternInsight`, pattern insight fallbacks
+
 ### Generated escalation copy without using pre-approved text
 - **What happened:** *(Template)*
 - **Why it was wrong:** Escalation messaging (triggered when Mood pattern recognition detects distress) must use pre-approved copy. Auto-generated crisis language is a liability — both legally and in terms of user trust and safety.

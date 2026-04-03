@@ -1156,7 +1156,17 @@ const App: React.FC = () => {
             return null; // async lookup happens below after detection
           };
 
-          const engineResult = runPatternEngine(recentEntries, newEntry, getMemory);
+          // Pass personality profile when the feature is enabled
+          const personalityProfile =
+            userProfile?.personalityInsightsEnabled !== false &&
+            (userProfile?.personalityMBTI || userProfile?.personalityEnneagram)
+              ? {
+                  mbtiType: userProfile.personalityMBTI,
+                  enneagramType: userProfile.personalityEnneagram,
+                }
+              : undefined;
+
+          const engineResult = runPatternEngine(recentEntries, newEntry, getMemory, personalityProfile);
 
           if (engineResult) {
             // Async memory lookup now that we have the pattern ID
@@ -1180,7 +1190,7 @@ const App: React.FC = () => {
               };
               await storageService.savePatternMemory(updatedMemory);
 
-              // Generate AI insight text
+              // Generate AI insight text — pass enriched context
               const insightInput: PatternInsightInput & { mood_type?: string } = {
                 pattern_type: engineResult.insight.pattern_type,
                 life_area: engineResult.insight.life_area,
@@ -1189,6 +1199,13 @@ const App: React.FC = () => {
                 target_area: engineResult.insight.target_area,
                 occurrences: updatedMemory.occurrences,
                 score_level: engineResult.insight.score_level,
+                intensity_trend: engineResult.insight.intensity_trend,
+                recovery_time: engineResult.insight.recovery_time,
+                stickiness: engineResult.insight.stickiness,
+                cascade_chain: engineResult.insight.cascade_chain as string[] | undefined,
+                spread: engineResult.insight.spread as string[] | undefined,
+                personality_context: engineResult.insight.personality_context,
+                language_cues_matched: engineResult.result.language_cues_matched,
               };
               const insightText = await generatePatternInsight(insightInput);
 

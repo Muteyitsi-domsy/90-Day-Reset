@@ -69,8 +69,25 @@ export interface MoodJournalEntry {
 }
 
 // Pattern Engine Types (Pro feature)
-export type PatternType = 'repetition' | 'escalation' | 'cross_area';
+export type PatternType = 'repetition' | 'escalation' | 'cross_area' | 'withdrawal';
 export type PatternScoreLevel = 'Low' | 'Moderate' | 'High';
+export type IntensityTrajectory = 'increasing' | 'decreasing' | 'volatile' | 'stable';
+export type RecoverySpeed = 'fast' | 'moderate' | 'slow' | 'none';
+export type PatternStickiness = 'low' | 'moderate' | 'high';
+
+/**
+ * Personality context attached to enriched patterns.
+ * Derived from user's self-reported MBTI and/or Enneagram type.
+ * NEVER drives detection — only adjusts interpretation, tone, and insight framing.
+ */
+export interface PersonalityContext {
+  mbtiType?: string;                            // e.g. 'INFJ'
+  enneagramType?: string;                       // e.g. '4'
+  processingStyle: 'internal' | 'external';
+  expressionLevel: 'low' | 'high';
+  emotionalWeight: 'low' | 'moderate' | 'high';
+  flipReframeHint?: string;                     // guidance for the Flip Journal prompt
+}
 
 export interface PatternMemory {
   pattern_id: string;
@@ -89,8 +106,14 @@ export interface PatternInsight {
   mood_type?: string;
   source_area?: MoodContext;
   target_area?: MoodContext;
+  cascade_chain?: MoodContext[];                // A→B→C sequence when present
   occurrences: number;
   score_level: PatternScoreLevel;
+  intensity_trend?: IntensityTrajectory;
+  recovery_time?: RecoverySpeed;
+  stickiness?: PatternStickiness;
+  spread?: MoodContext[];
+  personality_context?: PersonalityContext;
   insight_text: string;
   is_recurring: boolean;
 }
@@ -146,6 +169,11 @@ export interface UserProfile {
 
   // Free users who opted to use Mood Journal only (no 90-day journey)
   isMoodOnly?: boolean;
+
+  // Personality-aware pattern insights (Pro feature, optional)
+  personalityMBTI?: string;               // e.g. 'INFJ' — locked once saved
+  personalityEnneagram?: string;          // e.g. '4' — locked once saved
+  personalityInsightsEnabled?: boolean;   // default true when either type is set
 }
 
 export interface DailyCompletion {

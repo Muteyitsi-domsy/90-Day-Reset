@@ -58,6 +58,10 @@ const Menu: React.FC<MenuProps> = ({
     const [pinError, setPinError] = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    // Personality Insights state
+    const [pendingMBTI, setPendingMBTI] = useState('');
+    const [pendingEnneagram, setPendingEnneagram] = useState('');
+
     // Daily Ritual state
     const [isEditingRitual, setIsEditingRitual] = useState(false);
     const [ritualNameInput, setRitualNameInput] = useState(settings.ritualName || '');
@@ -840,6 +844,132 @@ const Menu: React.FC<MenuProps> = ({
                             </div>
                         )}
                     </div>
+
+                    {/* Personality Insights — Pro feature, visible to subscribed users */}
+                    {subscriptionTier && subscriptionTier !== 'free' && (
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                            <button onClick={() => toggleSection('personality')} className="w-full p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-base">✦</span>
+                                    <span className="font-medium text-[var(--text-primary)]">Personality Insights</span>
+                                    {(userProfile?.personalityMBTI || userProfile?.personalityEnneagram) && (
+                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">Set</span>
+                                    )}
+                                </div>
+                                <ChevronDownIcon className={`w-5 h-5 transition-transform ${openSection === 'personality' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {openSection === 'personality' && (
+                                <div className="p-4 bg-[var(--card-bg)] border-t border-gray-200 dark:border-gray-700 space-y-4">
+                                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                        When your MBTI and/or Enneagram type is on file, pattern insights are calibrated to how you tend to experience and process emotions — without labels or assumptions about who you are.
+                                    </p>
+
+                                    {/* Already set — locked display + on/off toggle */}
+                                    {(userProfile?.personalityMBTI || userProfile?.personalityEnneagram) ? (
+                                        <div className="space-y-3">
+                                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-2">
+                                                {userProfile?.personalityMBTI && (
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm text-[var(--text-secondary)]">MBTI</span>
+                                                        <span className="text-sm font-medium text-[var(--text-primary)]">{userProfile.personalityMBTI}</span>
+                                                    </div>
+                                                )}
+                                                {userProfile?.personalityEnneagram && (
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm text-[var(--text-secondary)]">Enneagram</span>
+                                                        <span className="text-sm font-medium text-[var(--text-primary)]">Type {userProfile.personalityEnneagram}</span>
+                                                    </div>
+                                                )}
+                                                <p className="text-xs text-[var(--text-secondary)] opacity-70 pt-1">
+                                                    Your type is locked once saved — like your Arc, it shapes how insights are framed throughout your journey.
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-gray-600 dark:text-gray-300">Personality-aware insights</span>
+                                                <button
+                                                    onClick={() => {
+                                                        if (userProfile) {
+                                                            onUpdateProfile({
+                                                                ...userProfile,
+                                                                personalityInsightsEnabled: userProfile.personalityInsightsEnabled === false ? true : false,
+                                                            });
+                                                        }
+                                                    }}
+                                                    className={`w-10 h-5 rounded-full transition-colors relative ${userProfile?.personalityInsightsEnabled !== false ? 'bg-[var(--accent-primary)]' : 'bg-gray-300 dark:bg-gray-600'}`}
+                                                >
+                                                    <span className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${userProfile?.personalityInsightsEnabled !== false ? 'translate-x-5' : ''}`}></span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* Not yet set — show dropdowns */
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">MBTI type (optional)</label>
+                                                <select
+                                                    value={pendingMBTI}
+                                                    onChange={e => setPendingMBTI(e.target.value)}
+                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-[var(--card-bg)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
+                                                >
+                                                    <option value="">Skip</option>
+                                                    {[
+                                                        'INTJ — The Architect', 'INTP — The Logician', 'ENTJ — The Commander', 'ENTP — The Debater',
+                                                        'INFJ — The Advocate', 'INFP — The Mediator', 'ENFJ — The Protagonist', 'ENFP — The Campaigner',
+                                                        'ISTJ — The Logistician', 'ISFJ — The Defender', 'ESTJ — The Executive', 'ESFJ — The Consul',
+                                                        'ISTP — The Virtuoso', 'ISFP — The Adventurer', 'ESTP — The Entrepreneur', 'ESFP — The Entertainer',
+                                                    ].map(t => {
+                                                        const code = t.slice(0, 4);
+                                                        return <option key={code} value={code}>{t}</option>;
+                                                    })}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Enneagram type (optional)</label>
+                                                <select
+                                                    value={pendingEnneagram}
+                                                    onChange={e => setPendingEnneagram(e.target.value)}
+                                                    className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-[var(--card-bg)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]"
+                                                >
+                                                    <option value="">Skip</option>
+                                                    {[
+                                                        '1 — The Reformer', '2 — The Helper', '3 — The Achiever',
+                                                        '4 — The Individualist', '5 — The Investigator', '6 — The Loyalist',
+                                                        '7 — The Enthusiast', '8 — The Challenger', '9 — The Peacemaker',
+                                                    ].map(t => {
+                                                        const code = t.slice(0, 1);
+                                                        return <option key={code} value={code}>{t}</option>;
+                                                    })}
+                                                </select>
+                                            </div>
+                                            {(pendingMBTI || pendingEnneagram) && (
+                                                <button
+                                                    onClick={() => {
+                                                        if (!pendingMBTI && !pendingEnneagram) return;
+                                                        if (userProfile) {
+                                                            onUpdateProfile({
+                                                                ...userProfile,
+                                                                personalityMBTI: pendingMBTI || undefined,
+                                                                personalityEnneagram: pendingEnneagram || undefined,
+                                                                personalityInsightsEnabled: true,
+                                                            });
+                                                        }
+                                                        setPendingMBTI('');
+                                                        setPendingEnneagram('');
+                                                    }}
+                                                    className="w-full py-2.5 bg-[var(--accent-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--accent-primary-hover)] transition-colors"
+                                                >
+                                                    Save personality type
+                                                </button>
+                                            )}
+                                            <p className="text-xs text-[var(--text-secondary)] opacity-60">
+                                                This is optional and can be skipped. Once saved, it cannot be changed — pattern insights work without it.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* (e) Final Summary Config */}
                      <div className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${activeView !== 'journey' ? 'opacity-50 pointer-events-none' : ''}`}>

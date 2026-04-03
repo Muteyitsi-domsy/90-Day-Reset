@@ -1153,44 +1153,114 @@ export function getDayAndMonth(startDate: string): { day: number; month: number 
 // ---------------------------------------------------------------------------
 
 export interface PatternInsightInput {
-  pattern_type: 'repetition' | 'escalation' | 'cross_area';
+  pattern_type: 'repetition' | 'escalation' | 'cross_area' | 'withdrawal';
   life_area?: string;
   mood_type?: string;
   source_area?: string;
   target_area?: string;
   occurrences: number;
   score_level: 'Low' | 'Moderate' | 'High';
+  // Enhanced pattern dynamics
+  intensity_trend?: 'increasing' | 'decreasing' | 'volatile' | 'stable';
+  recovery_time?: 'fast' | 'moderate' | 'slow' | 'none';
+  stickiness?: 'low' | 'moderate' | 'high';
+  cascade_chain?: string[];
+  spread?: string[];
+  // Personality context — optional, only present when user has set their type
+  personality_context?: {
+    mbtiType?: string;
+    enneagramType?: string;
+    processingStyle?: 'internal' | 'external';
+    expressionLevel?: 'low' | 'high';
+    emotionalWeight?: 'low' | 'moderate' | 'high';
+    flipReframeHint?: string;
+  };
+  language_cues_matched?: string[];
 }
 
 /**
  * Generates a calm, non-judgmental 1–2 sentence insight describing the
  * detected behavioural pattern. No advice. No calls to improve.
- * The user should feel: "Your feelings are valid. I see you."
+ * The user should feel: "You've felt this before — now you can see it."
+ *
+ * When personality context is present, the insight is calibrated to how
+ * this type typically experiences the pattern — without labelling or stereotyping.
  */
 export async function generatePatternInsight(input: PatternInsightInput): Promise<string> {
-  const contextLine =
-    input.pattern_type === 'cross_area'
-      ? `A cross-area pattern: when stress or difficult emotions appear in "${input.source_area}", an entry in "${input.target_area}" tends to follow within 24 hours. This has happened ${input.occurrences} times.`
-      : input.pattern_type === 'escalation'
-      ? `An escalation pattern: emotional intensity in the "${input.life_area}" area has been increasing across the last 3 entries (score level: ${input.score_level}).`
-      : `A repetition pattern: the emotion "${input.mood_type}" in the "${input.life_area}" area has appeared ${input.occurrences} times in the last 4 days.`;
+  // ── Pattern description ───────────────────────────────────────────────────
+  let patternLine: string;
+  if (input.pattern_type === 'cross_area') {
+    if (input.cascade_chain && input.cascade_chain.length >= 3) {
+      patternLine = `A cross-area cascade: emotional weight appears to move from "${input.cascade_chain[0]}" → "${input.cascade_chain[1]}" → "${input.cascade_chain[2]}" across consecutive days. This sequence has occurred ${input.occurrences} times.`;
+    } else {
+      patternLine = `A cross-area pattern: when something difficult arises in "${input.source_area}", an entry in "${input.target_area}" tends to follow within 24 hours. This has happened ${input.occurrences} times.`;
+    }
+  } else if (input.pattern_type === 'escalation') {
+    patternLine = `An escalation pattern: emotional intensity in "${input.life_area}" has been building across the last 3 entries — each one more intense than the last.`;
+  } else if (input.pattern_type === 'withdrawal') {
+    patternLine = `A withdrawal pattern: after a period of high intensity in "${input.life_area}", there was a significant gap before this entry — suggesting a need to step back and recover.`;
+  } else {
+    patternLine = `A repetition pattern: the emotion "${input.mood_type}" in "${input.life_area}" has appeared ${input.occurrences} times in the last 4 days.`;
+  }
 
-  const prompt = `You are a gentle, non-judgmental reflection companion.
+  // ── Pattern dynamics line ─────────────────────────────────────────────────
+  const dynamicsLines: string[] = [];
+  if (input.intensity_trend && input.intensity_trend !== 'stable') {
+    dynamicsLines.push(`Intensity trajectory: ${input.intensity_trend}`);
+  }
+  if (input.recovery_time && input.recovery_time !== 'none') {
+    dynamicsLines.push(`Recovery time from peak intensity: ${input.recovery_time}`);
+  }
+  if (input.stickiness && input.stickiness !== 'low') {
+    dynamicsLines.push(`Pattern stickiness: ${input.stickiness} (frequent and recent)`);
+  }
+  const dynamicsSection = dynamicsLines.length > 0
+    ? `\nPattern dynamics:\n${dynamicsLines.map(l => `- ${l}`).join('\n')}`
+    : '';
 
-A user has just submitted a mood journal entry. The following behavioural pattern has been detected in their recent entries:
+  // ── Personality context line ──────────────────────────────────────────────
+  let personalitySection = '';
+  const p = input.personality_context;
+  if (p && (p.mbtiType || p.enneagramType)) {
+    const typeLabel = [p.mbtiType, p.enneagramType ? `Enneagram ${p.enneagramType}` : '']
+      .filter(Boolean).join(', ');
+    const processingNote = p.processingStyle === 'internal'
+      ? 'This user tends to process emotions internally, so the pattern may feel more significant than it appears externally.'
+      : 'This user tends to externalise emotions, so the pattern may show up in how they talk about others or situations.';
+    const weightNote = p.emotionalWeight === 'high'
+      ? 'They carry emotional experiences with significant depth and weight.'
+      : p.emotionalWeight === 'low'
+      ? 'They may minimise or intellectualise emotional experiences.'
+      : '';
+    const cuesNote = input.language_cues_matched && input.language_cues_matched.length > 0
+      ? `Language in this entry matches known stress signatures for their type — this increases confidence in the pattern.`
+      : '';
+    personalitySection = `\nPersonality context (${typeLabel}):\n${[processingNote, weightNote, cuesNote].filter(Boolean).join(' ')}`;
+    if (p.flipReframeHint) {
+      personalitySection += `\nReframe orientation hint: ${p.flipReframeHint}`;
+    }
+  }
 
-${contextLine}
+  const prompt = `You are a gentle, warm reflection companion for a journalling app called Renew90.
 
-Generate a calm, reflective, non-judgmental 1–2 sentence observation describing this pattern.
+A user has just submitted a mood journal entry. The following behavioural pattern has been detected:
 
-Rules:
+${patternLine}${dynamicsSection}${personalitySection}
+
+Generate a calm, reflective, non-judgmental 1–2 sentence observation about this pattern.
+
+STRICT RULES:
+- Write in second person ("You've been…", "It looks like…", "There seems to be…").
+- Use tentative framing: "this might be", "it looks like", "there seems to be" — never "this is" or "you are".
+- Do NOT end with a question. The pattern insight is a pure observation — the Flip Journal will handle the reflective question separately.
 - Do NOT give advice or tell the user what to do.
 - Do NOT sound clinical, alarming, or prescriptive.
-- Make it feel personal, warm, and purely observational.
-- Meet the user exactly where they are — no calls to change or be different.
-- Write in second person ("You've been…", "It seems…", "There's a pattern…").
+- Do NOT stereotype or label the personality type. If personality context is present, use it only to make the observation feel more personally resonant — never to define who they are.
+- Do NOT compare the user to others of the same type.
+- Make it feel personally accurate, emotionally safe, and warm.
+- The mission is gentle transformation — the user should feel seen, not analysed.
 
-Respond with ONLY the observation text. No introduction, no labels, no explanation.`;
+Respond with ONLY the observation text (1–2 sentences). No question. No introduction, no labels, no explanation.`;
 
   try {
     if (USE_VERTEX_AI) {
@@ -1224,10 +1294,16 @@ Respond with ONLY the observation text. No introduction, no labels, no explanati
 
 function buildFallbackInsight(input: PatternInsightInput): string {
   if (input.pattern_type === 'cross_area') {
-    return `When things feel heavy in ${input.source_area ?? 'one area'}, it often carries into ${input.target_area ?? 'another area'} soon after.`;
+    if (input.cascade_chain && input.cascade_chain.length >= 3) {
+      return `There's a thread running through ${input.cascade_chain.join(' → ')} in recent entries — it looks like emotions tend to move across these areas in sequence.`;
+    }
+    return `When things feel heavy in ${input.source_area ?? 'one area'}, it often seems to carry into ${input.target_area ?? 'another area'} soon after.`;
   }
   if (input.pattern_type === 'escalation') {
-    return `Your feelings in ${input.life_area ?? 'this area'} have been building in intensity recently.`;
+    return `It looks like things in ${input.life_area ?? 'this area'} have been building in intensity — each entry a little heavier than the last.`;
   }
-  return `You've been experiencing ${input.mood_type ?? 'similar feelings'} in ${input.life_area ?? 'this area'} a few times lately.`;
+  if (input.pattern_type === 'withdrawal') {
+    return `It looks like there was a period of quiet after a heavy moment in ${input.life_area ?? 'this area'} — this entry marks a return after that space.`;
+  }
+  return `There seems to be a recurring thread — ${input.mood_type ?? 'similar feelings'} in ${input.life_area ?? 'this area'} appearing several times lately.`;
 }

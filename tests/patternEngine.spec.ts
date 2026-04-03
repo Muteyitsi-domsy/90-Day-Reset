@@ -3,8 +3,13 @@ import {
   detectRepetition,
   detectEscalation,
   detectCrossArea,
+  detectWithdrawal,
   prioritize,
   computePatternScore,
+  computeIntensityTrajectory,
+  computeRecoveryTime,
+  computeStickiness,
+  applyPersonalityContext,
   scoreToLevel,
   shouldSuppress,
   intensityToNumber,
@@ -368,5 +373,242 @@ describe('runPatternEngine', () => {
     const out = runPatternEngine([mid, low], current, () => null);
     expect(out).not.toBeNull();
     expect(out!.result.pattern_type).toBe('escalation');
+  });
+
+  it('returns personality_context when personalityProfile is passed', () => {
+    const current = makeEntry({ context: 'career', emotion: 'anxious', intensity: 'medium' });
+    const prior1 = makeEntry({ context: 'career', emotion: 'anxious', hoursAgo: 24 });
+    const prior2 = makeEntry({ context: 'career', emotion: 'anxious', hoursAgo: 48 });
+    const out = runPatternEngine(
+      [prior1, prior2],
+      current,
+      () => null,
+      { mbtiType: 'INFJ', enneagramType: '4' },
+    );
+    expect(out).not.toBeNull();
+    expect(out!.insight.personality_context).toBeDefined();
+    expect(out!.insight.personality_context!.mbtiType).toBe('INFJ');
+    expect(out!.insight.personality_context!.enneagramType).toBe('4');
+  });
+
+  it('returns no personality_context when no profile is passed', () => {
+    const current = makeEntry({ context: 'career', emotion: 'anxious', intensity: 'medium' });
+    const prior1 = makeEntry({ context: 'career', emotion: 'anxious', hoursAgo: 24 });
+    const prior2 = makeEntry({ context: 'career', emotion: 'anxious', hoursAgo: 48 });
+    const out = runPatternEngine([prior1, prior2], current, () => null);
+    expect(out).not.toBeNull();
+    expect(out!.insight.personality_context).toBeUndefined();
+  });
+
+  it('prioritises cross_area cascade over standard cross_area', () => {
+    // A→B→C cascade: career (A) → family (B) → mental_health (C = current)
+    // Both B entries must be within 24h of C; each A must be within 24h of its B.
+    // We need >= 2 (A,B) pairs to satisfy the cascade threshold.
+    const current = makeEntry({ context: 'mental_health', intensity: 'medium', hoursAgo: 0 });
+    const b1 = makeEntry({ context: 'family', intensity: 'medium', hoursAgo: 10 }); // B1: 10h before C
+    const a1 = makeEntry({ context: 'career', intensity: 'high', hoursAgo: 25 });   // A1: 15h before B1
+    const b2 = makeEntry({ context: 'family', intensity: 'medium', hoursAgo: 20 }); // B2: 20h before C
+    const a2 = makeEntry({ context: 'career', intensity: 'high', hoursAgo: 35 });   // A2: 15h before B2
+    const out = runPatternEngine([b1, a1, b2, a2], current, () => null);
+    expect(out).not.toBeNull();
+    expect(out!.result.pattern_type).toBe('cross_area');
+    expect(out!.result.cascade_chain).toBeDefined();
+    expect(out!.result.cascade_chain!.length).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// detectWithdrawal
+// ---------------------------------------------------------------------------
+
+describe('detectWithdrawal', () => {
+  it('detects withdrawal after >= 3 days of silence following high intensity', () => {
+    const current = makeEntry({ context: 'career', intensity: 'low', hoursAgo: 0 });
+    const highEntry = makeEntry({ context: 'career', intensity: 'high', hoursAgo: 96 }); // 4 days ago
+    const result = detectWithdrawal([highEntry], current);
+    expect(result).not.toBeNull();
+    expect(result!.pattern_type).toBe('withdrawal');
+    expect(result!.life_area).toBe('career');
+  });
+
+  it('returns null when gap is less than 3 days', () => {
+    const current = makeEntry({ intensity: 'low', hoursAgo: 0 });
+    const highEntry = makeEntry({ intensity: 'high', hoursAgo: 48 }); // 2 days — not enough
+    expect(detectWithdrawal([highEntry], current)).toBeNull();
+  });
+
+  it('returns null when entries exist between the high and current entry', () => {
+    const current = makeEntry({ intensity: 'low', hoursAgo: 0 });
+    const highEntry = makeEntry({ context: 'career', intensity: 'high', hoursAgo: 120 });
+    const middle = makeEntry({ intensity: 'medium', hoursAgo: 60 }); // breaks the silence
+    expect(detectWithdrawal([highEntry, middle], current)).toBeNull();
+  });
+
+  it('returns null when there are no prior high-intensity entries', () => {
+    const current = makeEntry({ intensity: 'low', hoursAgo: 0 });
+    const mid = makeEntry({ intensity: 'medium', hoursAgo: 100 });
+    expect(detectWithdrawal([mid], current)).toBeNull();
+  });
+
+  it('withdrawal has lower priority than repetition', () => {
+    const current = makeEntry({ context: 'career', emotion: 'anxious', intensity: 'low', hoursAgo: 0 });
+    const prior1 = makeEntry({ context: 'career', emotion: 'anxious', hoursAgo: 24 });
+    const prior2 = makeEntry({ context: 'career', emotion: 'anxious', hoursAgo: 48 });
+    const highOld = makeEntry({ intensity: 'high', hoursAgo: 120 });
+    const out = runPatternEngine([prior1, prior2, highOld], current, () => null);
+    expect(out).not.toBeNull();
+    // repetition should win over withdrawal
+    expect(out!.result.pattern_type).toBe('repetition');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeIntensityTrajectory
+// ---------------------------------------------------------------------------
+
+describe('computeIntensityTrajectory', () => {
+  it('returns increasing when entries go low → medium → high', () => {
+    const entries = [
+      makeEntry({ intensity: 'low', hoursAgo: 48 }),
+      makeEntry({ intensity: 'medium', hoursAgo: 24 }),
+      makeEntry({ intensity: 'high', hoursAgo: 0 }),
+    ];
+    expect(computeIntensityTrajectory(entries)).toBe('increasing');
+  });
+
+  it('returns decreasing when entries go high → medium → low', () => {
+    const entries = [
+      makeEntry({ intensity: 'high', hoursAgo: 48 }),
+      makeEntry({ intensity: 'medium', hoursAgo: 24 }),
+      makeEntry({ intensity: 'low', hoursAgo: 0 }),
+    ];
+    expect(computeIntensityTrajectory(entries)).toBe('decreasing');
+  });
+
+  it('returns volatile when entries have mixed up/down changes', () => {
+    const entries = [
+      makeEntry({ intensity: 'low', hoursAgo: 72 }),
+      makeEntry({ intensity: 'high', hoursAgo: 48 }),
+      makeEntry({ intensity: 'low', hoursAgo: 24 }),
+      makeEntry({ intensity: 'high', hoursAgo: 0 }),
+    ];
+    expect(computeIntensityTrajectory(entries)).toBe('volatile');
+  });
+
+  it('returns stable when all entries have the same intensity', () => {
+    const entries = [
+      makeEntry({ intensity: 'medium', hoursAgo: 48 }),
+      makeEntry({ intensity: 'medium', hoursAgo: 24 }),
+      makeEntry({ intensity: 'medium', hoursAgo: 0 }),
+    ];
+    expect(computeIntensityTrajectory(entries)).toBe('stable');
+  });
+
+  it('returns stable for fewer than 2 entries', () => {
+    expect(computeIntensityTrajectory([makeEntry()])).toBe('stable');
+    expect(computeIntensityTrajectory([])).toBe('stable');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeRecoveryTime
+// ---------------------------------------------------------------------------
+
+describe('computeRecoveryTime', () => {
+  it('returns none when current entry is high intensity', () => {
+    const current = makeEntry({ intensity: 'high', hoursAgo: 0 });
+    const prior = makeEntry({ intensity: 'high', hoursAgo: 12 });
+    expect(computeRecoveryTime([prior], current)).toBe('none');
+  });
+
+  it('returns none when there is no prior high-intensity entry', () => {
+    const current = makeEntry({ intensity: 'low', hoursAgo: 0 });
+    const prior = makeEntry({ intensity: 'medium', hoursAgo: 48 });
+    expect(computeRecoveryTime([prior], current)).toBe('none');
+  });
+
+  it('returns fast when recovery is within 1 day', () => {
+    const current = makeEntry({ intensity: 'low', hoursAgo: 0 });
+    const high = makeEntry({ intensity: 'high', hoursAgo: 20 });
+    expect(computeRecoveryTime([high], current)).toBe('fast');
+  });
+
+  it('returns moderate when recovery is 1–3 days', () => {
+    const current = makeEntry({ intensity: 'low', hoursAgo: 0 });
+    const high = makeEntry({ intensity: 'high', hoursAgo: 50 }); // ~2 days
+    expect(computeRecoveryTime([high], current)).toBe('moderate');
+  });
+
+  it('returns slow when recovery takes more than 3 days', () => {
+    const current = makeEntry({ intensity: 'low', hoursAgo: 0 });
+    const high = makeEntry({ intensity: 'high', hoursAgo: 100 }); // ~4 days
+    expect(computeRecoveryTime([high], current)).toBe('slow');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeStickiness
+// ---------------------------------------------------------------------------
+
+describe('computeStickiness', () => {
+  it('returns high when pattern occurs very frequently', () => {
+    // 7 occurrences in 7 days = rate 1.0
+    expect(computeStickiness(7, 7)).toBe('high');
+  });
+
+  it('returns moderate for moderate frequency', () => {
+    // 2 occurrences in 7 days = rate ~0.29
+    expect(computeStickiness(2, 7)).toBe('moderate');
+  });
+
+  it('returns low for infrequent patterns', () => {
+    // 1 occurrence in 14 days = rate ~0.07
+    expect(computeStickiness(1, 14)).toBe('low');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyPersonalityContext
+// ---------------------------------------------------------------------------
+
+describe('applyPersonalityContext', () => {
+  it('attaches personality_context when mbtiType is given', () => {
+    const result = {
+      pattern_type: 'repetition' as const,
+      occurrences: 3,
+      life_area: 'career' as const,
+    };
+    const entry = makeEntry({ journalText: 'i feel like no one really understands me' });
+    const enriched = applyPersonalityContext(result, entry, 'INFJ', undefined);
+    expect(enriched.personality_context).toBeDefined();
+    expect(enriched.personality_context!.mbtiType).toBe('INFJ');
+    expect(enriched.personality_context!.processingStyle).toBe('internal');
+  });
+
+  it('boosts confidence when language cues match journal text', () => {
+    const result = { pattern_type: 'repetition' as const, occurrences: 3 };
+    const entry = makeEntry({
+      journalText: "i don't know who i am anymore",
+    });
+    const enriched = applyPersonalityContext(result, entry, 'INFP', undefined);
+    expect(enriched.language_cues_matched).toBeDefined();
+    expect(enriched.language_cues_matched!.length).toBeGreaterThan(0);
+    expect(enriched.confidence).toBeGreaterThan(0.5);
+  });
+
+  it('returns unchanged result when no personality types are given', () => {
+    const result = { pattern_type: 'escalation' as const, occurrences: 3, trend: [3, 6, 9] };
+    const entry = makeEntry();
+    const enriched = applyPersonalityContext(result, entry, undefined, undefined);
+    expect(enriched.personality_context).toBeUndefined();
+    expect(enriched.language_cues_matched).toBeUndefined();
+  });
+
+  it('attaches enneagram context when only enneagramType is given', () => {
+    const result = { pattern_type: 'repetition' as const, occurrences: 2 };
+    const entry = makeEntry({ journalText: 'what if the worst happens' });
+    const enriched = applyPersonalityContext(result, entry, undefined, '6');
+    expect(enriched.personality_context).toBeDefined();
+    expect(enriched.personality_context!.enneagramType).toBe('6');
   });
 });

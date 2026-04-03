@@ -22,7 +22,53 @@
 
 ## Active Task
 
-*(No active task — waiting for instructions)*
+## Task: Personality-Aware Pattern Recognition Enhancement
+
+**Component:** Mood Journal (Pattern Engine — Pro feature)
+**Type:** Feature
+**Started:** 2026-04-03
+
+### Plan
+- [x] Read and merge research docs (renew90_personality_research.docx, renew90_blueprint.docx, pattern_engine_spec.docx)
+- [x] Read existing patternEngine.ts, types.ts, geminiService.ts, App.tsx, Menu.tsx
+- [x] Update `types.ts` — add PatternType 'withdrawal', IntensityTrajectory, RecoverySpeed, PatternStickiness, PersonalityContext, UserProfile personality fields
+- [x] Create `src/services/personalityPatterns.ts` — static knowledge base (16 MBTI + 9 Enneagram types, language cues, reframe hints)
+- [x] Update `src/services/patternEngine.ts` — cascade A→B→C, withdrawal, intensity trajectory, recovery time, stickiness, language cue matching, personality enrichment
+- [x] Update `services/geminiService.ts` — enhanced PatternInsightInput, personality-aware AI prompt (no closing question — Flip handles that)
+- [x] Update `App.tsx` — pass personality profile to engine + insight generation
+- [x] Update `components/Menu.tsx` — add Personality Insights section (Pro-gated, locked once set, on/off toggle)
+- [x] Update `tests/patternEngine.spec.ts` — cascade, withdrawal, trajectory, language cues, personality enrichment, no-personality fallback
+- [x] Run `npm test` — 698 tests pass (26 test files)
+- [x] Run `npx tsc --noEmit` — no new errors beyond known false positives
+
+### Review
+All changes implemented and verified. 698 tests pass, no new TypeScript errors.
+
+Key decisions made:
+- Pattern type 'withdrawal' added (silence >= 3 days after high intensity, detected on return)
+- Cascade (A→B→C) kept as cross_area with cascade_chain field — no new PatternType
+- Personality layer is purely interpretive — never influences which pattern is detected
+- Pattern insight prompt: observation only, NO closing question (Flip Journal owns the question)
+- Menu personality section: shown for Pro users, locked once saved (mirrors Arc behaviour)
+- personalityInsightsEnabled toggle: lets user turn off personality context without losing their type
+
+### Notes
+
+**Architecture decisions:**
+- Cascade (A→B→C) stays within `cross_area` PatternType — adds `cascade_chain: MoodContext[]` field to PatternResult, not a new type
+- Withdrawal is a new PatternType added to the union
+- Personality ONLY adjusts interpretation/tone/context — never drives detection
+- PatternResult extended in patternEngine.ts (not types.ts) since it's the internal result shape; types.ts only gets shared/stored types
+- Menu personality section: locked once saved (like Arc), on/off toggle for the feature
+
+**Priority order update:** cross_area > escalation > repetition > withdrawal
+
+**Key insight prompt rules (from research doc):**
+- Second person "you" language
+- Tentative framing: "this might be", "it looks like", "there seems to be"
+- End with a question that opens
+- Never compare user to others of same type
+- Never give advice, never clinical tone
 
 ---
 
