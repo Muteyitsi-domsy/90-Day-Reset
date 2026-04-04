@@ -72,6 +72,50 @@ Key decisions made:
 
 ---
 
+## Backlog: Phase 2 — Year Bucket Database Structure + Export
+
+**Component:** Cross-cutting (Mood, Flip, 90 Day Journal)
+**Type:** Feature — backend data structure + export
+**Priority:** Post-marketing, pre-scale
+
+### Vision (from session 2026-04-04)
+
+**Phase 1 (done):** UI-only grouping by year → month. No Firestore changes. `date: "YYYY-MM-DD"` on every entry drives client-side grouping.
+
+**Phase 2:** True year bucket in Firestore + export link to external analysis site.
+
+```
+Database (Phase 2 target shape):
+  users/{userId}/
+    2026/
+      Mood/
+        Month 12 ... Month 1   ← entries + monthly summary
+      Flip/
+        Month 12 ... Month 1   ← entries (no summary)
+      90DayJourneys/
+        Journey 1, Journey 2, Journey 3   ← archived journeys
+```
+
+**Export (Phase 2):** A link/button that packages all three journals for a given year into a structured JSON payload and sends to an external analysis site (separate product, to be built). Both cloud and local-storage users need this path.
+
+### Notes
+- Phase 2 requires a Firestore migration for existing users — non-trivial, needs a migration script
+- Do not restructure Firestore until user scale makes load time a real problem (thousands of entries across multiple years)
+- `JourneyArchive.year` field already exists and maps cleanly to the year bucket
+- Mood and Flip entries are currently flat collections — migration groups them by year subcollection
+- Export format to agree with external analysis site before implementing
+
+### Plan (when ready)
+- [ ] Define export JSON schema with external site
+- [ ] Write migration script: flat → year subcollections (dry-run first, then apply)
+- [ ] Update firestoreService read/write paths for new structure
+- [ ] Add export function that reads year bucket and POSTs to external endpoint
+- [ ] Add export UI (button or link in Menu or settings)
+- [ ] Run `npm test` — all tests pass
+- [ ] Run `npx tsc --noEmit` — no new errors
+
+---
+
 ## Template
 
 ```markdown
