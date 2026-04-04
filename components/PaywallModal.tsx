@@ -450,18 +450,20 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ isOpen, onClose, onSubscrib
 
           {/* Restore & beta */}
           <div className="flex flex-col items-center gap-2 mb-4">
-            <button
-              onClick={handleRestore}
-              disabled={isRestoring}
-              className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
-            >
-              {isRestoring ? 'Restoring...' : 'Restore Purchases'}
-            </button>
+            {isNativePlatform() && (
+              <button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
+              >
+                {isRestoring ? 'Restoring...' : 'Restore Purchases'}
+              </button>
+            )}
             <button
               onClick={() => setShowBetaInput(!showBetaInput)}
               className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
             >
-              Have a beta code?
+              {isNativePlatform() ? 'Have a beta code?' : 'Have a beta / promo code? Tap here'}
             </button>
           </div>
 
