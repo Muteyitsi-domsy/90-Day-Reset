@@ -2285,7 +2285,11 @@ const App: React.FC = () => {
         streak: 0,
         lastEntryDate: today,
       };
-      await storageService.saveUserProfile(minimalProfile);
+      try {
+        await storageService.saveUserProfile(minimalProfile);
+      } catch (error) {
+        console.error('Failed to save mood-only profile, proceeding anyway:', error);
+      }
       setUserProfile(minimalProfile);
     }
     setActiveView('mood');
