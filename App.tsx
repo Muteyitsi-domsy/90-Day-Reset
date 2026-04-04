@@ -217,6 +217,8 @@ const App: React.FC = () => {
   const userProfileRef = React.useRef(userProfile);
   // Guard: retroactive badge grant runs once per session
   const retroactiveBadgesGrantedRef = React.useRef(false);
+  // Timer for day-90 report fallback (fires at 4pm if user hasn't written their final entry)
+  const day90ReportTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Update refs when state changes
   useEffect(() => {
@@ -866,6 +868,9 @@ const App: React.FC = () => {
     // Save the raw entry immediately, regardless of crisis level
     const updatedEntries = [...journalEntries, newEntry];
     setJournalEntries(updatedEntries);
+    // Eagerly sync the ref so report generators see the new entry without waiting
+    // for React's render cycle to flush (important for the day-90 trigger below)
+    journalEntriesRef.current = updatedEntries;
 
     // --- Streak Logic ---
     const todayStr = getLocalDateString();
@@ -980,6 +985,18 @@ const App: React.FC = () => {
         setIsAnalysisLoading(false);
         // Update daily completion tracking after entry is saved
         updateDailyCompletion();
+    }
+
+    // Day 90: the final entry is now in the ref — fire the concluding week 13 and
+    // month 3 reports. Runs after both branches so the crisis early-return above
+    // still prevents this from firing for a crisis entry.
+    if (day === 90) {
+        if (day90ReportTimerRef.current !== null) {
+            clearTimeout(day90ReportTimerRef.current);
+            day90ReportTimerRef.current = null;
+        }
+        if (userProfileRef.current!.week_count <= 13) await handleGenerateWeeklySummary(13, 14);
+        if (userProfileRef.current!.month_count <= 3) await handleGenerateMonthlySummary(3, 4);
     }
   };
 
@@ -1866,7 +1883,8 @@ const App: React.FC = () => {
             }
 
             // Handle Weekly Summaries
-            // Only generate reports for COMPLETE weeks (7 full days)
+            // Only generate reports for COMPLETE weeks (7 full days).
+            // Week 13 (days 85-90) is a partial week and is handled separately below.
             const completedWeeks = Math.floor((day - 1) / 7);
             if (userProfile.week_count <= completedWeeks) {
                 for (let week = userProfile.week_count; week <= completedWeeks; week++) {
@@ -1874,9 +1892,9 @@ const App: React.FC = () => {
                 }
             }
 
-            // Handle Monthly Summaries
-            // Generate on day 30, 60, 90 (when month completes)
-            // Day 30: completedMonths = 1, Day 60: completedMonths = 2, Day 90: completedMonths = 3
+            // Handle Monthly Summaries — days 30 and 60 only.
+            // Month 3 (day 90) is handled separately below so it waits for the
+            // final entry before generating.
             const completedMonths = Math.floor(day / 30);
             console.log('📅 Monthly Report Check:', {
                 currentDay: day,
@@ -1885,13 +1903,42 @@ const App: React.FC = () => {
                 shouldGenerate: userProfile.month_count <= completedMonths,
                 monthlyReportsEnabled: settings.monthlyReports
             });
-            if (userProfile.month_count <= completedMonths) {
+            if (userProfile.month_count <= completedMonths && day < 90) {
                  for (let month = userProfile.month_count; month <= completedMonths; month++) {
                     console.log(`📅 Generating monthly report for Month ${month}`);
                     await handleGenerateMonthlySummary(month, month + 1);
                  }
             }
-            
+
+            // Day 90: week 13 (partial) + month 3 — controlled trigger.
+            // Primary: fire immediately if the day-90 entry already exists (re-open scenario).
+            // Fallback: if the user hasn't written by 4pm, generate with whatever data exists
+            //           so the journey isn't left without a conclusion.
+            if (day === 90) {
+                const hasDay90Entry = journalEntriesRef.current.some(e => e.day === 90 && e.type === 'daily');
+                const currentHour = new Date().getHours();
+
+                if (hasDay90Entry || currentHour >= 16) {
+                    if (userProfile.week_count <= 13) await handleGenerateWeeklySummary(13, 14);
+                    if (userProfile.month_count <= 3) await handleGenerateMonthlySummary(3, 4);
+                } else {
+                    // Schedule a fallback for 4pm if the app stays open
+                    if (day90ReportTimerRef.current !== null) clearTimeout(day90ReportTimerRef.current);
+                    const cutoff = new Date();
+                    cutoff.setHours(16, 0, 0, 0);
+                    const msUntilCutoff = cutoff.getTime() - Date.now();
+                    day90ReportTimerRef.current = setTimeout(async () => {
+                        day90ReportTimerRef.current = null;
+                        // Only fire if the save trigger hasn't already run
+                        const entryExists = journalEntriesRef.current.some(e => e.day === 90 && e.type === 'daily');
+                        if (!entryExists) {
+                            if (userProfileRef.current!.week_count <= 13) await handleGenerateWeeklySummary(13, 14);
+                            if (userProfileRef.current!.month_count <= 3) await handleGenerateMonthlySummary(3, 4);
+                        }
+                    }, msUntilCutoff);
+                }
+            }
+
             const todayEntry = journalEntries.find(entry => entry.day === day && entry.type === 'daily');
             if (!todayEntry) {
                  const promptText = getDailyPrompt(userProfile, day, journalEntries);
@@ -1907,6 +1954,14 @@ const App: React.FC = () => {
     if (appState === 'journal' && userProfile && !userProfile.isPaused && userProfile.arc) {
         setupJournal();
     }
+
+    return () => {
+        // Cancel any pending day-90 fallback timer on unmount or re-run
+        if (day90ReportTimerRef.current !== null) {
+            clearTimeout(day90ReportTimerRef.current);
+            day90ReportTimerRef.current = null;
+        }
+    };
   }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
 
   // Gate view switching — free users can only access mood journal

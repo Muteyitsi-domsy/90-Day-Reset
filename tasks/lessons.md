@@ -22,6 +22,42 @@ New lessons go at the TOP of the relevant section so the most recent ones are se
 
 ---
 
+## Sentry & Observability
+
+### Upload source maps with every build
+- **What happened:** Sentry caught real crashes but stack traces showed minified function names (`Vle`, `gte`) instead of readable code. The exact file and line were invisible without source maps.
+- **Why it was wrong:** Debugging without source maps requires guesswork — reading minified context lines instead of actual function names. With source maps, Sentry shows the exact file:line of every crash.
+- **The rule:** Upload source maps to Sentry at build time, every build. Add this to the post-build checklist. Reminder fires at end of every significant session.
+- **Affected area:** Build process, Sentry dashboard
+
+---
+
+## Release & Version Management
+
+### Tag a stable fallback after every significant session
+- **What happened:** Multiple large features (security hardening, personality engine, paywall gating) were shipped with no annotated git tags — the last tag was from a much earlier version, leaving no safe rollback points.
+- **Why it was wrong:** If a regression is found after several sessions of work, there's no clean point to roll back to without manual archaeology through commits.
+- **The rule:** At the end of any session involving significant changes, create an annotated tag: `git tag -a vX.X.X-stable -m "description. N tests passing."` — before starting the next feature. Remind the user to do this if it hasn't been done.
+- **Affected area:** Git, release process
+
+### Build cadence vs commit cadence are separate concerns
+- **What happened:** *(Template)*
+- **Why it was wrong:** Conflating the two leads to either over-building (submitting half-baked features) or under-committing (holding back safe changes until build day).
+- **The rule:** Commit and push freely to `main`. Build and submit on a cadence (target: every 1–2 weeks post-launch, trending toward monthly once stable). Tag a release candidate (`vX.X.X-rc`) before building so the version bump is deliberate.
+- **Affected area:** Git, Android/iOS release process
+
+---
+
+## Mood-Only User Edge Cases
+
+### setupJournal fires for mood-only users (no arc) — crashes promptGenerator
+- **What happened:** When a new user chose "Continue with Mood Journal only", `handleContinueToMood` created a profile with no `arc` field. The `setupJournal` effect fired because `appState === 'journal' && userProfile && !userProfile.isPaused` — no arc check. It called `getDailyPrompt(userProfile, ...)` which did `PROMPTS[undefined][month]` → crash.
+- **Why it was wrong:** Mood-only users don't have a 90-day arc and should never trigger the journal setup or daily prompt generation.
+- **The rule:** Any effect or function that operates on the 90-day journey must guard against `!userProfile.arc`. Mood-only users are a valid, permanent state — not a bug to route around.
+- **Affected area:** `App.tsx` (`setupJournal` effect), `services/promptGenerator.ts` (`getDailyPrompt`)
+
+---
+
 ## Architecture & Component Boundaries
 
 ### 90 Day Journal is fully autonomous — no Mood/Flip data
