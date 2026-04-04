@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { FlipJournalEntry, MoodJournalEntry } from '../types';
 import {
   MAX_ENTRIES_PER_DAY,
@@ -30,6 +30,15 @@ const EditIcon: React.FC<{ className: string }> = ({ className }) => (
   </svg>
 );
 
+const ChevronIcon: React.FC<{ expanded: boolean }> = ({ expanded }) => (
+  <svg
+    className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
 const FlipEntryCard: React.FC<{
   entry: FlipJournalEntry;
   onEdit?: (entry: FlipJournalEntry) => void;
@@ -38,16 +47,6 @@ const FlipEntryCard: React.FC<{
 }> = ({ entry, onEdit, onDelete, linkedMoodEntry }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Parse date as local date (YYYY-MM-DD format from storage)
-  const [year, month, day] = entry.date.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  const formattedDate = date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
 
   const handleDelete = async () => {
     if (!onDelete) return;
@@ -64,25 +63,19 @@ const FlipEntryCard: React.FC<{
     }
   };
 
-  // Preview text (first 150 chars of challenge)
   const challengePreview = entry.challenge.length > 150
     ? `${entry.challenge.substring(0, 150)}...`
     : entry.challenge;
 
   return (
     <div className="bg-[var(--card-bg)] backdrop-blur-sm border border-[var(--card-border)] rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg">
-      {/* Header */}
-      <div
-        className="p-6 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="p-6 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             <span className="text-3xl">🔄</span>
             <div>
-              <p className="text-sm text-[var(--text-secondary)]">{formattedDate}</p>
               {linkedMoodEntry && (
-                <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1 mt-0.5">
+                <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
                   <span>📝</span>
                   <span>Flipped from Daily Journal</span>
                 </p>
@@ -92,10 +85,7 @@ const FlipEntryCard: React.FC<{
           <div className="flex gap-2">
             {onEdit && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(entry);
-                }}
+                onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
                 className="p-2 rounded-lg text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors"
                 aria-label="Edit entry"
               >
@@ -104,10 +94,7 @@ const FlipEntryCard: React.FC<{
             )}
             {onDelete && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
+                onClick={(e) => { e.stopPropagation(); handleDelete(); }}
                 disabled={isDeleting}
                 className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
                 aria-label="Delete entry"
@@ -118,7 +105,6 @@ const FlipEntryCard: React.FC<{
           </div>
         </div>
 
-        {/* Challenge preview */}
         <div className="mb-3">
           <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide mb-1">
             Challenge
@@ -128,23 +114,13 @@ const FlipEntryCard: React.FC<{
           </p>
         </div>
 
-        {/* Expand indicator */}
         <div className="flex items-center justify-center">
-          <svg
-            className={`w-5 h-5 text-[var(--text-secondary)] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronIcon expanded={isExpanded} />
         </div>
       </div>
 
-      {/* Expanded content */}
       {isExpanded && (
         <div className="px-6 pb-6 border-t border-[var(--card-border)] pt-4 space-y-4 animate-fade-in">
-          {/* Reframing Question */}
           <div className="bg-gradient-to-r from-[var(--accent-primary)]/5 to-[var(--accent-primary)]/10 rounded-lg p-4">
             <p className="text-xs font-medium text-[var(--accent-primary)] uppercase tracking-wide mb-2">
               From Your Wiser Self
@@ -153,8 +129,6 @@ const FlipEntryCard: React.FC<{
               "{entry.reframingQuestion}"
             </p>
           </div>
-
-          {/* Reframed Perspective */}
           <div>
             <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide mb-2">
               Your Response
@@ -171,13 +145,83 @@ const FlipEntryCard: React.FC<{
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
       `}</style>
     </div>
   );
 };
+
+// ─── Grouping helpers ─────────────────────────────────────────────────────────
+
+const MONTH_NAMES = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
+
+type DayGroup = { dayKey: string; label: string; entries: FlipJournalEntry[] };
+type MonthGroup = { monthKey: string; label: string; totalCount: number; days: DayGroup[] };
+type YearGroup = { year: number; totalCount: number; months: MonthGroup[] };
+
+function groupByYearMonth(entries: FlipJournalEntry[]): YearGroup[] {
+  // Sort newest first
+  const sorted = [...entries].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+
+  const yearMap = new Map<number, Map<string, Map<string, FlipJournalEntry[]>>>();
+
+  for (const entry of sorted) {
+    const [y, m, d] = entry.date.split('-').map(Number);
+    const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+    const dayKey = entry.date; // "YYYY-MM-DD"
+
+    if (!yearMap.has(y)) yearMap.set(y, new Map());
+    const months = yearMap.get(y)!;
+    if (!months.has(monthKey)) months.set(monthKey, new Map());
+    const days = months.get(monthKey)!;
+    if (!days.has(dayKey)) days.set(dayKey, []);
+    days.get(dayKey)!.push(entry);
+
+    // suppress unused var warning — d is needed for the destructure order
+    void d;
+  }
+
+  const yearGroups: YearGroup[] = [];
+
+  // Iterate in descending year order
+  for (const year of [...yearMap.keys()].sort((a, b) => b - a)) {
+    const months = yearMap.get(year)!;
+    const monthGroups: MonthGroup[] = [];
+
+    for (const monthKey of [...months.keys()].sort((a, b) => b.localeCompare(a))) {
+      const days = months.get(monthKey)!;
+      const [, mIdx] = monthKey.split('-').map(Number);
+      const label = `${MONTH_NAMES[mIdx - 1]} ${year}`;
+      const dayGroups: DayGroup[] = [];
+      let totalCount = 0;
+
+      for (const dayKey of [...days.keys()].sort((a, b) => b.localeCompare(a))) {
+        const dayEntries = days.get(dayKey)!;
+        const [dy, dm, dd] = dayKey.split('-').map(Number);
+        const dateObj = new Date(dy, dm - 1, dd);
+        const dayLabel = dateObj.toLocaleDateString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric',
+        });
+        dayGroups.push({ dayKey, label: dayLabel, entries: dayEntries });
+        totalCount += dayEntries.length;
+      }
+
+      monthGroups.push({ monthKey, label, totalCount, days: dayGroups });
+    }
+
+    const yearTotal = monthGroups.reduce((n, m) => n + m.totalCount, 0);
+    yearGroups.push({ year, totalCount: yearTotal, months: monthGroups });
+  }
+
+  return yearGroups;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 const FlipJournalView: React.FC<FlipJournalViewProps> = ({
   flipEntries,
@@ -191,34 +235,45 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
   const canCreate = canCreateEntryToday(flipEntries);
   const remainingToday = getRemainingEntriesToday(flipEntries);
 
-  // Sort entries by timestamp (newest first)
-  const sortedEntries = [...flipEntries].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  const today = getLocalDateString(); // "YYYY-MM-DD"
+  const currentYear = Number(today.split('-')[0]);
+  const currentMonthKey = today.slice(0, 7); // "YYYY-MM"
+
+  // Current year and current month start expanded; everything else collapsed
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(
+    () => new Set([currentYear])
+  );
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(
+    () => new Set([currentMonthKey])
   );
 
-  // Helper to find linked mood entry
+  const yearGroups = useMemo(() => groupByYearMonth(flipEntries), [flipEntries]);
+
+  const toggleYear = (year: number) => {
+    setExpandedYears(prev => {
+      const next = new Set(prev);
+      next.has(year) ? next.delete(year) : next.add(year);
+      return next;
+    });
+  };
+
+  const toggleMonth = (monthKey: string) => {
+    setExpandedMonths(prev => {
+      const next = new Set(prev);
+      next.has(monthKey) ? next.delete(monthKey) : next.add(monthKey);
+      return next;
+    });
+  };
+
   const getLinkedMoodEntry = (flipEntry: FlipJournalEntry): MoodJournalEntry | undefined => {
     if (!flipEntry.linkedMoodEntryId) return undefined;
     return moodEntries.find(m => m.id === flipEntry.linkedMoodEntryId);
   };
 
-  // Group entries by date
-  const entriesByDate = sortedEntries.reduce((acc, entry) => {
-    const [year, month, day] = entry.date.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    const dateKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
-    }
-    acc[dateKey].push(entry);
-    return acc;
-  }, {} as Record<string, FlipJournalEntry[]>);
-
-  const dateKeys = Object.keys(entriesByDate);
-
   return (
     <div className="w-full h-full overflow-y-auto px-4 md:px-8 pt-4 pb-24">
       <div className="max-w-4xl mx-auto">
+
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl md:text-4xl font-light mb-2" style={{ color: '#E87520' }}>
@@ -280,27 +335,96 @@ const FlipJournalView: React.FC<FlipJournalViewProps> = ({
           </div>
         )}
 
-        {/* Entries grouped by date */}
-        {dateKeys.length > 0 && (
-          <div className="space-y-8">
-            {dateKeys.map((dateKey) => (
-              <div key={dateKey}>
-                <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 sticky top-0 bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] py-2 z-10">
-                  {dateKey}
-                </h2>
-                <div className="space-y-4">
-                  {entriesByDate[dateKey].map((entry) => (
-                    <FlipEntryCard
-                      key={entry.id}
-                      entry={entry}
-                      onEdit={onEditEntry}
-                      onDelete={onDeleteEntry}
-                      linkedMoodEntry={getLinkedMoodEntry(entry)}
-                    />
-                  ))}
+        {/* Year → Month → Day → Entry hierarchy */}
+        {yearGroups.length > 0 && (
+          <div className="space-y-4">
+            {yearGroups.map(({ year, totalCount, months }) => {
+              const isCurrentYear = year === currentYear;
+              const isYearExpanded = expandedYears.has(year);
+
+              return (
+                <div key={year} className="border border-[var(--card-border)] rounded-2xl overflow-hidden">
+
+                  {/* Year header — current year is always open, past years toggle */}
+                  <button
+                    className="w-full flex items-center justify-between px-5 py-4 bg-[var(--card-bg)] hover:bg-[var(--accent-primary)]/5 transition-colors"
+                    onClick={() => !isCurrentYear && toggleYear(year)}
+                    style={{ cursor: isCurrentYear ? 'default' : 'pointer' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-semibold text-[var(--text-primary)]">{year}</span>
+                      {isCurrentYear && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] font-medium">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-[var(--text-secondary)]">
+                      <span className="text-sm">{totalCount} {totalCount === 1 ? 'entry' : 'entries'}</span>
+                      {!isCurrentYear && <ChevronIcon expanded={isYearExpanded} />}
+                    </div>
+                  </button>
+
+                  {/* Month list */}
+                  {isYearExpanded && (
+                    <div className="divide-y divide-[var(--card-border)]">
+                      {months.map(({ monthKey, label, totalCount: monthTotal, days }) => {
+                        const isCurrentMonth = monthKey === currentMonthKey;
+                        const isMonthExpanded = expandedMonths.has(monthKey);
+
+                        return (
+                          <div key={monthKey}>
+
+                            {/* Month header */}
+                            <button
+                              className="w-full flex items-center justify-between px-5 py-3 bg-[var(--bg-from)]/40 hover:bg-[var(--accent-primary)]/5 transition-colors"
+                              onClick={() => toggleMonth(monthKey)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-[var(--text-primary)]">{label}</span>
+                                {isCurrentMonth && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]">
+                                    This month
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                                <span className="text-xs">{monthTotal} {monthTotal === 1 ? 'entry' : 'entries'}</span>
+                                <ChevronIcon expanded={isMonthExpanded} />
+                              </div>
+                            </button>
+
+                            {/* Days and entries */}
+                            {isMonthExpanded && (
+                              <div className="px-4 py-3 space-y-6 bg-[var(--bg-from)]/20">
+                                {days.map(({ dayKey, label: dayLabel, entries: dayEntries }) => (
+                                  <div key={dayKey}>
+                                    <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide mb-3 pl-1">
+                                      {dayLabel}
+                                    </p>
+                                    <div className="space-y-3">
+                                      {dayEntries.map(entry => (
+                                        <FlipEntryCard
+                                          key={entry.id}
+                                          entry={entry}
+                                          onEdit={onEditEntry}
+                                          onDelete={onDeleteEntry}
+                                          linkedMoodEntry={getLinkedMoodEntry(entry)}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
