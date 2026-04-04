@@ -674,6 +674,7 @@ export function getDailyPrompt(userProfile: UserProfile, dayIndex: number, journ
     const month = Math.min(3, Math.floor((dayIndex - 1) / 30) + 1);
 
     // Get prompts for this arc and month
+    if (!arc) return "How are you feeling today, in this moment?";
     const promptsForMonth = PROMPTS[arc][month];
 
     if (!promptsForMonth || promptsForMonth.length === 0) {

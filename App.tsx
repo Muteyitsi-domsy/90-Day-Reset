@@ -1904,7 +1904,7 @@ const App: React.FC = () => {
         }
     };
 
-    if (appState === 'journal' && userProfile && !userProfile.isPaused) {
+    if (appState === 'journal' && userProfile && !userProfile.isPaused && userProfile.arc) {
         setupJournal();
     }
   }, [appState, userProfile?.startDate, userProfile?.week_count, userProfile?.month_count, userProfile?.isPaused, userProfile?.journeyCompleted]);
