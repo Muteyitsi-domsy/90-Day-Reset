@@ -7,6 +7,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 const REMINDER_TIME_HOUR = 9; // 9 AM
 const NOTIFICATION_SCHEDULED_KEY = 'dailyNotificationScheduledTime';
 const EVENING_REMINDER_KEY = 'eveningNotificationScheduledTime';
+const EVENING_REMINDER_HOUR = 20; // 8 PM local time
 
 // Stable IDs for native notifications so we can cancel/reschedule
 const DAILY_NOTIFICATION_ID = 1001;
@@ -162,19 +163,22 @@ export const scheduleDailyReminder = async () => {
 };
 
 /**
- * Schedules a one-off evening reminder 8 hours after a journal entry is saved.
+ * Schedules a one-off evening reminder at 8 PM local time on the current day
+ * (or the following day if it's already past 8 PM when the entry is saved).
  * On native: uses Capacitor Local Notifications with a specific time.
  * On web: uses setTimeout (only fires if browser/PWA is running).
  */
 export const scheduleEveningReminder = async () => {
-  const EIGHT_HOURS_IN_MS = 8 * 60 * 60 * 1000;
+  const reminderTime = new Date();
+  reminderTime.setHours(EVENING_REMINDER_HOUR, 0, 0, 0);
+  if (reminderTime.getTime() <= Date.now()) {
+    // Already past 8 PM — schedule for tomorrow evening
+    reminderTime.setDate(reminderTime.getDate() + 1);
+  }
 
   if (isNative()) {
     try {
-      // Cancel any existing evening reminder to avoid duplicates
       await LocalNotifications.cancel({ notifications: [{ id: EVENING_NOTIFICATION_ID }] });
-
-      const reminderTime = new Date(Date.now() + EIGHT_HOURS_IN_MS);
 
       await LocalNotifications.schedule({
         notifications: [
@@ -204,14 +208,13 @@ export const scheduleEveningReminder = async () => {
   }
 
   const lastScheduledTime = localStorage.getItem(EVENING_REMINDER_KEY);
-  const now = new Date().getTime();
+  const now = Date.now();
 
   if (lastScheduledTime && parseInt(lastScheduledTime, 10) > now) {
     return;
   }
 
-  const reminderTime = new Date(now + EIGHT_HOURS_IN_MS);
-
+  const msUntilReminder = reminderTime.getTime() - now;
   setTimeout(() => {
     try {
       new Notification("Evening Check-in", {
@@ -222,7 +225,7 @@ export const scheduleEveningReminder = async () => {
       console.error("Error displaying evening notification:", error);
     }
     localStorage.removeItem(EVENING_REMINDER_KEY);
-  }, EIGHT_HOURS_IN_MS);
+  }, msUntilReminder);
 
   localStorage.setItem(EVENING_REMINDER_KEY, reminderTime.getTime().toString());
 };
