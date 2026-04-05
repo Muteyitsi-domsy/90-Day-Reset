@@ -108,6 +108,16 @@ Key decisions made:
 
 ---
 
+## Backlog: Confetti on Day 91 Report Open
+
+**Component:** 90 Day Journal
+**Type:** Polish
+**Priority:** Low — add when next in a session
+
+Confetti was removed during the SharePrompt redesign but felt right — gentle, not overwhelming, faded nicely. Restore it for day 91 when the app opens and the month-3 report (or final day-90 report) is first surfaced.
+
+---
+
 ## Backlog: Phase 2 — Year Bucket Database Structure + Export
 
 **Component:** Cross-cutting (Mood, Flip, 90 Day Journal)
