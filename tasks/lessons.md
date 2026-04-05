@@ -160,6 +160,12 @@ New lessons go at the TOP of the relevant section so the most recent ones are se
 
 ## Versioning & Releases
 
+### iOS marketing version ≠ internal TestFlight build version — don't conflate them for App Store submission
+- **What happened:** User's internal TestFlight builds were labelled 1.0.1 through 1.0.9 (marketing version incrementing with every upload). When submitting to App Store, Claude told the user to match the build's marketing version (1.0.9) rather than using a clean public version number (1.0.1), overriding the user's correct instinct to use 1.0.1. This caused the App Store dashboard to show a jarring jump from 1.0.0 → 1.0.9.
+- **Why it was wrong:** App Store Connect lets you type any version number when creating a new version — it does not force you to match the build's CFBundleShortVersionString. The public-facing version should reflect the release cadence, not the internal build cadence.
+- **The rule:** For Renew90 iOS, the App Store version (what users see) is independent of the internal TestFlight build number. When the user pushes back on a version number suggestion, treat that as strong signal to reconsider — they know their own release history. Always ask what the last App Store-approved version was and increment from there, not from the internal build label.
+- **Affected area:** iOS App Store Connect submissions, `MARKETING_VERSION` in Xcode
+
 ### Bumped version in fewer than all required locations
 - **What happened:** *(Template)*
 - **Why it was wrong:** Android requires three locations (`build.gradle`, `package.json`, `Menu.tsx`). iOS requires `Info.plist`. Missing any causes a mismatch between store listings and in-app display.
