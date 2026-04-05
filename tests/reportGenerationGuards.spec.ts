@@ -33,12 +33,14 @@ function weekHasSourceEntries(entries: JournalEntry[], weekNum: number): boolean
   return entries.some(e => e.week === weekNum && (e.type === 'daily' || e.type === 'hunch'));
 }
 
-/** Monthly: has a summary report already been generated for this journey-month? */
+/** Monthly: has a summary report already been generated for this journey-month?
+ *  Keyed by prompt text (mirrors how weekly uses entry.week) to avoid the
+ *  day-range overlap bug where a month-2 report at day=61 matched month-3's range.
+ */
 function monthlyReportExists(entries: JournalEntry[], monthNum: number): boolean {
-  const startDay = (monthNum - 1) * 30;
-  const endDay   = monthNum * 30;
+  const reportPrompt = `📅 Monthly Insight: Month ${monthNum}`;
   return entries.some(
-    e => e.type === 'monthly_summary_report' && e.day > startDay && e.day <= endDay,
+    e => e.type === 'monthly_summary_report' && e.prompt === reportPrompt,
   );
 }
 
@@ -124,18 +126,18 @@ describe('weekly report guard — source entries check', () => {
 // ─── Monthly report guards ───────────────────────────────────────────────────
 
 describe('monthly report guard — existing report detection', () => {
-  test('detects an existing month-1 report (day 1-30)', () => {
-    const report = makeJournalEntry({ day: 15, type: 'monthly_summary_report' });
+  test('detects an existing month-1 report by prompt', () => {
+    const report = makeJournalEntry({ type: 'monthly_summary_report', prompt: '📅 Monthly Insight: Month 1' });
     expect(monthlyReportExists([report], 1)).toBe(true);
   });
 
-  test('detects an existing month-2 report (day 31-60)', () => {
-    const report = makeJournalEntry({ day: 45, type: 'monthly_summary_report' });
+  test('detects an existing month-2 report by prompt', () => {
+    const report = makeJournalEntry({ type: 'monthly_summary_report', prompt: '📅 Monthly Insight: Month 2' });
     expect(monthlyReportExists([report], 2)).toBe(true);
   });
 
-  test('detects an existing month-3 report (day 61-90)', () => {
-    const report = makeJournalEntry({ day: 75, type: 'monthly_summary_report' });
+  test('detects an existing month-3 report by prompt', () => {
+    const report = makeJournalEntry({ type: 'monthly_summary_report', prompt: '📅 Monthly Insight: Month 3' });
     expect(monthlyReportExists([report], 3)).toBe(true);
   });
 
@@ -143,17 +145,22 @@ describe('monthly report guard — existing report detection', () => {
     expect(monthlyReportExists([], 1)).toBe(false);
   });
 
-  test('report from a different month does not satisfy the guard', () => {
-    const report = makeJournalEntry({ day: 45, type: 'monthly_summary_report' });
+  test('report with wrong month prompt does not satisfy guard for a different month', () => {
+    const report = makeJournalEntry({ type: 'monthly_summary_report', prompt: '📅 Monthly Insight: Month 2' });
     expect(monthlyReportExists([report], 1)).toBe(false);
+    expect(monthlyReportExists([report], 3)).toBe(false);
   });
 
-  test('boundary: day 30 belongs to month 1, day 31 belongs to month 2', () => {
-    const day30 = makeJournalEntry({ day: 30, type: 'monthly_summary_report' });
-    const day31 = makeJournalEntry({ day: 31, type: 'monthly_summary_report' });
-    expect(monthlyReportExists([day30], 1)).toBe(true);
-    expect(monthlyReportExists([day31], 1)).toBe(false);
-    expect(monthlyReportExists([day31], 2)).toBe(true);
+  test('REGRESSION: month-2 report at day 61 is NOT detected as existing month-3 report', () => {
+    // Root cause of the missing month-3 bug: old day-range check (day > 60 && day <= 90)
+    // matched a month-2 report stored at day=61, causing generation to be skipped and
+    // month_count to be bumped to 4 — permanently blocking the real month-3 report.
+    const month2ReportAtDay61 = makeJournalEntry({
+      day: 61,
+      type: 'monthly_summary_report',
+      prompt: '📅 Monthly Insight: Month 2',
+    });
+    expect(monthlyReportExists([month2ReportAtDay61], 3)).toBe(false);
   });
 });
 

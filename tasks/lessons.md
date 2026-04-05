@@ -116,6 +116,16 @@ New lessons go at the TOP of the relevant section so the most recent ones are se
 
 ---
 
+## Report Generation
+
+### Monthly report existence check used day-range, not identifier — caused month-3 to be permanently blocked
+- **What happened:** `handleGenerateMonthlySummary` checked for an existing report using `entry.day > startDay && entry.day <= endDay`. Month-2 reports are generated on the first login after day 60 (typically day 61) and stored with `day: 61`. Month-3's range is `61–90`. So `61 > 60 && 61 <= 90 = true` — the month-2 report was found as an "existing month-3 report", generation was skipped, and `month_count` was bumped to 4. On all subsequent logins, `month_count <= 3` = false → month-3 never generated.
+- **Why it was wrong:** The `day` field on a report entry is the *current day when the report was generated*, not the month it covers. Using it to identify a report's "month ownership" is fragile at boundaries.
+- **The rule:** Monthly report existence is keyed by `entry.prompt === '📅 Monthly Insight: Month N'` — the same pattern as weekly's `entry.week === N`. Never use day-range to identify which month a report belongs to. Also: day-90 triggers must check actual report existence (not `month_count`) so a previously-bumped counter never silently blocks generation.
+- **Affected area:** `App.tsx` `handleGenerateMonthlySummary`, day-90 trigger in `handleSaveEntry` and `setupJournal`, `tests/reportGenerationGuards.spec.ts`
+
+---
+
 ## Firebase & Data
 
 ### Relied on client-side gating alone for paid features

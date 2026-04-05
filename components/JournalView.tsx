@@ -255,7 +255,7 @@ const JournalView: React.FC<JournalViewProps> = ({ currentDay, dailyPrompt, toda
             <div className="mb-8 animate-fade-in">
               <div className="flex justify-between items-center mb-1 text-sm font-light text-[var(--text-secondary)]">
                 <span>Progress</span>
-                <span>Day {currentDay} of 90</span>
+                <span>{currentDay >= 90 ? 'Journey Complete' : `Day ${currentDay} of 90`}</span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                 <div

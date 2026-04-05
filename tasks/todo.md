@@ -22,6 +22,42 @@
 
 ## Active Task
 
+## Task: Day 90 polish — month-3 bug, share prompt metamorphosis, progress bar
+
+**Component:** 90 Day Journal + Cross-cutting (SharePrompt)
+**Type:** Bug fix + Feature
+**Started:** 2026-04-05
+
+### Plan
+- [x] Diagnose month-3 missing report root cause (day-range overlap with month-2 report at day 61)
+- [x] Fix `handleGenerateMonthlySummary` existence check → prompt-based (not day-range)
+- [x] Fix day-90 monthly trigger in handleSaveEntry → actual report existence (bypasses stale month_count=4)
+- [x] Fix day-90 monthly trigger in setupJournal primary + fallback timer
+- [x] Update test mirror function + add regression test
+- [x] Progress bar: show "Journey Complete" when currentDay >= 90
+- [x] SharePrompt: full metamorphosis redesign for day7/30/60/90
+- [x] Remove "share from menu" hint text
+- [x] Gender-neutral day90 copy ("You became you")
+- [x] Streak prompts (streak7/streak30) unchanged and separate
+- [x] Run `npm test` — 698 tests pass (26 files)
+- [x] Run `npx tsc --noEmit` — no new errors
+
+### Review
+Root cause of month-3 bug: `handleGenerateMonthlySummary` existence check used
+`entry.day > startDay && entry.day <= endDay`. Month-2 reports generated on day 61
+had day=61 which fell inside month-3's range (61–90), so month-3 was falsely detected
+as "already exists" and `month_count` was bumped to 4. On next login, `month_count <=3`
+= false → report never generated. Fix: prompt-based keying (same pattern as weekly's
+`entry.week === weekToSummarize`). Recovery: day-90 triggers now check actual report
+existence rather than month_count, so Doreen's next login will generate the report
+even with month_count=4.
+
+SharePrompt redesign: 4 SVG illustrations (caterpillar → chrysalis → cracking cocoon
+→ butterfly) with CSS stroke-dashoffset draw animation. Each milestone has its own
+colour palette. Content fades in 2s after illustration starts drawing.
+
+---
+
 ## Task: Personality-Aware Pattern Recognition Enhancement
 
 **Component:** Mood Journal (Pattern Engine — Pro feature)

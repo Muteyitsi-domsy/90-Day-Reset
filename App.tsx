@@ -215,6 +215,11 @@ const App: React.FC = () => {
   // Ref to track latest journalEntries for completion tracking
   const journalEntriesRef = React.useRef(journalEntries);
   const userProfileRef = React.useRef(userProfile);
+  // Helper used in three day-90 trigger sites to check for the month-3 report.
+  // Closes over journalEntriesRef so it always reads the latest entries.
+  const month3ReportExists = () => journalEntriesRef.current.some(
+      e => e.type === 'monthly_summary_report' && e.prompt === '📅 Monthly Insight: Month 3'
+  );
   // Guard: retroactive badge grant runs once per session
   const retroactiveBadgesGrantedRef = React.useRef(false);
   // Timer for day-90 report fallback (fires at 4pm if user hasn't written their final entry)
@@ -996,7 +1001,7 @@ const App: React.FC = () => {
             day90ReportTimerRef.current = null;
         }
         if (userProfileRef.current!.week_count <= 13) await handleGenerateWeeklySummary(13, 14);
-        if (userProfileRef.current!.month_count <= 3) await handleGenerateMonthlySummary(3, 4);
+        if (!month3ReportExists()) await handleGenerateMonthlySummary(3, 4);
     }
   };
 
@@ -1744,12 +1749,18 @@ const App: React.FC = () => {
          return;
     }
 
-    // Check if report already exists (prevent duplicates)
+    // Day range used to find source entries for this month (not for report detection).
     const startDay = (monthToSummarize - 1) * 30;
     const endDay = monthToSummarize * 30;
+
+    // Check if report already exists (prevent duplicates).
+    // Keyed by prompt text (mirrors how weekly uses entry.week) — avoids the
+    // day-range overlap bug where a month-2 report stored with day=61 was
+    // incorrectly detected as an existing month-3 report.
+    const reportPrompt = `📅 Monthly Insight: Month ${monthToSummarize}`;
     const existingReport = journalEntriesRef.current.find(entry =>
         entry.type === 'monthly_summary_report' &&
-        entry.day > startDay && entry.day <= endDay
+        entry.prompt === reportPrompt
     );
     if (existingReport && !isRegeneration) {
         console.log(`✓ Monthly report for Month ${monthToSummarize} already exists, skipping generation`);
@@ -1920,7 +1931,7 @@ const App: React.FC = () => {
 
                 if (hasDay90Entry || currentHour >= 16) {
                     if (userProfile.week_count <= 13) await handleGenerateWeeklySummary(13, 14);
-                    if (userProfile.month_count <= 3) await handleGenerateMonthlySummary(3, 4);
+                    if (!month3ReportExists()) await handleGenerateMonthlySummary(3, 4);
                 } else {
                     // Schedule a fallback for 4pm if the app stays open
                     if (day90ReportTimerRef.current !== null) clearTimeout(day90ReportTimerRef.current);
@@ -1933,7 +1944,7 @@ const App: React.FC = () => {
                         const entryExists = journalEntriesRef.current.some(e => e.day === 90 && e.type === 'daily');
                         if (!entryExists) {
                             if (userProfileRef.current!.week_count <= 13) await handleGenerateWeeklySummary(13, 14);
-                            if (userProfileRef.current!.month_count <= 3) await handleGenerateMonthlySummary(3, 4);
+                            if (!month3ReportExists()) await handleGenerateMonthlySummary(3, 4);
                         }
                     }, msUntilCutoff);
                 }
@@ -2878,11 +2889,10 @@ const App: React.FC = () => {
           }}
         />
       )}
-      {crisisSeverity === 0 && shareMilestone && userProfile && (
+      {crisisSeverity === 0 && shareMilestone && (
         <SharePrompt
           isOpen={true}
           onClose={() => setShareMilestone(null)}
-          userProfile={userProfile}
           milestone={shareMilestone}
         />
       )}
