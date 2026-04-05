@@ -1921,6 +1921,11 @@ const App: React.FC = () => {
                  }
             }
 
+            // Recovery: if somehow the app passes day 90 without a month-3 report, generate it now.
+            if (day > 90 && !month3ReportExists()) {
+                await handleGenerateMonthlySummary(3, 4);
+            }
+
             // Day 90: week 13 (partial) + month 3 — controlled trigger.
             // Primary: fire immediately if the day-90 entry already exists (re-open scenario).
             // Fallback: if the user hasn't written by 4pm, generate with whatever data exists
